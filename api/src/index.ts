@@ -1,9 +1,17 @@
 import { Elysia } from 'elysia'
-import { openapi } from '@elysiajs/openapi'
 import { z } from 'zod'
+import { betterAuthPlugin } from './http/plugins/better-auth'
+import { openapi } from '@elysiajs/openapi'
+import { OpenAPI } from './http/plugins/better-auth'
 
 new Elysia()
-  .use(openapi())
+  .use(openapi({
+    documentation: {
+      components: await OpenAPI.components,
+      paths: await OpenAPI.getPaths()
+    }
+  }))
+  .use(betterAuthPlugin)
   .get("/", () => "Hello Elysia")
   .get("/users/:id", ({ params }) => {
     const userId = params.id;
@@ -23,6 +31,7 @@ new Elysia()
         name: z.string(),
       }),
     },
+    auth: true,
   })
   .listen(3333);
 
