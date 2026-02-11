@@ -1,8 +1,10 @@
 import { Elysia } from 'elysia'
+import { cors } from "@elysiajs/cors";
 import { z } from 'zod'
 import { betterAuthPlugin } from './http/plugins/better-auth'
 import { openapi } from '@elysiajs/openapi'
 import { OpenAPI } from './http/plugins/better-auth'
+import { auth } from "./auth";
 
 new Elysia()
   .use(openapi({
@@ -33,6 +35,15 @@ new Elysia()
     },
     auth: true,
   })
+  .use(
+    cors({
+      origin: "http://localhost:5173",
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization"],
+    }),
+  )
+  .mount(auth.handler)
   .listen(3333);
 
 console.log(`🦊 Elysia is running on port 3333`);
