@@ -3,3 +3,8 @@ export * from "./sessions";
 export * from "./accounts";
 export * from "./verifications";
 export * from "./two-factor";
+export * from "./professionals";
+export * from "./specialties";
+export * from "./professional-specialties";
+export * from "./professional-units";
+export * from "./units";
