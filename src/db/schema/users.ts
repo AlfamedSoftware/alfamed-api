@@ -11,6 +11,7 @@ export const sexEnum = pgEnum("sex", ["M", "F"]);
 export const users = pgTable("users", {
     id: text("id").primaryKey().$defaultFn(() => randomUUIDv7()),
     name: text("name").notNull(),
+    cpf: text("cpf").unique(),
     email: text("email").notNull().unique(),
     sex: sexEnum("sex"),
     emailVerified: boolean("email_verified").default(false).notNull(),

@@ -3,7 +3,7 @@ import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { randomUUIDv7 } from "bun";
 
-export const professionals = pgTable("professionals", {
+export const patients = pgTable("patients", {
     id: text("id").primaryKey().$defaultFn(() => randomUUIDv7()),
     userId: text("user_id")
         .notNull()
@@ -17,9 +17,9 @@ export const professionals = pgTable("professionals", {
         .notNull(),
 });
 
-export const professionalsRelations = relations(professionals, ({ one }) => ({
+export const patientsRelations = relations(patients, ({ one }) => ({
     user: one(users, {
-        fields: [professionals.userId],
+        fields: [patients.userId],
         references: [users.id],
     }),
 }));
