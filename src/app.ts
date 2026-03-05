@@ -4,11 +4,11 @@ import { openapi } from "@elysiajs/openapi";
 import { usersRoutes } from "./modules/users/users.routes";
 import type { UsersRepository } from "./modules/users/users.repository";
 
-type AnyElysia = InstanceType<typeof Elysia>;
+type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
 type BuildAppOptions = {
     usersRepository: UsersRepository;
-    authPlugin: AnyElysia;
+    authPlugin: ElysiaPlugin;
     withDocs?: boolean;
 };
 
