@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-export const userSexSchema = z.enum(["M", "F"]).nullable();
-
 export const userSchema = z.object({
     id: z.string().uuid(),
     name: z.string().min(1),
