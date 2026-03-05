@@ -1,4 +1,4 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 import type { UsersRepository } from "./users.repository";
 import { UsersService } from "./users.service";
 import { userProfileSchema, usersErrorSchema } from "./users.schemas";
