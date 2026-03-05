@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import Elysia from "elysia";
 import { buildApp } from "@/app";
-import type { UserProfile, UsersRepository } from "@/modules/users/users.repository";
+import type { UserProfile } from "@/modules/users/users.repository";
 import { userProfileSchema, usersErrorSchema } from "@/modules/users/users.schemas";
 
-class InMemoryUsersRepository implements UsersRepository {
+interface UsersRepositoryContract {
+    getUserById(userId: string): Promise<UserProfile | null>;
+}
+
+class InMemoryUsersRepository implements UsersRepositoryContract {
     constructor(private readonly users: Record<string, UserProfile>) { }
 
     async getUserById(userId: string): Promise<UserProfile | null> {
