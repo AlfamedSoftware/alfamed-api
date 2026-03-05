@@ -3,20 +3,22 @@ import { t } from "elysia";
 
 export const userSexSchema = z.enum(["M", "F"]).nullable();
 
-export const userProfileSchema = z.object({
+export const userSchema = z.object({
     id: z.string().uuid(),
     name: z.string().min(1),
     email: z.email(),
-    sex: userSexSchema,
+    emailVerified: z.boolean(),
+    image: z.string().nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    twoFactorEnabled: z.boolean(),
+});
+
+export const userProfileSchema = z.object({
+    user: userSchema,
 });
 
 export const usersErrorSchema = z.object({
     message: z.string().min(1),
 });
 
-export const userProfileResponseSchema = t.Object({
-    id: t.String({ format: "uuid" }),
-    name: t.String({ minLength: 1 }),
-    email: t.String({ format: "email" }),
-    sex: t.Union([t.Literal("M"), t.Literal("F"), t.Null()]),
-});

@@ -31,7 +31,7 @@ export async function buildApp({ usersRepository, authPlugin, withDocs = true }:
         .use(authPlugin)
         .use(
             cors({
-                origin: process.env.CORS_ORIGIN,
+                origin: process.env.CORS_ORIGIN || "http://localhost:5173",
                 methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                 credentials: true,
                 allowedHeaders: ["Content-Type", "Authorization"],

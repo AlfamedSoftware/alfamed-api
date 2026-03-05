@@ -7,7 +7,7 @@ import { userProfileSchema, usersErrorSchema } from "@/modules/users/users.schem
 class InMemoryUsersRepository implements UsersRepository {
     constructor(private readonly users: Record<string, UserProfile>) { }
 
-    async findProfileById(userId: string): Promise<UserProfile | null> {
+    async getUserById(userId: string): Promise<UserProfile | null> {
         return this.users[userId] ?? null;
     }
 }
@@ -27,7 +27,7 @@ const fakeAuthPlugin = new Elysia().macro({
 });
 
 describe("Users routes", () => {
-    it("GET /users/me deve retornar usuário autenticado", async () => {
+    it("GET /users/:id deve retornar usuário por id", async () => {
         const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
 
         const app = await buildApp({
@@ -35,16 +35,22 @@ describe("Users routes", () => {
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({
                 [existingUserId]: {
-                    id: existingUserId,
-                    name: "Joao",
-                    email: "joao@alfamed.com",
-                    sex: "M",
+                    user: {
+                        id: existingUserId,
+                        name: "Joao",
+                        email: "joao@alfamed.com",
+                        emailVerified: false,
+                        image: null,
+                        createdAt: "2026-02-01T17:27:35.202Z",
+                        updatedAt: "2026-02-01T17:27:35.202Z",
+                        twoFactorEnabled: false,
+                    },
                 },
             }),
         });
 
         const response = await app.handle(
-            new Request("http://localhost/users/me", {
+            new Request(`http://localhost/users/${existingUserId}`, {
                 headers: { "x-user-id": existingUserId },
             }),
         );
@@ -53,11 +59,13 @@ describe("Users routes", () => {
         expect(response.status).toBe(200);
         expect(() => userProfileSchema.parse(body)).not.toThrow();
         expect(body).toMatchObject({
-            id: existingUserId,
+            user: { id: existingUserId },
         });
     });
 
-    it("GET /users/me deve retornar 404 quando usuário não existir", async () => {
+    it("GET /users/:id deve retornar 404 quando usuário não existir", async () => {
+        const missingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fea";
+
         const app = await buildApp({
             authPlugin: fakeAuthPlugin,
             withDocs: false,
@@ -65,8 +73,8 @@ describe("Users routes", () => {
         });
 
         const response = await app.handle(
-            new Request("http://localhost/users/me", {
-                headers: { "x-user-id": "user_not_found" },
+            new Request(`http://localhost/users/${missingUserId}`, {
+                headers: { "x-user-id": missingUserId },
             }),
         );
         const body = await response.json();
@@ -75,14 +83,16 @@ describe("Users routes", () => {
         expect(() => usersErrorSchema.parse(body)).not.toThrow();
     });
 
-    it("GET /users/me deve retornar 401 quando não autenticado", async () => {
+    it("GET /users/:id deve retornar 401 quando não autenticado", async () => {
+        const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
+
         const app = await buildApp({
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({}),
         });
 
-        const response = await app.handle(new Request("http://localhost/users/me"));
+        const response = await app.handle(new Request(`http://localhost/users/${existingUserId}`));
         const body = await response.json();
 
         expect(response.status).toBe(401);
