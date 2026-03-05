@@ -5,7 +5,7 @@ import type { UserProfile, UsersRepository } from "@/modules/users/users.reposit
 class InMemoryUsersRepository implements UsersRepository {
     constructor(private readonly user: UserProfile | null) {}
 
-    async findProfileById(): Promise<UserProfile | null> {
+    async findProfileById(_: string): Promise<UserProfile | null> {
         return this.user;
     }
 }
@@ -17,14 +17,13 @@ describe("UsersService", () => {
             name: "Ana",
             email: "ana@alfamed.com",
             sex: "F",
-            role: "professional",
         });
         const service = new UsersService(repository);
 
         const result = await service.getMe("user_1");
 
         expect(result?.id).toBe("user_1");
-        expect(result?.role).toBe("professional");
+        expect(result?.email).toBe("ana@alfamed.com");
     });
 
     it("deve retornar null quando usuário não existir", async () => {

@@ -9,7 +9,8 @@ const app = await buildApp({
     authPlugin: betterAuthPlugin,
     withDocs: true,
 });
+const port = Number(process.env.PORT);
 
-app.listen(3333);
+app.listen(port);
 
-console.log("🚀 API running on http://localhost:3333");
+console.log(`🚀 API running on http://localhost:${port}`);

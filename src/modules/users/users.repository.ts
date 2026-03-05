@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "@/db/client";
 import { users } from "@/db/schema/users";
-import { professionals } from "@/db/schema/professionals";
 import { userProfileSchema } from "./users.schemas";
 
 export type UserProfile = z.infer<typeof userProfileSchema>;
@@ -23,10 +22,8 @@ export class DrizzleUsersRepository implements UsersRepository {
                 name: users.name,
                 email: users.email,
                 sex: users.sex,
-                professionalId: professionals.id,
             })
             .from(users)
-            .leftJoin(professionals, eq(professionals.userId, users.id))
             .where(eq(users.id, userId))
             .limit(1);
 
@@ -39,7 +36,6 @@ export class DrizzleUsersRepository implements UsersRepository {
             name: result.name,
             email: result.email,
             sex: result.sex,
-            role: result.professionalId ? "professional" : "patient",
         });
     }
 }

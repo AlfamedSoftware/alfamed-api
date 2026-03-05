@@ -5,7 +5,7 @@ import type { UserProfile, UsersRepository } from "@/modules/users/users.reposit
 import { userProfileSchema, usersErrorSchema } from "@/modules/users/users.schemas";
 
 class InMemoryUsersRepository implements UsersRepository {
-    constructor(private readonly users: Record<string, UserProfile>) {}
+    constructor(private readonly users: Record<string, UserProfile>) { }
 
     async findProfileById(userId: string): Promise<UserProfile | null> {
         return this.users[userId] ?? null;
@@ -39,7 +39,6 @@ describe("Users routes", () => {
                     name: "Joao",
                     email: "joao@alfamed.com",
                     sex: "M",
-                    role: "patient",
                 },
             }),
         });
@@ -55,7 +54,6 @@ describe("Users routes", () => {
         expect(() => userProfileSchema.parse(body)).not.toThrow();
         expect(body).toMatchObject({
             id: existingUserId,
-            role: "patient",
         });
     });
 
@@ -74,6 +72,20 @@ describe("Users routes", () => {
         const body = await response.json();
 
         expect(response.status).toBe(404);
+        expect(() => usersErrorSchema.parse(body)).not.toThrow();
+    });
+
+    it("GET /users/me deve retornar 401 quando não autenticado", async () => {
+        const app = await buildApp({
+            authPlugin: fakeAuthPlugin,
+            withDocs: false,
+            usersRepository: new InMemoryUsersRepository({}),
+        });
+
+        const response = await app.handle(new Request("http://localhost/users/me"));
+        const body = await response.json();
+
+        expect(response.status).toBe(401);
         expect(() => usersErrorSchema.parse(body)).not.toThrow();
     });
 });
