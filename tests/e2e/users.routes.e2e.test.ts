@@ -87,6 +87,41 @@ describe("Users routes", () => {
         expect(() => usersErrorSchema.parse(body)).not.toThrow();
     });
 
+    it("GET /users/:id deve retornar 403 quando id da rota for diferente do token", async () => {
+        const tokenUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
+        const otherUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fea";
+
+        const app = await buildApp({
+            authPlugin: fakeAuthPlugin,
+            withDocs: false,
+            usersRepository: new InMemoryUsersRepository({
+                [tokenUserId]: {
+                    user: {
+                        id: tokenUserId,
+                        name: "Joao",
+                        email: "joao@alfamed.com",
+                        emailVerified: false,
+                        image: null,
+                        createdAt: "2026-02-01T17:27:35.202Z",
+                        updatedAt: "2026-02-01T17:27:35.202Z",
+                        twoFactorEnabled: false,
+                    },
+                },
+            }),
+        });
+
+        const response = await app.handle(
+            new Request(`http://localhost/users/${otherUserId}`, {
+                headers: { "x-user-id": tokenUserId },
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(() => usersErrorSchema.parse(body)).not.toThrow();
+        expect(body).toMatchObject({ message: "Forbidden" });
+    });
+
     it("GET /users/:id deve retornar 401 quando não autenticado", async () => {
         const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
 

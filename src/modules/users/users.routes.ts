@@ -12,8 +12,16 @@ export const usersRoutes = ({ usersRepository }: UsersRoutesOptions) => {
 
     return new Elysia({ name: "users-routes", prefix: "/users" }).get(
         "/:id",
-        async ({ params, status }) => {
-            const user = await usersService.getUserById(params.id);
+        async (context) => {
+            const { params, status } = context;
+            console.log("context", context);
+            const userId = (context as { user?: { id?: string } }).user?.id;
+
+            if (params.id !== userId) {
+                return status(403, { message: "Forbidden" });
+            }
+
+            const user = await usersService.getUserById(userId);
 
             if (!user) {
                 return status(404, { message: "User not found" });
@@ -26,6 +34,7 @@ export const usersRoutes = ({ usersRepository }: UsersRoutesOptions) => {
             response: {
                 200: userProfileSchema,
                 401: usersErrorSchema,
+                403: usersErrorSchema,
                 404: usersErrorSchema,
             },
         },
