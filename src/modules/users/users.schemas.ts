@@ -11,9 +11,7 @@ export const userSchema = z.object({
     twoFactorEnabled: z.boolean(),
 });
 
-export const userProfileSchema = z.object({
-    user: userSchema,
-});
+export const userProfileSchema = userSchema;
 
 export const usersErrorSchema = z.object({
     message: z.string().min(1),

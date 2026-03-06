@@ -33,16 +33,14 @@ export class UsersRepository {
             }
 
             return userProfileSchema.parse({
-                user: {
-                    id: result.id,
-                    name: result.name,
-                    email: result.email,
-                    emailVerified: result.emailVerified,
-                    image: result.image,
-                    createdAt: result.createdAt.toISOString(),
-                    updatedAt: result.updatedAt.toISOString(),
-                    twoFactorEnabled: result.twoFactorEnabled,
-                },
+                id: result.id,
+                name: result.name,
+                email: result.email,
+                emailVerified: result.emailVerified,
+                image: result.image,
+                createdAt: result.createdAt.toISOString(),
+                updatedAt: result.updatedAt.toISOString(),
+                twoFactorEnabled: result.twoFactorEnabled,
             });
         };
     }

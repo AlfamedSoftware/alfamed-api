@@ -30,6 +30,14 @@ const fakeAuthPlugin = new Elysia().macro({
     },
 });
 
+const fakeAuthWithoutUserPlugin = new Elysia().macro({
+    auth: {
+        async resolve() {
+            return {};
+        },
+    },
+});
+
 describe("Users routes", () => {
     it("GET /users/:id deve retornar usuário por id", async () => {
         const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
@@ -39,16 +47,14 @@ describe("Users routes", () => {
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({
                 [existingUserId]: {
-                    user: {
-                        id: existingUserId,
-                        name: "Joao",
-                        email: "joao@alfamed.com",
-                        emailVerified: false,
-                        image: null,
-                        createdAt: "2026-02-01T17:27:35.202Z",
-                        updatedAt: "2026-02-01T17:27:35.202Z",
-                        twoFactorEnabled: false,
-                    },
+                    id: existingUserId,
+                    name: "Joao",
+                    email: "joao@alfamed.com",
+                    emailVerified: false,
+                    image: null,
+                    createdAt: "2026-02-01T17:27:35.202Z",
+                    updatedAt: "2026-02-01T17:27:35.202Z",
+                    twoFactorEnabled: false,
                 },
             }),
         });
@@ -63,7 +69,7 @@ describe("Users routes", () => {
         expect(response.status).toBe(200);
         expect(() => userProfileSchema.parse(body)).not.toThrow();
         expect(body).toMatchObject({
-            user: { id: existingUserId },
+            id: existingUserId,
         });
     });
 
@@ -96,16 +102,14 @@ describe("Users routes", () => {
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({
                 [tokenUserId]: {
-                    user: {
-                        id: tokenUserId,
-                        name: "Joao",
-                        email: "joao@alfamed.com",
-                        emailVerified: false,
-                        image: null,
-                        createdAt: "2026-02-01T17:27:35.202Z",
-                        updatedAt: "2026-02-01T17:27:35.202Z",
-                        twoFactorEnabled: false,
-                    },
+                    id: tokenUserId,
+                    name: "Joao",
+                    email: "joao@alfamed.com",
+                    emailVerified: false,
+                    image: null,
+                    createdAt: "2026-02-01T17:27:35.202Z",
+                    updatedAt: "2026-02-01T17:27:35.202Z",
+                    twoFactorEnabled: false,
                 },
             }),
         });
@@ -136,5 +140,26 @@ describe("Users routes", () => {
 
         expect(response.status).toBe(401);
         expect(() => usersErrorSchema.parse(body)).not.toThrow();
+    });
+
+    it("GET /users/:id deve retornar 401 quando auth não injeta user.id", async () => {
+        const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
+
+        const app = await buildApp({
+            authPlugin: fakeAuthWithoutUserPlugin,
+            withDocs: false,
+            usersRepository: new InMemoryUsersRepository({}),
+        });
+
+        const response = await app.handle(
+            new Request(`http://localhost/users/${existingUserId}`, {
+                headers: { "x-user-id": existingUserId },
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(() => usersErrorSchema.parse(body)).not.toThrow();
+        expect(body).toMatchObject({ message: "Unauthorized" });
     });
 });

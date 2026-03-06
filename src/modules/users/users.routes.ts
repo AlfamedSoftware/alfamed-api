@@ -14,8 +14,11 @@ export const usersRoutes = ({ usersRepository }: UsersRoutesOptions) => {
         "/:id",
         async (context) => {
             const { params, status } = context;
-            console.log("context", context);
             const userId = (context as { user?: { id?: string } }).user?.id;
+
+            if (!userId) {
+                return status(401, { message: "Unauthorized" });
+            }
 
             if (params.id !== userId) {
                 return status(403, { message: "Forbidden" });

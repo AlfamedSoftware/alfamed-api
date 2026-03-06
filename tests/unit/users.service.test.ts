@@ -13,23 +13,21 @@ class InMemoryUsersRepository implements UsersRepository {
 describe("UsersService", () => {
     it("deve retornar o perfil do usuário", async () => {
         const repository = new InMemoryUsersRepository({
-            user: {
-                id: "019c1a3e-e425-7000-8bda-cdfec32c8fed",
-                name: "Ana",
-                email: "ana@alfamed.com",
-                emailVerified: false,
-                image: null,
-                createdAt: "2026-02-01T17:27:35.202Z",
-                updatedAt: "2026-02-01T17:27:35.202Z",
-                twoFactorEnabled: false,
-            },
+            id: "019c1a3e-e425-7000-8bda-cdfec32c8fed",
+            name: "Ana",
+            email: "ana@alfamed.com",
+            emailVerified: false,
+            image: null,
+            createdAt: "2026-02-01T17:27:35.202Z",
+            updatedAt: "2026-02-01T17:27:35.202Z",
+            twoFactorEnabled: false,
         });
         const service = new UsersService(repository);
 
         const result = await service.getUserById("user_1");
 
-        expect(result?.user.id).toBe("019c1a3e-e425-7000-8bda-cdfec32c8fed");
-        expect(result?.user.email).toBe("ana@alfamed.com");
+        expect(result?.id).toBe("019c1a3e-e425-7000-8bda-cdfec32c8fed");
+        expect(result?.email).toBe("ana@alfamed.com");
     });
 
     it("deve retornar null quando usuário não existir", async () => {
