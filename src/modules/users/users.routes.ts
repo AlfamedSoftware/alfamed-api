@@ -1,7 +1,7 @@
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import type { UsersRepository } from "./users.repository";
 import { UsersService } from "./users.service";
-import { userProfileSchema, usersErrorSchema } from "./users.schemas";
+import { userProfileSchema } from "./users.schemas";
 
 type UsersRoutesOptions = {
     usersRepository: UsersRepository;
@@ -34,11 +34,16 @@ export const usersRoutes = ({ usersRepository }: UsersRoutesOptions) => {
         },
         {
             auth: true,
+            detail: {
+                summary: "Get user profile by id",
+                description: "Returns the authenticated user's profile when the route id matches the session user id.",
+                tags: ["Users"],
+            },
             response: {
                 200: userProfileSchema,
-                401: usersErrorSchema,
-                403: usersErrorSchema,
-                404: usersErrorSchema,
+                401: t.Object({ message: t.Literal("Unauthorized") }),
+                403: t.Object({ message: t.Literal("Forbidden") }),
+                404: t.Object({ message: t.Literal("User not found") }),
             },
         },
     );

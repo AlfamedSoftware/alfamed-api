@@ -22,6 +22,12 @@ export async function buildApp({ usersRepository, authPlugin, withDocs = true }:
             openapi({
                 path: "/openapi",
                 documentation: {
+                    tags: [
+                        {
+                            name: "Users",
+                            description: "Operations about users",
+                        },
+                    ],
                     components: await OpenAPI.components,
                     paths: await OpenAPI.getPaths(),
                 },

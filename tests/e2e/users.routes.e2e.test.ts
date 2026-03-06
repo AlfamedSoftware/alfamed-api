@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import Elysia from "elysia";
 import { buildApp } from "@/app";
 import type { UserProfile } from "@/modules/users/users.repository";
-import { userProfileSchema, usersErrorSchema } from "@/modules/users/users.schemas";
+import { userProfileSchema } from "@/modules/users/users.schemas";
 
 interface UsersRepositoryContract {
     getUserById(userId: string): Promise<UserProfile | null>;
@@ -90,7 +90,7 @@ describe("Users routes", () => {
         const body = await response.json();
 
         expect(response.status).toBe(404);
-        expect(() => usersErrorSchema.parse(body)).not.toThrow();
+        expect(body).toMatchObject({ message: "User not found" });
     });
 
     it("GET /users/:id deve retornar 403 quando id da rota for diferente do token", async () => {
@@ -122,7 +122,6 @@ describe("Users routes", () => {
         const body = await response.json();
 
         expect(response.status).toBe(403);
-        expect(() => usersErrorSchema.parse(body)).not.toThrow();
         expect(body).toMatchObject({ message: "Forbidden" });
     });
 
@@ -139,7 +138,7 @@ describe("Users routes", () => {
         const body = await response.json();
 
         expect(response.status).toBe(401);
-        expect(() => usersErrorSchema.parse(body)).not.toThrow();
+        expect(body).toMatchObject({ message: "Unauthorized" });
     });
 
     it("GET /users/:id deve retornar 401 quando auth não injeta user.id", async () => {
@@ -159,7 +158,6 @@ describe("Users routes", () => {
         const body = await response.json();
 
         expect(response.status).toBe(401);
-        expect(() => usersErrorSchema.parse(body)).not.toThrow();
         expect(body).toMatchObject({ message: "Unauthorized" });
     });
 });

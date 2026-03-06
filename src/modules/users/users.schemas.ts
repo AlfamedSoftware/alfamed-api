@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const userSchema = z.object({
+export const userProfileSchema = z.object({
     id: z.string().uuid(),
     name: z.string().min(1),
     email: z.email(),
@@ -11,9 +11,4 @@ export const userSchema = z.object({
     twoFactorEnabled: z.boolean(),
 });
 
-export const userProfileSchema = userSchema;
-
-export const usersErrorSchema = z.object({
-    message: z.string().min(1),
-});
 
