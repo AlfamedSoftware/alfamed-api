@@ -3,16 +3,24 @@ import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { usersRoutes } from "./modules/users/users.routes";
 import type { UsersRepository } from "./modules/users/users.repository";
+import { professionalsRoutes } from "./modules/professionals/professionals.routes";
+import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
 type BuildAppOptions = {
     usersRepository: UsersRepository;
+    professionalsRepository?: ProfessionalsRepository;
     authPlugin: ElysiaPlugin;
     withDocs?: boolean;
 };
 
-export async function buildApp({ usersRepository, authPlugin, withDocs = true }: BuildAppOptions) {
+export async function buildApp({
+    usersRepository,
+    professionalsRepository,
+    authPlugin,
+    withDocs = true,
+}: BuildAppOptions) {
     const app = new Elysia();
 
     if (withDocs) {
@@ -27,6 +35,14 @@ export async function buildApp({ usersRepository, authPlugin, withDocs = true }:
                             name: "Users",
                             description: "Operations about users",
                         },
+                        {
+                            name: "Professionals",
+                            description: "Operations about professionals",
+                        },
+                        {
+                            name: "Better Auth",
+                            description: "Authentication and session operations",
+                        },
                     ],
                     components: await OpenAPI.components,
                     paths: await OpenAPI.getPaths(),
@@ -35,14 +51,14 @@ export async function buildApp({ usersRepository, authPlugin, withDocs = true }:
         );
     }
 
-    return app
+    const configuredApp = app
         .use(authPlugin)
         .use(
             cors({
                 origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-                methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 credentials: true,
-                allowedHeaders: ["Content-Type", "Authorization"],
+                allowedHeaders: ["Content-Type", "Authorization", "x-unit-id"],
             }),
         )
         .get("/health", () => ({
@@ -50,4 +66,10 @@ export async function buildApp({ usersRepository, authPlugin, withDocs = true }:
             timestamp: new Date(),
         }))
         .use(usersRoutes({ usersRepository }));
+
+    if (!professionalsRepository) {
+        return configuredApp;
+    }
+
+    return configuredApp.use(professionalsRoutes({ professionalsRepository }));
 }
