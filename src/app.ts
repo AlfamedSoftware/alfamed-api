@@ -48,9 +48,9 @@ export async function buildApp({
         .use(
             cors({
                 origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-                methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 credentials: true,
-                allowedHeaders: ["Content-Type", "Authorization"],
+                allowedHeaders: ["Content-Type", "Authorization", "x-unit-id"],
             }),
         )
         .get("/health", () => ({
