@@ -4,6 +4,7 @@ import {
     getValidatedUnitIdFromRequest,
     invalidOrMissingUnitHeaderMessage,
 } from "@/http/plugins/unit-access";
+import { isUniqueConstraintError } from "@/http/plugins/db-errors";
 import type { ProfessionalsRepository } from "./professionals.repository";
 import { ProfessionalsService } from "./professionals.service";
 import {
@@ -38,15 +39,22 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                 }
 
                 try {
-                    const professional = await professionalsService.createProfessional(userId, unitId, body);
+                    const createPayload = {
+                        isActive: body.isActive,
+                        userId,
+                    };
+                    const professional = await professionalsService.createProfessional(userId, unitId, createPayload);
 
                     return status(201, professional);
                 } catch (error) {
                     if (error instanceof Error && error.message === "Forbidden") {
                         return status(403, { message: "Forbidden" });
                     }
+                    if (isUniqueConstraintError(error)) {
+                        return status(409, { message: "Professional already exists for this user" });
+                    }
 
-                    return status(409, { message: "Professional already exists for this user" });
+                    return status(500, { message: "Internal server error" });
                 }
             },
             {
@@ -63,6 +71,7 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.Literal("Professional already exists for this user") }),
+                    500: professionalsErrorSchema,
                 },
             },
         )
@@ -98,7 +107,7 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                 auth: true,
                 detail: {
                     summary: "List professionals",
-                    description: "Returns all professionals.",
+                    description: "Returns professionals for the unit selected in x-unit-id header.",
                     tags: ["Professionals"],
                 },
                 response: {
@@ -197,8 +206,11 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     if (error instanceof Error && error.message === "Forbidden") {
                         return status(403, { message: "Forbidden" });
                     }
+                    if (isUniqueConstraintError(error)) {
+                        return status(409, { message: "Professional already exists for this user" });
+                    }
 
-                    return status(409, { message: "Professional already exists for this user" });
+                    return status(500, { message: "Internal server error" });
                 }
             },
             {
@@ -219,6 +231,7 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
                     409: t.Object({ message: t.Literal("Professional already exists for this user") }),
+                    500: professionalsErrorSchema,
                 },
             },
         )

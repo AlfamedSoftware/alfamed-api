@@ -167,7 +167,6 @@ describe("Professionals routes", () => {
                     "x-unit-id": selectedUnitId,
                 },
                 body: JSON.stringify({
-                    userId: "019c1a3e-e425-7000-8bda-cdfec32c8fea",
                     isActive: true,
                 }),
             }),
@@ -177,9 +176,59 @@ describe("Professionals routes", () => {
         expect(response.status).toBe(201);
         expect(() => professionalProfileSchema.parse(body)).not.toThrow();
         expect(body).toMatchObject({
-            userId: "019c1a3e-e425-7000-8bda-cdfec32c8fea",
+            userId: requesterUserId,
             isActive: true,
         });
+
+        const createdProfessionalId = body.id as string;
+        const listResponse = await app.handle(
+            new Request("http://localhost/professionals", {
+                headers: {
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
+                },
+            }),
+        );
+        const listBody = await listResponse.json();
+
+        expect(listResponse.status).toBe(200);
+        expect(Array.isArray(listBody)).toBe(true);
+        expect(listBody).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    id: createdProfessionalId,
+                }),
+            ]),
+        );
+    });
+
+    it("POST /professionals deve rejeitar userId enviado no body", async () => {
+        const repository = new InMemoryProfessionalsRepository({}, {}, requesterUnits);
+        const app = await buildApp({
+            authPlugin: fakeAuthPlugin,
+            withDocs: false,
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: repository,
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/professionals", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
+                },
+                body: JSON.stringify({
+                    userId: "019c1a3e-e425-7000-8bda-cdfec32c8fea",
+                    isActive: true,
+                }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(422);
+        expect(body).toMatchObject({});
     });
 
     it("GET /professionals deve listar profissionais", async () => {
@@ -472,7 +521,6 @@ describe("Professionals routes", () => {
                     "x-unit-id": selectedUnitId,
                 },
                 body: JSON.stringify({
-                    userId: "019c1a3e-e425-7000-8bda-cdfec32c8fea",
                     isActive: true,
                 }),
             }),

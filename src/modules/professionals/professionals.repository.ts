@@ -10,7 +10,7 @@ import {
 } from "./professionals.schemas";
 
 export type ProfessionalProfile = z.infer<typeof professionalProfileSchema>;
-export type CreateProfessionalInput = z.infer<typeof createProfessionalSchema>;
+export type CreateProfessionalInput = z.infer<typeof createProfessionalSchema> & { userId: string };
 export type UpdateProfessionalInput = z.infer<typeof updateProfessionalSchema>;
 
 type DatabaseClient = typeof dbType;

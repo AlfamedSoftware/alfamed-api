@@ -1,9 +1,8 @@
 import { z } from "zod";
 
 export const createProfessionalSchema = z.object({
-    userId: z.string().uuid(),
     isActive: z.boolean().optional(),
-});
+}).strict();
 
 export const updateProfessionalSchema = z.object({
     userId: z.string().uuid().optional(),
