@@ -2,7 +2,17 @@
 
 ## Project: Alfamed API
 
-This repository contains the backend API for **Alfamed**, a clinical and hospital management system.
+This repository contains the backend API for **Alfamed**, a SaaS platform for **clinical and hospital management**.
+
+Alfamed allows clinics and hospitals to manage:
+
+* patients
+* healthcare professionals
+* appointments
+* specialties
+* units (clinics/hospital branches)
+
+The core functionality of the platform is **managing patient appointments with healthcare professionals inside specific clinic units**.
 
 The backend is built with:
 
@@ -14,6 +24,26 @@ The backend is built with:
 * Modular architecture
 
 This file defines strict rules that AI agents must follow when generating code.
+
+---
+
+# LANGUAGE RULE
+
+AI agents MUST ALWAYS respond in **Portuguese (Brazil)**.
+
+Even if prompts are written in English, responses must be written in Portuguese.
+
+---
+
+# CLARIFICATION RULE
+
+Before implementing code, if any part of the task is ambiguous, the AI must:
+
+1. Ask clarifying questions
+2. Confirm assumptions with the developer
+3. Avoid guessing behavior that is not clearly defined in the project
+
+The AI should prioritize **correctness and alignment with the existing project** over generating code quickly.
 
 ---
 
@@ -30,13 +60,89 @@ When in doubt:
 3. Follow the same naming conventions
 4. Reuse existing patterns
 
-The **users module is the main reference implementation**.
+The **users module and professionals module are the main reference implementations**.
 
 All new modules must follow the same architecture used there.
 
 ---
 
-# Project Structure
+# SaaS MULTI-TENANCY RULE (VERY IMPORTANT)
+
+Alfamed is a **multi-tenant SaaS platform**.
+
+Clinics and hospitals may have **multiple units (branches)**.
+
+All domain data must be **scoped by unit**.
+
+This means:
+
+* A user from **Clinic A** must NEVER access data from **Clinic B**.
+* Queries must always be filtered by the **unit context**.
+* Cross-unit access must never be allowed.
+
+Examples of domain entities that must respect this rule:
+
+* professionals
+* patients
+* appointments
+* schedules
+* medical records
+
+If an entity belongs to a unit, all database queries must enforce that constraint.
+
+---
+
+# UNIT CONTEXT RULE
+
+The current unit context is provided by:
+
+```
+x-unit-id
+```
+
+This header identifies the **clinic unit making the request**.
+
+All operations must respect this unit scope.
+
+Examples:
+
+✔ Correct behavior:
+
+User from Unit A lists professionals → only professionals from Unit A are returned.
+
+❌ Incorrect behavior:
+
+User from Unit A lists professionals → professionals from Unit B are returned.
+
+---
+
+# DATABASE ACCESS RULE FOR UNIT-SCOPED ENTITIES
+
+When accessing entities related to units (professionals, appointments, etc.), the repository must always:
+
+* filter by unit
+* validate unit ownership
+* use join tables when necessary
+
+Example from the professionals module:
+
+professionals are linked to units through:
+
+```
+professional_units
+```
+
+Queries must ensure that the professional belongs to the requesting unit.
+
+This pattern must be reused for other modules like:
+
+* appointments
+* schedules
+* patient assignments
+
+---
+
+# PROJECT STRUCTURE
 
 The project uses a **modular architecture** where each domain is isolated in a module.
 
@@ -64,7 +170,7 @@ unit/
 
 ---
 
-# Module Architecture
+# MODULE ARCHITECTURE
 
 Each module must follow the same layered structure.
 
@@ -81,7 +187,18 @@ Never introduce additional layers unless they already exist elsewhere in the pro
 
 ---
 
-# Repository Layer
+# REFERENCE MODULES
+
+The following modules are considered **architecture references**:
+
+users
+professionals
+
+New modules must follow the same patterns implemented there.
+
+---
+
+# REPOSITORY LAYER
 
 Repositories are responsible ONLY for database access.
 
@@ -99,19 +216,21 @@ Rules:
 
 Example repository methods:
 
-* create
-* findById
-* list
-* update
-* delete
+create
+findById
+list
+update
+delete
 
 Repositories must import database schemas from:
 
+```
 src/db/schema
+```
 
 ---
 
-# Service Layer
+# SERVICE LAYER
 
 Services contain **business logic**.
 
@@ -119,6 +238,7 @@ Responsibilities:
 
 * orchestrate repository calls
 * enforce domain rules
+* validate unit ownership
 * throw domain errors
 
 Rules:
@@ -137,7 +257,7 @@ deleteUser
 
 ---
 
-# Routes Layer
+# ROUTES LAYER
 
 Routes define HTTP endpoints using Elysia.
 
@@ -145,6 +265,7 @@ Responsibilities:
 
 * define endpoints
 * validate requests
+* extract headers
 * call services
 * return responses
 
@@ -164,7 +285,7 @@ DELETE /entities/:id
 
 ---
 
-# Schemas
+# SCHEMAS
 
 All validation schemas must use Zod.
 
@@ -186,25 +307,29 @@ userProfileSchema
 
 ---
 
-# Database
+# DATABASE
 
 Database access uses Drizzle ORM.
 
 All table schemas are located in:
 
+```
 src/db/schema
+```
 
 Repositories must use those schemas instead of hardcoded table names.
 
 ---
 
-# Authentication
+# AUTHENTICATION
 
 Authentication uses Better Auth.
 
 Auth plugins are located in:
 
+```
 src/http/plugins
+```
 
 Routes requiring authentication must use the existing auth plugin.
 
@@ -212,7 +337,7 @@ Never implement custom authentication logic if Better Auth already provides it.
 
 ---
 
-# Error Handling
+# ERROR HANDLING
 
 Business errors must be thrown inside services.
 
@@ -228,19 +353,21 @@ Standard status codes:
 
 ---
 
-# Testing
+# TESTING
 
 Tests are located in:
 
-src/tests
+```
+tests
+```
 
 Types of tests:
 
 Unit tests
-src/tests/unit
+tests/unit
 
 E2E tests
-src/tests/e2e
+tests/e2e
 
 Every new module must include E2E tests for:
 
@@ -259,26 +386,28 @@ Tests should follow the same pattern used in the users module.
 
 ---
 
-# Creating New Modules
+# CREATING NEW MODULES
 
 When creating a new module:
 
 1. Look at the `users` module
-2. Copy the same structure
-3. Follow the same naming pattern
+2. Look at the `professionals` module
+3. Copy the same structure
+4. Follow the same naming pattern
+5. Respect the **unit scoping rules**
 
 Example module:
 
-modules/professionals
+modules/appointments
 
-professionals.repository.ts
-professionals.service.ts
-professionals.routes.ts
-professionals.schemas.ts
+appointments.repository.ts
+appointments.service.ts
+appointments.routes.ts
+appointments.schemas.ts
 
 ---
 
-# Naming Conventions
+# NAMING CONVENTIONS
 
 Repositories
 
@@ -298,7 +427,7 @@ Schemas
 
 ---
 
-# Code Quality Rules
+# CODE QUALITY RULES
 
 Always:
 
@@ -317,15 +446,82 @@ Never:
 
 ---
 
-# AI Agent Behavior
+# AI AGENT BEHAVIOR
 
 Before generating code, the AI must:
 
 1. Inspect existing modules
 2. Follow the same structure
 3. Reuse patterns already present
-4. Avoid introducing new patterns
+4. Respect multi-tenant unit isolation
+5. Avoid introducing new patterns
 
 If a pattern already exists in the repository, ALWAYS prefer it instead of creating a new one.
 
 Consistency across modules is more important than introducing new ideas.
+
+---
+
+# REUSABLE CODE RULE (IMPORTANT)
+
+When a cross-module rule appears more than once, extract it into a shared utility and reuse it.
+
+Examples of reusable rules:
+
+- unit header parsing/validation
+- unit ownership checks
+- domain error mapping conventions
+
+Prefer reusing existing shared helpers before creating new ones.
+Do not duplicate the same validation flow across routes/services.
+
+Current shared reference:
+
+- src/http/plugins/unit-access.ts
+
+---
+
+# SHARED HELPERS FIRST RULE
+
+Before creating any new helper for unit scope/auth validation, AI agents MUST:
+
+1. Search existing helpers in `src/http/plugins`
+2. Reuse existing helper functions when behavior is equivalent
+3. Extend existing helpers when behavior is close
+4. Create a new helper only when no current helper can be safely reused
+
+If creating a new helper, explain in the PR/commit why existing helpers were insufficient.
+
+---
+
+# UNIT SCOPE REUSE RULE
+
+For any unit-scoped domain (professionals, appointments, schedules, patients, etc.):
+
+- Always validate x-unit-id using shared helper functions.
+- Always validate user-to-unit ownership using shared helper functions.
+- Never trust x-unit-id from request without ownership verification.
+- Return 403 Forbidden when user does not belong to the selected unit.
+
+---
+
+# WRITE CONSISTENCY RULE
+
+If a create/update flow needs to persist related records (e.g. main entity + N:N link),
+perform it in a single database transaction.
+
+Example:
+- create professional
+- create professional_units link
+
+---
+
+# ERROR STANDARDIZATION RULE
+
+Services must throw domain errors with stable semantic messages/types.
+Routes must map domain errors consistently to HTTP status codes.
+
+Preferred mappings:
+- Forbidden -> 403
+- NotFound -> 404
+- Conflict -> 409
