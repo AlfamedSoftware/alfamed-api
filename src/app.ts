@@ -35,6 +35,14 @@ export async function buildApp({
                             name: "Users",
                             description: "Operations about users",
                         },
+                        {
+                            name: "Professionals",
+                            description: "Operations about professionals",
+                        },
+                        {
+                            name: "Better Auth",
+                            description: "Authentication and session operations",
+                        },
                     ],
                     components: await OpenAPI.components,
                     paths: await OpenAPI.getPaths(),

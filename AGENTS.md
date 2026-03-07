@@ -285,6 +285,24 @@ DELETE /entities/:id
 
 ---
 
+# OPENAPI DOCUMENTATION RULE
+
+API documentation must be kept in sync with module routes.
+
+Rules:
+
+* Every route must define `detail.summary`, `detail.description`, and `detail.tags`
+* Route descriptions must reflect real behavior (especially unit-scoped filters)
+* Every new module must have a corresponding tag registered in the OpenAPI setup (`src/app.ts`)
+* Better Auth docs and module docs must coexist in `/openapi` without losing module endpoints
+
+Examples:
+
+* users routes -> `Users` tag
+* professionals routes -> `Professionals` tag
+
+---
+
 # SCHEMAS
 
 All validation schemas must use Zod.
