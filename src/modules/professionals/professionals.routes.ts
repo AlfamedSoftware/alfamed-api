@@ -1,5 +1,9 @@
 import { Elysia, t } from "elysia";
 import { z } from "zod";
+import {
+    getValidatedUnitIdFromRequest,
+    invalidOrMissingUnitHeaderMessage,
+} from "@/http/plugins/unit-access";
 import type { ProfessionalsRepository } from "./professionals.repository";
 import { ProfessionalsService } from "./professionals.service";
 import {
@@ -15,7 +19,6 @@ type ProfessionalsRoutesOptions = {
 
 export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRoutesOptions) => {
     const professionalsService = new ProfessionalsService(professionalsRepository);
-    const getUnitIdFromHeader = (context: { request: Request }) => context.request.headers.get("x-unit-id");
 
     return new Elysia({ name: "professionals-routes", prefix: "/professionals" })
         .post(
@@ -28,11 +31,21 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     return status(401, { message: "Unauthorized" });
                 }
 
+                const unitId = getValidatedUnitIdFromRequest(context.request);
+
+                if (!unitId) {
+                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                }
+
                 try {
-                    const professional = await professionalsService.createProfessional(body);
+                    const professional = await professionalsService.createProfessional(userId, unitId, body);
 
                     return status(201, professional);
-                } catch {
+                } catch (error) {
+                    if (error instanceof Error && error.message === "Forbidden") {
+                        return status(403, { message: "Forbidden" });
+                    }
+
                     return status(409, { message: "Professional already exists for this user" });
                 }
             },
@@ -47,6 +60,8 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                 response: {
                     201: professionalProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
+                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.Literal("Professional already exists for this user") }),
                 },
             },
@@ -61,16 +76,23 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     return status(401, { message: "Unauthorized" });
                 }
 
-                const unitId = getUnitIdFromHeader(context);
-                const unitValidation = z.string().uuid().safeParse(unitId);
+                const unitId = getValidatedUnitIdFromRequest(context.request);
 
-                if (!unitValidation.success) {
-                    return status(400, { message: "Invalid or missing unit header" });
+                if (!unitId) {
+                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
                 }
 
-                const professionals = await professionalsService.listProfessionals(unitValidation.data);
+                try {
+                    const professionals = await professionalsService.listProfessionals(userId, unitId);
 
-                return status(200, professionals);
+                    return status(200, professionals);
+                } catch (error) {
+                    if (error instanceof Error && error.message === "Forbidden") {
+                        return status(403, { message: "Forbidden" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
             },
             {
                 auth: true,
@@ -83,6 +105,8 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     200: z.array(professionalProfileSchema),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
+                    500: professionalsErrorSchema,
                 },
             },
         )
@@ -96,20 +120,26 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     return status(401, { message: "Unauthorized" });
                 }
 
-                const unitId = getUnitIdFromHeader(context);
-                const unitValidation = z.string().uuid().safeParse(unitId);
+                const unitId = getValidatedUnitIdFromRequest(context.request);
 
-                if (!unitValidation.success) {
-                    return status(400, { message: "Invalid or missing unit header" });
+                if (!unitId) {
+                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
                 }
 
                 try {
-                    const professional = await professionalsService.getProfessionalById(params.id, unitValidation.data);
+                    const professional = await professionalsService.getProfessionalById(
+                        userId,
+                        params.id,
+                        unitId,
+                    );
 
                     return status(200, professional);
                 } catch (error) {
                     if (error instanceof Error && error.message === "Professional not found") {
                         return status(404, { message: "Professional not found" });
+                    }
+                    if (error instanceof Error && error.message === "Forbidden") {
+                        return status(403, { message: "Forbidden" });
                     }
 
                     return status(500, { message: "Internal server error" });
@@ -129,6 +159,7 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     200: professionalProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
                     500: professionalsErrorSchema,
                 },
@@ -144,17 +175,17 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     return status(401, { message: "Unauthorized" });
                 }
 
-                const unitId = getUnitIdFromHeader(context);
-                const unitValidation = z.string().uuid().safeParse(unitId);
+                const unitId = getValidatedUnitIdFromRequest(context.request);
 
-                if (!unitValidation.success) {
-                    return status(400, { message: "Invalid or missing unit header" });
+                if (!unitId) {
+                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
                 }
 
                 try {
                     const professional = await professionalsService.updateProfessional(
+                        userId,
                         params.id,
-                        unitValidation.data,
+                        unitId,
                         body,
                     );
 
@@ -162,6 +193,9 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                 } catch (error) {
                     if (error instanceof Error && error.message === "Professional not found") {
                         return status(404, { message: "Professional not found" });
+                    }
+                    if (error instanceof Error && error.message === "Forbidden") {
+                        return status(403, { message: "Forbidden" });
                     }
 
                     return status(409, { message: "Professional already exists for this user" });
@@ -182,6 +216,7 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     200: professionalProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
                     409: t.Object({ message: t.Literal("Professional already exists for this user") }),
                 },
@@ -197,20 +232,22 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     return status(401, { message: "Unauthorized" });
                 }
 
-                const unitId = getUnitIdFromHeader(context);
-                const unitValidation = z.string().uuid().safeParse(unitId);
+                const unitId = getValidatedUnitIdFromRequest(context.request);
 
-                if (!unitValidation.success) {
-                    return status(400, { message: "Invalid or missing unit header" });
+                if (!unitId) {
+                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
                 }
 
                 try {
-                    await professionalsService.deleteProfessional(params.id, unitValidation.data);
+                    await professionalsService.deleteProfessional(userId, params.id, unitId);
 
                     return status(200, { message: "Professional deleted" });
                 } catch (error) {
                     if (error instanceof Error && error.message === "Professional not found") {
                         return status(404, { message: "Professional not found" });
+                    }
+                    if (error instanceof Error && error.message === "Forbidden") {
+                        return status(403, { message: "Forbidden" });
                     }
 
                     return status(500, { message: "Internal server error" });
@@ -230,6 +267,7 @@ export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRo
                     200: t.Object({ message: t.Literal("Professional deleted") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
                     500: professionalsErrorSchema,
                 },

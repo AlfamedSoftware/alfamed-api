@@ -17,10 +17,12 @@ class InMemoryUsersRepository implements UsersRepository {
 
 interface ProfessionalsRepositoryContract {
     create(data: CreateProfessionalInput): Promise<ProfessionalProfile>;
+    createWithUnit(data: CreateProfessionalInput, unitId: string): Promise<ProfessionalProfile>;
     findById(professionalId: string): Promise<ProfessionalProfile | null>;
     findByIdAndUnit(professionalId: string, unitId: string): Promise<ProfessionalProfile | null>;
     list(): Promise<ProfessionalProfile[]>;
     listByUnit(unitId: string): Promise<ProfessionalProfile[]>;
+    hasUserAccessToUnit(userId: string, unitId: string): Promise<boolean>;
     update(professionalId: string, data: UpdateProfessionalInput): Promise<ProfessionalProfile | null>;
     delete(professionalId: string): Promise<void>;
 }
@@ -28,14 +30,17 @@ interface ProfessionalsRepositoryContract {
 class InMemoryProfessionalsRepository implements ProfessionalsRepositoryContract {
     private readonly professionals: Record<string, ProfessionalProfile>;
     private readonly professionalsUnits: Record<string, string[]>;
+    private readonly usersUnits: Record<string, string[]>;
     private sequence = 1;
 
     constructor(
         initialProfessionals: Record<string, ProfessionalProfile> = {},
         initialProfessionalsUnits: Record<string, string[]> = {},
+        initialUsersUnits: Record<string, string[]> = {},
     ) {
         this.professionals = { ...initialProfessionals };
         this.professionalsUnits = { ...initialProfessionalsUnits };
+        this.usersUnits = { ...initialUsersUnits };
     }
 
     async create(data: CreateProfessionalInput): Promise<ProfessionalProfile> {
@@ -52,6 +57,13 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepositoryContract
         };
 
         this.professionals[id] = professional;
+
+        return professional;
+    }
+
+    async createWithUnit(data: CreateProfessionalInput, unitId: string): Promise<ProfessionalProfile> {
+        const professional = await this.create(data);
+        this.professionalsUnits[professional.id] = [...(this.professionalsUnits[professional.id] ?? []), unitId];
 
         return professional;
     }
@@ -86,6 +98,10 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepositoryContract
 
             return units.includes(unitId);
         });
+    }
+
+    async hasUserAccessToUnit(userId: string, unitId: string): Promise<boolean> {
+        return (this.usersUnits[userId] ?? []).includes(unitId);
     }
 
     async update(professionalId: string, data: UpdateProfessionalInput): Promise<ProfessionalProfile | null> {
@@ -127,8 +143,14 @@ const fakeAuthPlugin = new Elysia().macro({
 });
 
 describe("Professionals routes", () => {
+    const requesterUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
+    const selectedUnitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
+    const requesterUnits = {
+        [requesterUserId]: [selectedUnitId],
+    };
+
     it("POST /professionals deve criar um profissional", async () => {
-        const repository = new InMemoryProfessionalsRepository();
+        const repository = new InMemoryProfessionalsRepository({}, {}, requesterUnits);
         const app = await buildApp({
             authPlugin: fakeAuthPlugin,
             withDocs: false,
@@ -141,8 +163,8 @@ describe("Professionals routes", () => {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": "019c1a3e-e425-7000-8bda-cdfec32c8fed",
-                    "x-unit-id": "019c1a3e-e425-7000-8bda-cdfec32c8fc1",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
                 },
                 body: JSON.stringify({
                     userId: "019c1a3e-e425-7000-8bda-cdfec32c8fea",
@@ -181,16 +203,16 @@ describe("Professionals routes", () => {
                     updatedAt: "2026-02-01T17:27:35.202Z",
                 },
             }, {
-                "019c1a3e-e425-7000-8bda-cdfec32c8fa1": ["019c1a3e-e425-7000-8bda-cdfec32c8fc1"],
+                "019c1a3e-e425-7000-8bda-cdfec32c8fa1": [selectedUnitId],
                 "019c1a3e-e425-7000-8bda-cdfec32c8fa2": ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
-            }),
+            }, requesterUnits),
         });
 
         const response = await app.handle(
             new Request("http://localhost/professionals", {
                 headers: {
-                    "x-user-id": "019c1a3e-e425-7000-8bda-cdfec32c8fed",
-                    "x-unit-id": "019c1a3e-e425-7000-8bda-cdfec32c8fc1",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
                 },
             }),
         );
@@ -221,16 +243,17 @@ describe("Professionals routes", () => {
                     },
                 },
                 {
-                    [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc1"],
+                    [existingProfessionalId]: [selectedUnitId],
                 },
+                requesterUnits,
             ),
         });
 
         const response = await app.handle(
             new Request(`http://localhost/professionals/${existingProfessionalId}`, {
                 headers: {
-                    "x-user-id": "019c1a3e-e425-7000-8bda-cdfec32c8fed",
-                    "x-unit-id": "019c1a3e-e425-7000-8bda-cdfec32c8fc1",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
                 },
             }),
         );
@@ -261,8 +284,9 @@ describe("Professionals routes", () => {
                     },
                 },
                 {
-                    [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc1"],
+                    [existingProfessionalId]: [selectedUnitId],
                 },
+                requesterUnits,
             ),
         });
 
@@ -271,8 +295,8 @@ describe("Professionals routes", () => {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": "019c1a3e-e425-7000-8bda-cdfec32c8fed",
-                    "x-unit-id": "019c1a3e-e425-7000-8bda-cdfec32c8fc1",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
                 },
                 body: JSON.stringify({
                     isActive: false,
@@ -307,8 +331,9 @@ describe("Professionals routes", () => {
                     },
                 },
                 {
-                    [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc1"],
+                    [existingProfessionalId]: [selectedUnitId],
                 },
+                requesterUnits,
             ),
         });
 
@@ -316,8 +341,8 @@ describe("Professionals routes", () => {
             new Request(`http://localhost/professionals/${existingProfessionalId}`, {
                 method: "DELETE",
                 headers: {
-                    "x-user-id": "019c1a3e-e425-7000-8bda-cdfec32c8fed",
-                    "x-unit-id": "019c1a3e-e425-7000-8bda-cdfec32c8fc1",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
                 },
             }),
         );
@@ -334,14 +359,14 @@ describe("Professionals routes", () => {
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository({}, {}, requesterUnits),
         });
 
         const response = await app.handle(
             new Request(`http://localhost/professionals/${missingProfessionalId}`, {
                 headers: {
-                    "x-user-id": "019c1a3e-e425-7000-8bda-cdfec32c8fed",
-                    "x-unit-id": "019c1a3e-e425-7000-8bda-cdfec32c8fc1",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
                 },
             }),
         );
@@ -371,14 +396,15 @@ describe("Professionals routes", () => {
                 {
                     [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
                 },
+                requesterUnits,
             ),
         });
 
         const response = await app.handle(
             new Request(`http://localhost/professionals/${existingProfessionalId}`, {
                 headers: {
-                    "x-user-id": "019c1a3e-e425-7000-8bda-cdfec32c8fed",
-                    "x-unit-id": "019c1a3e-e425-7000-8bda-cdfec32c8fc1",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
                 },
             }),
         );
@@ -398,13 +424,63 @@ describe("Professionals routes", () => {
 
         const response = await app.handle(
             new Request("http://localhost/professionals", {
-                headers: { "x-user-id": "019c1a3e-e425-7000-8bda-cdfec32c8fed" },
+                headers: { "x-user-id": requesterUserId },
             }),
         );
         const body = await response.json();
 
         expect(response.status).toBe(400);
         expect(body).toMatchObject({ message: "Invalid or missing unit header" });
+    });
+
+    it("GET /professionals deve retornar 403 quando usuário não pertence à unidade", async () => {
+        const app = await buildApp({
+            authPlugin: fakeAuthPlugin,
+            withDocs: false,
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository(),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/professionals", {
+                headers: {
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
+                },
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({ message: "Forbidden" });
+    });
+
+    it("POST /professionals deve retornar 403 quando usuário não pertence à unidade", async () => {
+        const app = await buildApp({
+            authPlugin: fakeAuthPlugin,
+            withDocs: false,
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository(),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/professionals", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
+                },
+                body: JSON.stringify({
+                    userId: "019c1a3e-e425-7000-8bda-cdfec32c8fea",
+                    isActive: true,
+                }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({ message: "Forbidden" });
     });
 
     it("PATCH /professionals/:id deve retornar 404 quando profissional for de outra unidade", async () => {
@@ -427,6 +503,7 @@ describe("Professionals routes", () => {
                 {
                     [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
                 },
+                requesterUnits,
             ),
         });
 
@@ -435,8 +512,8 @@ describe("Professionals routes", () => {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": "019c1a3e-e425-7000-8bda-cdfec32c8fed",
-                    "x-unit-id": "019c1a3e-e425-7000-8bda-cdfec32c8fc1",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
                 },
                 body: JSON.stringify({
                     isActive: false,
@@ -469,6 +546,7 @@ describe("Professionals routes", () => {
                 {
                     [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
                 },
+                requesterUnits,
             ),
         });
 
@@ -476,8 +554,8 @@ describe("Professionals routes", () => {
             new Request(`http://localhost/professionals/${existingProfessionalId}`, {
                 method: "DELETE",
                 headers: {
-                    "x-user-id": "019c1a3e-e425-7000-8bda-cdfec32c8fed",
-                    "x-unit-id": "019c1a3e-e425-7000-8bda-cdfec32c8fc1",
+                    "x-user-id": requesterUserId,
+                    "x-unit-id": selectedUnitId,
                 },
             }),
         );
