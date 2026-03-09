@@ -43,6 +43,7 @@ describe("Users routes", () => {
         const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
 
         const app = await buildApp({
+                db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({
@@ -77,6 +78,7 @@ describe("Users routes", () => {
         const missingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fea";
 
         const app = await buildApp({
+                db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({}),
@@ -98,6 +100,7 @@ describe("Users routes", () => {
         const otherUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fea";
 
         const app = await buildApp({
+                db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({
@@ -129,6 +132,7 @@ describe("Users routes", () => {
         const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
 
         const app = await buildApp({
+                db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({}),
@@ -145,6 +149,7 @@ describe("Users routes", () => {
         const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
 
         const app = await buildApp({
+                db: null as never,
             authPlugin: fakeAuthWithoutUserPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({}),

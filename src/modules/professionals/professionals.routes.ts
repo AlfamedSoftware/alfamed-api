@@ -16,10 +16,14 @@ import {
 
 type ProfessionalsRoutesOptions = {
     professionalsRepository: ProfessionalsRepository;
+    hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>;
 };
 
-export const professionalsRoutes = ({ professionalsRepository }: ProfessionalsRoutesOptions) => {
-    const professionalsService = new ProfessionalsService(professionalsRepository);
+export const professionalsRoutes = ({
+    professionalsRepository,
+    hasUserAccessToUnitChecker,
+}: ProfessionalsRoutesOptions) => {
+    const professionalsService = new ProfessionalsService(professionalsRepository, hasUserAccessToUnitChecker);
 
     return new Elysia({ name: "professionals-routes", prefix: "/professionals" })
         .post(

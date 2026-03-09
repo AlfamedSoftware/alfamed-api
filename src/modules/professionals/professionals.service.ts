@@ -6,26 +6,19 @@ import type {
 import { assertUserHasUnitAccess } from "@/http/plugins/unit-access";
 
 export class ProfessionalsService {
-    constructor(private readonly professionalsRepository: ProfessionalsRepository) {}
+    constructor(
+        private readonly professionalsRepository: ProfessionalsRepository,
+        private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
+    ) {}
 
     async createProfessional(requestUserId: string, unitId: string, data: CreateProfessionalInput) {
-        await assertUserHasUnitAccess(
-            requestUserId,
-            unitId,
-            (userId, selectedUnitId) =>
-                this.professionalsRepository.hasUserAccessToUnit(userId, selectedUnitId),
-        );
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         return this.professionalsRepository.createWithUnit(data, unitId);
     }
 
     async getProfessionalById(requestUserId: string, professionalId: string, unitId: string) {
-        await assertUserHasUnitAccess(
-            requestUserId,
-            unitId,
-            (userId, selectedUnitId) =>
-                this.professionalsRepository.hasUserAccessToUnit(userId, selectedUnitId),
-        );
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         const professional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
 
@@ -37,12 +30,7 @@ export class ProfessionalsService {
     }
 
     async listProfessionals(requestUserId: string, unitId: string) {
-        await assertUserHasUnitAccess(
-            requestUserId,
-            unitId,
-            (userId, selectedUnitId) =>
-                this.professionalsRepository.hasUserAccessToUnit(userId, selectedUnitId),
-        );
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         return this.professionalsRepository.listByUnit(unitId);
     }
@@ -53,12 +41,7 @@ export class ProfessionalsService {
         unitId: string,
         data: UpdateProfessionalInput,
     ) {
-        await assertUserHasUnitAccess(
-            requestUserId,
-            unitId,
-            (userId, selectedUnitId) =>
-                this.professionalsRepository.hasUserAccessToUnit(userId, selectedUnitId),
-        );
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         const existingProfessional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
 
@@ -76,12 +59,7 @@ export class ProfessionalsService {
     }
 
     async deleteProfessional(requestUserId: string, professionalId: string, unitId: string) {
-        await assertUserHasUnitAccess(
-            requestUserId,
-            unitId,
-            (userId, selectedUnitId) =>
-                this.professionalsRepository.hasUserAccessToUnit(userId, selectedUnitId),
-        );
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         const existingProfessional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
 

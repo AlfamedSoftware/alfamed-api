@@ -15,6 +15,11 @@ class InMemoryUsersRepository implements UsersRepository {
     }
 }
 
+type AllowedUnitsByUser = Record<string, string[]>;
+
+const createInMemoryHasUserAccessToUnitChecker = (map: AllowedUnitsByUser) =>
+    async (userId: string, unitId: string) => (map[userId] ?? []).includes(unitId);
+
 interface ProfessionalsRepositoryContract {
     create(data: CreateProfessionalInput): Promise<ProfessionalProfile>;
     createWithUnit(data: CreateProfessionalInput, unitId: string): Promise<ProfessionalProfile>;
@@ -22,25 +27,24 @@ interface ProfessionalsRepositoryContract {
     findByIdAndUnit(professionalId: string, unitId: string): Promise<ProfessionalProfile | null>;
     list(): Promise<ProfessionalProfile[]>;
     listByUnit(unitId: string): Promise<ProfessionalProfile[]>;
-    hasUserAccessToUnit(userId: string, unitId: string): Promise<boolean>;
     update(professionalId: string, data: UpdateProfessionalInput): Promise<ProfessionalProfile | null>;
     delete(professionalId: string): Promise<void>;
 }
 
 class InMemoryProfessionalsRepository implements ProfessionalsRepositoryContract {
+    // O buildApp/professionalsRoutes agora tipam ProfessionalsRepository com `.db`.
+    // Nos testes e2e a gente só precisa de um stub.
+    readonly db = null as never;
     private readonly professionals: Record<string, ProfessionalProfile>;
     private readonly professionalsUnits: Record<string, string[]>;
-    private readonly usersUnits: Record<string, string[]>;
     private sequence = 1;
 
     constructor(
         initialProfessionals: Record<string, ProfessionalProfile> = {},
         initialProfessionalsUnits: Record<string, string[]> = {},
-        initialUsersUnits: Record<string, string[]> = {},
     ) {
         this.professionals = { ...initialProfessionals };
         this.professionalsUnits = { ...initialProfessionalsUnits };
-        this.usersUnits = { ...initialUsersUnits };
     }
 
     async create(data: CreateProfessionalInput): Promise<ProfessionalProfile> {
@@ -100,10 +104,6 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepositoryContract
         });
     }
 
-    async hasUserAccessToUnit(userId: string, unitId: string): Promise<boolean> {
-        return (this.usersUnits[userId] ?? []).includes(unitId);
-    }
-
     async update(professionalId: string, data: UpdateProfessionalInput): Promise<ProfessionalProfile | null> {
         const current = this.professionals[professionalId];
 
@@ -150,12 +150,14 @@ describe("Professionals routes", () => {
     };
 
     it("POST /professionals deve criar um profissional", async () => {
-        const repository = new InMemoryProfessionalsRepository({}, {}, requesterUnits);
+        const repository = new InMemoryProfessionalsRepository({}, {});
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: repository,
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(
@@ -203,12 +205,14 @@ describe("Professionals routes", () => {
     });
 
     it("POST /professionals deve rejeitar userId enviado no body", async () => {
-        const repository = new InMemoryProfessionalsRepository({}, {}, requesterUnits);
+        const repository = new InMemoryProfessionalsRepository({}, {});
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: repository,
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(
@@ -233,6 +237,7 @@ describe("Professionals routes", () => {
 
     it("GET /professionals deve listar profissionais", async () => {
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -254,7 +259,8 @@ describe("Professionals routes", () => {
             }, {
                 "019c1a3e-e425-7000-8bda-cdfec32c8fa1": [selectedUnitId],
                 "019c1a3e-e425-7000-8bda-cdfec32c8fa2": ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
-            }, requesterUnits),
+            }),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(
@@ -278,6 +284,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -294,8 +301,8 @@ describe("Professionals routes", () => {
                 {
                     [existingProfessionalId]: [selectedUnitId],
                 },
-                requesterUnits,
             ),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(
@@ -319,6 +326,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -335,8 +343,8 @@ describe("Professionals routes", () => {
                 {
                     [existingProfessionalId]: [selectedUnitId],
                 },
-                requesterUnits,
             ),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(
@@ -366,6 +374,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -382,8 +391,8 @@ describe("Professionals routes", () => {
                 {
                     [existingProfessionalId]: [selectedUnitId],
                 },
-                requesterUnits,
             ),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(
@@ -405,10 +414,12 @@ describe("Professionals routes", () => {
         const missingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa9";
 
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository({}, {}, requesterUnits),
+            professionalsRepository: new InMemoryProfessionalsRepository({}, {}),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(
@@ -429,6 +440,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -445,8 +457,8 @@ describe("Professionals routes", () => {
                 {
                     [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
                 },
-                requesterUnits,
             ),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(
@@ -465,6 +477,7 @@ describe("Professionals routes", () => {
 
     it("GET /professionals deve retornar 400 quando x-unit-id estiver ausente", async () => {
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -484,10 +497,12 @@ describe("Professionals routes", () => {
 
     it("GET /professionals deve retornar 403 quando usuário não pertence à unidade", async () => {
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: new InMemoryProfessionalsRepository(),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({}),
         });
 
         const response = await app.handle(
@@ -506,10 +521,12 @@ describe("Professionals routes", () => {
 
     it("POST /professionals deve retornar 403 quando usuário não pertence à unidade", async () => {
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: new InMemoryProfessionalsRepository(),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({}),
         });
 
         const response = await app.handle(
@@ -535,6 +552,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -551,8 +569,8 @@ describe("Professionals routes", () => {
                 {
                     [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
                 },
-                requesterUnits,
             ),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(
@@ -578,6 +596,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
+            db: null as never,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -594,8 +613,8 @@ describe("Professionals routes", () => {
                 {
                     [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
                 },
-                requesterUnits,
             ),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(

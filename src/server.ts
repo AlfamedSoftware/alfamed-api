@@ -2,13 +2,17 @@ import { buildApp } from "./app";
 import { db } from "./db/client";
 import { UsersRepository } from "./modules/users/users.repository";
 import { ProfessionalsRepository } from "./modules/professionals/professionals.repository";
+import { UnitsRepository } from "./modules/units/units.repository";
 import { betterAuthPlugin } from "./http/plugins/better-auth";
 
 const usersRepository = new UsersRepository(db);
 const professionalsRepository = new ProfessionalsRepository(db);
+const unitsRepository = new UnitsRepository(db);
 const app = await buildApp({
+    db,
     usersRepository,
     professionalsRepository,
+    unitsRepository,
     authPlugin: betterAuthPlugin,
     withDocs: true,
 });
