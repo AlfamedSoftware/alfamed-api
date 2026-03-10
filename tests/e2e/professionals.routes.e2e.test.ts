@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import Elysia from "elysia";
 import { buildApp } from "@/app";
+import type { db as dbType } from "@/db/client";
 import type {
     CreateProfessionalInput,
     ProfessionalProfile,
@@ -20,6 +21,15 @@ type AllowedUnitsByUser = Record<string, string[]>;
 const createInMemoryHasUserAccessToUnitChecker = (map: AllowedUnitsByUser) =>
     async (userId: string, unitId: string) => (map[userId] ?? []).includes(unitId);
 
+const unusedDb = new Proxy(
+    {},
+    {
+        get() {
+            throw new Error("Unexpected db usage in e2e test");
+        },
+    },
+) as unknown as typeof dbType;
+
 interface ProfessionalsRepositoryContract {
     create(data: CreateProfessionalInput): Promise<ProfessionalProfile>;
     createWithUnit(data: CreateProfessionalInput, unitId: string): Promise<ProfessionalProfile>;
@@ -34,7 +44,7 @@ interface ProfessionalsRepositoryContract {
 class InMemoryProfessionalsRepository implements ProfessionalsRepositoryContract {
     // O buildApp/professionalsRoutes agora tipam ProfessionalsRepository com `.db`.
     // Nos testes e2e a gente só precisa de um stub.
-    readonly db = null as never;
+    readonly db = unusedDb;
     private readonly professionals: Record<string, ProfessionalProfile>;
     private readonly professionalsUnits: Record<string, string[]>;
     private sequence = 1;
@@ -152,7 +162,7 @@ describe("Professionals routes", () => {
     it("POST /professionals deve criar um profissional", async () => {
         const repository = new InMemoryProfessionalsRepository({}, {});
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -207,7 +217,7 @@ describe("Professionals routes", () => {
     it("POST /professionals deve rejeitar userId enviado no body", async () => {
         const repository = new InMemoryProfessionalsRepository({}, {});
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -237,7 +247,7 @@ describe("Professionals routes", () => {
 
     it("GET /professionals deve listar profissionais", async () => {
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -284,7 +294,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -326,7 +336,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -374,7 +384,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -414,7 +424,7 @@ describe("Professionals routes", () => {
         const missingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa9";
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -440,7 +450,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -477,11 +487,12 @@ describe("Professionals routes", () => {
 
     it("GET /professionals deve retornar 400 quando x-unit-id estiver ausente", async () => {
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: new InMemoryProfessionalsRepository(),
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker(requesterUnits),
         });
 
         const response = await app.handle(
@@ -497,7 +508,7 @@ describe("Professionals routes", () => {
 
     it("GET /professionals deve retornar 403 quando usuário não pertence à unidade", async () => {
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -521,7 +532,7 @@ describe("Professionals routes", () => {
 
     it("POST /professionals deve retornar 403 quando usuário não pertence à unidade", async () => {
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -552,7 +563,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
@@ -596,7 +607,7 @@ describe("Professionals routes", () => {
         const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),

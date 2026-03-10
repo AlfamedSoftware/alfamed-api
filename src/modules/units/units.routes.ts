@@ -57,7 +57,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
         .get(
             "/:id",
             async (context) => {
-                const { status } = context;
+                const { params, status } = context;
                 const professionalId = (context as { user?: { id?: string } }).user?.id;
 
                 if (!professionalId) {
@@ -70,8 +70,12 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                     return status(400, { message: invalidOrMissingUnitHeaderMessage });
                 }
 
+                if (unitId !== params.id) {
+                    return status(403, { message: "Forbidden" });
+                }
+
                 try {
-                    const unit = await unitsService.getUnitById(professionalId, unitId);
+                    const unit = await unitsService.getUnitById(professionalId, params.id);
 
                     return status(200, unit);
                 } catch (error) {
@@ -87,9 +91,13 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             },
             {
                 auth: true,
+                params: t.Object({
+                    id: t.String({ format: "uuid" }),
+                }),
                 detail: {
                     summary: "Get unit",
-                    description: "Gets the unit selected in x-unit-id header if it's linked to the authenticated professional. The :id param is ignored and kept only for backward compatibility.",
+                    description:
+                        "Gets the unit by route id when it matches x-unit-id and the authenticated professional belongs to that unit.",
                     tags: ["Units"],
                 },
                 response: {

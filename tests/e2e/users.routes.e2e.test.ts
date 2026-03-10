@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import Elysia from "elysia";
 import { buildApp } from "@/app";
+import type { db as dbType } from "@/db/client";
 import type { UserProfile } from "@/modules/users/users.repository";
 import { userProfileSchema } from "@/modules/users/users.schemas";
 
@@ -15,6 +16,15 @@ class InMemoryUsersRepository implements UsersRepositoryContract {
         return this.users[userId] ?? null;
     }
 }
+
+const unusedDb = new Proxy(
+    {},
+    {
+        get() {
+            throw new Error("Unexpected db usage in e2e test");
+        },
+    },
+) as unknown as typeof dbType;
 
 const fakeAuthPlugin = new Elysia().macro({
     auth: {
@@ -43,7 +53,7 @@ describe("Users routes", () => {
         const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
 
         const app = await buildApp({
-                db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({
@@ -78,7 +88,7 @@ describe("Users routes", () => {
         const missingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fea";
 
         const app = await buildApp({
-                db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({}),
@@ -100,7 +110,7 @@ describe("Users routes", () => {
         const otherUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fea";
 
         const app = await buildApp({
-                db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({
@@ -132,7 +142,7 @@ describe("Users routes", () => {
         const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
 
         const app = await buildApp({
-                db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({}),
@@ -149,7 +159,7 @@ describe("Users routes", () => {
         const existingUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
 
         const app = await buildApp({
-                db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthWithoutUserPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository({}),

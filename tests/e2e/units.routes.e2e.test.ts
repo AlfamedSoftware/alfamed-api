@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import Elysia from "elysia";
 import { buildApp } from "@/app";
+import type { db as dbType } from "@/db/client";
 import type { UsersRepository } from "@/modules/users/users.repository";
 import type { CreateUnitInput, UnitProfile, UpdateUnitInput } from "@/modules/units/units.repository";
 import { unitProfileSchema } from "@/modules/units/units.schemas";
@@ -79,6 +80,15 @@ type AllowedUnitsByUser = Record<string, string[]>;
 const createInMemoryHasUserAccessToUnitChecker = (map: AllowedUnitsByUser) =>
     async (userId: string, unitId: string) => (map[userId] ?? []).includes(unitId);
 
+const unusedDb = new Proxy(
+    {},
+    {
+        get() {
+            throw new Error("Unexpected db usage in e2e test");
+        },
+    },
+) as unknown as typeof dbType;
+
 const fakeAuthPlugin = new Elysia().macro({
     auth: {
         async resolve({ request, status }) {
@@ -100,11 +110,11 @@ describe("Units routes", () => {
     it("POST /units deve criar uma unidade", async () => {
         const repository = new InMemoryUnitsRepository();
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository as never,
+            unitsRepository: repository,
             hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({}),
         });
 
@@ -131,7 +141,7 @@ describe("Units routes", () => {
         });
     });
 
-    it("GET /units/:id deve retornar a unidade do x-unit-id", async () => {
+    it("GET /units/:id deve retornar a unidade pelo id da rota", async () => {
         const unitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
 
         const repository = new InMemoryUnitsRepository({
@@ -145,11 +155,11 @@ describe("Units routes", () => {
         });
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository as never,
+            unitsRepository: repository,
             hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
                 [userId]: [unitId],
             }),
@@ -174,16 +184,16 @@ describe("Units routes", () => {
         const repository = new InMemoryUnitsRepository();
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository as never,
+            unitsRepository: repository,
             hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({}),
         });
 
         const response = await app.handle(
-            new Request("http://localhost/units/qualquer-id", {
+            new Request("http://localhost/units/019c1a3e-e425-7000-8bda-cdfec32c8fc1", {
                 headers: {
                     "x-user-id": userId,
                 },
@@ -209,11 +219,11 @@ describe("Units routes", () => {
         });
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository as never,
+            unitsRepository: repository,
             hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
                 [otherUserId]: [unitId],
             }),
@@ -224,6 +234,45 @@ describe("Units routes", () => {
                 headers: {
                     "x-user-id": userId,
                     "x-unit-id": unitId,
+                },
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({ message: "Forbidden" });
+    });
+
+    it("GET /units/:id deve retornar 403 quando id da rota diverge do x-unit-id", async () => {
+        const routeUnitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
+        const headerUnitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc2";
+
+        const repository = new InMemoryUnitsRepository({
+            [routeUnitId]: {
+                id: routeUnitId,
+                name: "Unidade A",
+                isActive: true,
+                createdAt: "2026-02-01T17:27:35.202Z",
+                updatedAt: "2026-02-01T17:27:35.202Z",
+            },
+        });
+
+        const app = await buildApp({
+            db: unusedDb,
+            authPlugin: fakeAuthPlugin,
+            withDocs: false,
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: repository,
+            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
+                [userId]: [routeUnitId, headerUnitId],
+            }),
+        });
+
+        const response = await app.handle(
+            new Request(`http://localhost/units/${routeUnitId}`, {
+                headers: {
+                    "x-user-id": userId,
+                    "x-unit-id": headerUnitId,
                 },
             }),
         );
@@ -247,11 +296,11 @@ describe("Units routes", () => {
         });
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository as never,
+            unitsRepository: repository,
             hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
                 [userId]: [unitId],
             }),
@@ -284,11 +333,11 @@ describe("Units routes", () => {
         const repository = new InMemoryUnitsRepository();
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository as never,
+            unitsRepository: repository,
             hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({}),
         });
 
@@ -322,11 +371,11 @@ describe("Units routes", () => {
         });
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository as never,
+            unitsRepository: repository,
             hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
                 [otherUserId]: [unitId],
             }),
@@ -363,11 +412,11 @@ describe("Units routes", () => {
         });
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository as never,
+            unitsRepository: repository,
             hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
                 [userId]: [unitId],
             }),
@@ -392,11 +441,11 @@ describe("Units routes", () => {
         const repository = new InMemoryUnitsRepository();
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository as never,
+            unitsRepository: repository,
             hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({}),
         });
 
@@ -428,11 +477,11 @@ describe("Units routes", () => {
         });
 
         const app = await buildApp({
-            db: null as never,
+            db: unusedDb,
             authPlugin: fakeAuthPlugin,
             withDocs: false,
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository as never,
+            unitsRepository: repository,
             hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
                 [otherUserId]: [unitId],
             }),
