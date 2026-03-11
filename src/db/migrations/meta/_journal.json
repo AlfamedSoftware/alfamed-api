@@ -57,6 +57,13 @@
       "when": 1773182870106,
       "tag": "0007_awesome_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1773188716747,
+      "tag": "0008_sloppy_scrambler",
+      "breakpoints": true
     }
   ]
 }
