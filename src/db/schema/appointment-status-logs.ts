@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { randomUUIDv7 } from "bun";
 import { appointments } from "./appointments";
 import { users } from "./users";
@@ -14,4 +14,10 @@ export const appointmentStatusLogs = pgTable("appointment_status_logs", {
     changedBy: text("changed_by").references(() => users.id),
     changedAt: timestamp("changed_at").defaultNow().notNull(),
     observation: text("observation"),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+        .defaultNow()
+        .$onUpdate(() => /* @__PURE__ */ new Date())
+        .notNull(),
 });
