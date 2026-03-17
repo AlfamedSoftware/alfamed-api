@@ -9,3 +9,4 @@ export * from "./professional-specialties";
 export * from "./professional-units";
 export * from "./units";
 export * from "./schedules";
+export * from "./procedures";
