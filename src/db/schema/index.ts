@@ -10,3 +10,8 @@ export * from "./professional-units";
 export * from "./units";
 export * from "./schedules";
 export * from "./procedures";
+export * from "./requests";
+export * from "./requests-procedures";
+export * from "./requests-status";
+export * from "./request-status-logs";
+export * from "./requests_procedures_outcomes";

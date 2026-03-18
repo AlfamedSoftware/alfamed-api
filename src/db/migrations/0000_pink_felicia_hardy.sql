@@ -29,7 +29,6 @@ CREATE TABLE "sessions" (
 CREATE TABLE "users" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
-	"social_name" text,
 	"cpf" text NOT NULL UNIQUE,
 	"birthdate" date NOT NULL,
 	"phone" text NOT NULL,
