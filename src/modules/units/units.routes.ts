@@ -25,17 +25,21 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             "/",
             async (context) => {
                 const { body, status } = context;
-                const professionalId = (context as { user?: { id?: string } }).user?.id;
+                const userId = (context as { user?: { id?: string } }).user?.id;
 
-                if (!professionalId) {
+                if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
 
                 try {
-                    const unit = await unitsService.createUnit(professionalId, body);
+                    const unit = await unitsService.createUnit(userId, body);
 
                     return status(201, unit);
-                } catch {
+                } catch (error) {
+                    if (error instanceof Error && error.message === "Forbidden") {
+                        return status(403, { message: "Forbidden" });
+                    }
+
                     return status(500, { message: "Internal server error" });
                 }
             },
@@ -50,6 +54,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                 response: {
                     201: unitProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
                     500: unitsErrorSchema,
                 },
             },
@@ -58,24 +63,14 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             "/:id",
             async (context) => {
                 const { params, status } = context;
-                const professionalId = (context as { user?: { id?: string } }).user?.id;
+                const userId = (context as { user?: { id?: string } }).user?.id;
 
-                if (!professionalId) {
+                if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
 
-                const unitId = getValidatedUnitIdFromRequest(context.request);
-
-                if (!unitId) {
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
-                }
-
-                if (unitId !== params.id) {
-                    return status(403, { message: "Forbidden" });
-                }
-
                 try {
-                    const unit = await unitsService.getUnitById(professionalId, params.id);
+                    const unit = await unitsService.getUnitById(userId, params.id);
 
                     return status(200, unit);
                 } catch (error) {
@@ -96,14 +91,12 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                 }),
                 detail: {
                     summary: "Get unit",
-                    description:
-                        "Gets the unit by route id when it matches x-unit-id and the authenticated professional belongs to that unit.",
+                    description: "Gets a unit by route id if the authenticated user belongs to that unit.",
                     tags: ["Units"],
                 },
                 response: {
                     200: unitProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Unit not found") }),
                     500: unitsErrorSchema,
@@ -114,9 +107,9 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             "/",
             async (context) => {
                 const { body, status } = context;
-                const professionalId = (context as { user?: { id?: string } }).user?.id;
+                const userId = (context as { user?: { id?: string } }).user?.id;
 
-                if (!professionalId) {
+                if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
 
@@ -127,7 +120,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                 }
 
                 try {
-                    const unit = await unitsService.updateUnit(professionalId, unitId, body);
+                    const unit = await unitsService.updateUnit(userId, unitId, body);
 
                     return status(200, unit);
                 } catch (error) {
@@ -163,9 +156,9 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             "/",
             async (context) => {
                 const { status } = context;
-                const professionalId = (context as { user?: { id?: string } }).user?.id;
+                const userId = (context as { user?: { id?: string } }).user?.id;
 
-                if (!professionalId) {
+                if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
 
@@ -176,7 +169,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                 }
 
                 try {
-                    await unitsService.deleteUnit(professionalId, unitId);
+                    await unitsService.deleteUnit(userId, unitId);
 
                     return status(200, { message: "Unit deleted" });
                 } catch (error) {

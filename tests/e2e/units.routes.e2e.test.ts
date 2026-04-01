@@ -1,121 +1,28 @@
 import { describe, expect, it } from "vitest";
-import Elysia from "elysia";
-import { buildApp } from "@/app";
-import type { db as dbType } from "@/db/client";
-import type { UsersRepository } from "@/modules/users/users.repository";
-import type { CreateUnitInput, UnitProfile, UpdateUnitInput } from "@/modules/units/units.repository";
 import { unitProfileSchema } from "@/modules/units/units.schemas";
-
-class InMemoryUsersRepository implements UsersRepository {
-    async getUserById(_: string) {
-        return null;
-    }
-}
-
-interface UnitsRepositoryContract {
-    create(data: CreateUnitInput): Promise<UnitProfile>;
-    findById(unitId: string): Promise<UnitProfile | null>;
-    update(unitId: string, data: UpdateUnitInput): Promise<UnitProfile | null>;
-    delete(unitId: string): Promise<void>;
-}
-
-class InMemoryUnitsRepository implements UnitsRepositoryContract {
-    private readonly units: Record<string, UnitProfile>;
-    private sequence = 1;
-
-    constructor(
-        initialUnits: Record<string, UnitProfile> = {},
-    ) {
-        this.units = { ...initialUnits };
-    }
-
-    async create(data: CreateUnitInput): Promise<UnitProfile> {
-        const now = new Date().toISOString();
-        const id = `019c1a3e-e425-7000-8bda-cdfec32c9f${String(this.sequence).padStart(2, "0")}`;
-        this.sequence += 1;
-
-        const unit: UnitProfile = {
-            id,
-            name: data.name,
-            isActive: data.isActive ?? true,
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        this.units[id] = unit;
-
-        return unit;
-    }
-
-    async findById(unitId: string): Promise<UnitProfile | null> {
-        return this.units[unitId] ?? null;
-    }
-
-    async update(unitId: string, data: UpdateUnitInput): Promise<UnitProfile | null> {
-        const current = this.units[unitId];
-
-        if (!current) {
-            return null;
-        }
-
-        const updated: UnitProfile = {
-            ...current,
-            name: data.name ?? current.name,
-            isActive: data.isActive ?? current.isActive,
-            updatedAt: new Date().toISOString(),
-        };
-
-        this.units[unitId] = updated;
-
-        return updated;
-    }
-
-    async delete(unitId: string): Promise<void> {
-        delete this.units[unitId];
-    }
-}
-
-type AllowedUnitsByUser = Record<string, string[]>;
-
-const createInMemoryHasUserAccessToUnitChecker = (map: AllowedUnitsByUser) =>
-    async (userId: string, unitId: string) => (map[userId] ?? []).includes(unitId);
-
-const unusedDb = new Proxy(
-    {},
-    {
-        get() {
-            throw new Error("Unexpected db usage in e2e test");
-        },
-    },
-) as unknown as typeof dbType;
-
-const fakeAuthPlugin = new Elysia().macro({
-    auth: {
-        async resolve({ request, status }) {
-            const userId = request.headers.get("x-user-id");
-
-            if (!userId) {
-                return status(401, { message: "Unauthorized" });
-            }
-
-            return { user: { id: userId } };
-        },
-    },
-});
+import { buildE2EApp, TEST_IDS } from "./helpers/context";
+import { InMemoryUnitsRepository, InMemoryUsersRepository } from "./helpers/repositories";
 
 describe("Units routes", () => {
-    const userId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
-    const otherUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fea";
+    const accessMap = {
+        [TEST_IDS.user]: [TEST_IDS.unit, TEST_IDS.missingUnit],
+    };
 
-    it("POST /units deve criar uma unidade", async () => {
-        const repository = new InMemoryUnitsRepository();
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    const unitFixture = {
+        [TEST_IDS.unit]: {
+            id: TEST_IDS.unit,
+            name: "Unidade A",
+            isActive: true,
+            createdAt: "2026-02-01T17:27:35.202Z",
+            updatedAt: "2026-02-01T17:27:35.202Z",
+        },
+    };
+
+    it("POST /units cria unidade", async () => {
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({}),
+            unitsRepository: new InMemoryUnitsRepository(),
+            accessMap: {},
         });
 
         const response = await app.handle(
@@ -123,7 +30,7 @@ describe("Units routes", () => {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": userId,
+                    "x-user-id": TEST_IDS.user,
                 },
                 body: JSON.stringify({
                     name: "Unidade Centro",
@@ -141,35 +48,42 @@ describe("Units routes", () => {
         });
     });
 
-    it("GET /units/:id deve retornar a unidade pelo id da rota", async () => {
-        const unitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
-
-        const repository = new InMemoryUnitsRepository({
-            [unitId]: {
-                id: unitId,
-                name: "Unidade A",
-                isActive: true,
-                createdAt: "2026-02-01T17:27:35.202Z",
-                updatedAt: "2026-02-01T17:27:35.202Z",
-            },
-        });
-
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    it("POST /units retorna 401 sem autenticação", async () => {
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
-                [userId]: [unitId],
-            }),
+            unitsRepository: new InMemoryUnitsRepository(),
         });
 
         const response = await app.handle(
-            new Request(`http://localhost/units/${unitId}`, {
+            new Request("http://localhost/units", {
+                method: "POST",
                 headers: {
-                    "x-user-id": userId,
-                    "x-unit-id": unitId,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    name: "Unidade Centro",
+                    isActive: true,
+                }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(body).toMatchObject({ message: "Unauthorized" });
+    });
+
+    it("GET /units/:id retorna unidade", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(unitFixture),
+            accessMap,
+        });
+
+        const response = await app.handle(
+            new Request(`http://localhost/units/${TEST_IDS.unit}`, {
+                headers: {
+                    "x-user-id": TEST_IDS.user,
+                    "x-unit-id": TEST_IDS.unit,
                 },
             }),
         );
@@ -177,63 +91,40 @@ describe("Units routes", () => {
 
         expect(response.status).toBe(200);
         expect(() => unitProfileSchema.parse(body)).not.toThrow();
-        expect(body).toMatchObject({ id: unitId });
+        expect(body).toMatchObject({ id: TEST_IDS.unit });
     });
 
-    it("GET /units/:id deve retornar 400 quando x-unit-id estiver ausente", async () => {
-        const repository = new InMemoryUnitsRepository();
-
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    it("GET /units/:id retorna 404 para unidade inexistente", async () => {
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({}),
+            unitsRepository: new InMemoryUnitsRepository(),
+            accessMap,
         });
 
         const response = await app.handle(
-            new Request("http://localhost/units/019c1a3e-e425-7000-8bda-cdfec32c8fc1", {
+            new Request(`http://localhost/units/${TEST_IDS.missingUnit}`, {
                 headers: {
-                    "x-user-id": userId,
+                    "x-user-id": TEST_IDS.user,
                 },
             }),
         );
         const body = await response.json();
 
-        expect(response.status).toBe(400);
-        expect(body).toMatchObject({ message: "Invalid or missing unit header" });
+        expect(response.status).toBe(404);
+        expect(body).toMatchObject({ message: "Unit not found" });
     });
 
-    it("GET /units/:id deve retornar 403 quando unidade não pertence ao usuário", async () => {
-        const unitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
-
-        const repository = new InMemoryUnitsRepository({
-            [unitId]: {
-                id: unitId,
-                name: "Unidade A",
-                isActive: true,
-                createdAt: "2026-02-01T17:27:35.202Z",
-                updatedAt: "2026-02-01T17:27:35.202Z",
-            },
-        });
-
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    it("GET /units/:id retorna 403 sem acesso", async () => {
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
-                [otherUserId]: [unitId],
-            }),
+            unitsRepository: new InMemoryUnitsRepository(unitFixture),
+            accessMap: { [TEST_IDS.otherUser]: [TEST_IDS.unit] },
         });
 
         const response = await app.handle(
-            new Request(`http://localhost/units/${unitId}`, {
+            new Request(`http://localhost/units/${TEST_IDS.unit}`, {
                 headers: {
-                    "x-user-id": userId,
-                    "x-unit-id": unitId,
+                    "x-user-id": TEST_IDS.user,
                 },
             }),
         );
@@ -243,67 +134,11 @@ describe("Units routes", () => {
         expect(body).toMatchObject({ message: "Forbidden" });
     });
 
-    it("GET /units/:id deve retornar 403 quando id da rota diverge do x-unit-id", async () => {
-        const routeUnitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
-        const headerUnitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc2";
-
-        const repository = new InMemoryUnitsRepository({
-            [routeUnitId]: {
-                id: routeUnitId,
-                name: "Unidade A",
-                isActive: true,
-                createdAt: "2026-02-01T17:27:35.202Z",
-                updatedAt: "2026-02-01T17:27:35.202Z",
-            },
-        });
-
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    it("PATCH /units atualiza unidade", async () => {
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
-                [userId]: [routeUnitId, headerUnitId],
-            }),
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/units/${routeUnitId}`, {
-                headers: {
-                    "x-user-id": userId,
-                    "x-unit-id": headerUnitId,
-                },
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(403);
-        expect(body).toMatchObject({ message: "Forbidden" });
-    });
-
-    it("PATCH /units deve atualizar a unidade do x-unit-id", async () => {
-        const unitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
-
-        const repository = new InMemoryUnitsRepository({
-            [unitId]: {
-                id: unitId,
-                name: "Unidade A",
-                isActive: true,
-                createdAt: "2026-02-01T17:27:35.202Z",
-                updatedAt: "2026-02-01T17:27:35.202Z",
-            },
-        });
-
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
-                [userId]: [unitId],
-            }),
+            unitsRepository: new InMemoryUnitsRepository(unitFixture),
+            accessMap,
         });
 
         const response = await app.handle(
@@ -311,8 +146,8 @@ describe("Units routes", () => {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": userId,
-                    "x-unit-id": unitId,
+                    "x-user-id": TEST_IDS.user,
+                    "x-unit-id": TEST_IDS.unit,
                 },
                 body: JSON.stringify({
                     name: "Unidade A - Atualizada",
@@ -324,21 +159,15 @@ describe("Units routes", () => {
         expect(response.status).toBe(200);
         expect(() => unitProfileSchema.parse(body)).not.toThrow();
         expect(body).toMatchObject({
-            id: unitId,
+            id: TEST_IDS.unit,
             name: "Unidade A - Atualizada",
         });
     });
 
-    it("PATCH /units deve retornar 400 quando x-unit-id estiver ausente", async () => {
-        const repository = new InMemoryUnitsRepository();
-
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    it("PATCH /units retorna 400 sem x-unit-id", async () => {
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({}),
+            unitsRepository: new InMemoryUnitsRepository(),
         });
 
         const response = await app.handle(
@@ -346,7 +175,7 @@ describe("Units routes", () => {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": userId,
+                    "x-user-id": TEST_IDS.user,
                 },
                 body: JSON.stringify({ name: "X" }),
             }),
@@ -357,28 +186,11 @@ describe("Units routes", () => {
         expect(body).toMatchObject({ message: "Invalid or missing unit header" });
     });
 
-    it("PATCH /units deve retornar 403 quando unidade não pertence ao usuário", async () => {
-        const unitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
-
-        const repository = new InMemoryUnitsRepository({
-            [unitId]: {
-                id: unitId,
-                name: "Unidade A",
-                isActive: true,
-                createdAt: "2026-02-01T17:27:35.202Z",
-                updatedAt: "2026-02-01T17:27:35.202Z",
-            },
-        });
-
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    it("PATCH /units retorna 403 sem acesso", async () => {
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
-                [otherUserId]: [unitId],
-            }),
+            unitsRepository: new InMemoryUnitsRepository(unitFixture),
+            accessMap: { [TEST_IDS.otherUser]: [TEST_IDS.unit] },
         });
 
         const response = await app.handle(
@@ -386,8 +198,8 @@ describe("Units routes", () => {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": userId,
-                    "x-unit-id": unitId,
+                    "x-user-id": TEST_IDS.user,
+                    "x-unit-id": TEST_IDS.unit,
                 },
                 body: JSON.stringify({ name: "X" }),
             }),
@@ -398,36 +210,43 @@ describe("Units routes", () => {
         expect(body).toMatchObject({ message: "Forbidden" });
     });
 
-    it("DELETE /units deve deletar a unidade do x-unit-id", async () => {
-        const unitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
-
-        const repository = new InMemoryUnitsRepository({
-            [unitId]: {
-                id: unitId,
-                name: "Unidade A",
-                isActive: true,
-                createdAt: "2026-02-01T17:27:35.202Z",
-                updatedAt: "2026-02-01T17:27:35.202Z",
-            },
+    it("PATCH /units retorna 404 para unidade inexistente", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(),
+            accessMap,
         });
 
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
-                [userId]: [unitId],
+        const response = await app.handle(
+            new Request("http://localhost/units", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": TEST_IDS.user,
+                    "x-unit-id": TEST_IDS.missingUnit,
+                },
+                body: JSON.stringify({ name: "X" }),
             }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(404);
+        expect(body).toMatchObject({ message: "Unit not found" });
+    });
+
+    it("DELETE /units remove unidade", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(unitFixture),
+            accessMap,
         });
 
         const response = await app.handle(
             new Request("http://localhost/units", {
                 method: "DELETE",
                 headers: {
-                    "x-user-id": userId,
-                    "x-unit-id": unitId,
+                    "x-user-id": TEST_IDS.user,
+                    "x-unit-id": TEST_IDS.unit,
                 },
             }),
         );
@@ -435,70 +254,5 @@ describe("Units routes", () => {
 
         expect(response.status).toBe(200);
         expect(body).toMatchObject({ message: "Unit deleted" });
-    });
-
-    it("DELETE /units deve retornar 400 quando x-unit-id estiver ausente", async () => {
-        const repository = new InMemoryUnitsRepository();
-
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({}),
-        });
-
-        const response = await app.handle(
-            new Request("http://localhost/units", {
-                method: "DELETE",
-                headers: {
-                    "x-user-id": userId,
-                },
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(body).toMatchObject({ message: "Invalid or missing unit header" });
-    });
-
-    it("DELETE /units deve retornar 403 quando unidade não pertence ao usuário", async () => {
-        const unitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
-
-        const repository = new InMemoryUnitsRepository({
-            [unitId]: {
-                id: unitId,
-                name: "Unidade A",
-                isActive: true,
-                createdAt: "2026-02-01T17:27:35.202Z",
-                updatedAt: "2026-02-01T17:27:35.202Z",
-            },
-        });
-
-        const app = await buildApp({
-            db: unusedDb,
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: repository,
-            hasUserAccessToUnitChecker: createInMemoryHasUserAccessToUnitChecker({
-                [otherUserId]: [unitId],
-            }),
-        });
-
-        const response = await app.handle(
-            new Request("http://localhost/units", {
-                method: "DELETE",
-                headers: {
-                    "x-user-id": userId,
-                    "x-unit-id": unitId,
-                },
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(403);
-        expect(body).toMatchObject({ message: "Forbidden" });
     });
 });

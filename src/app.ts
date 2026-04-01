@@ -83,12 +83,14 @@ export async function buildApp({
         }))
         .use(usersRoutes({ usersRepository }));
 
+    const resolvedHasUserAccessToUnitChecker =
+        hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
+
     const configuredAppWithUnits = unitsRepository
         ? configuredApp.use(
               unitsRoutes({
                   unitsRepository,
-                  hasUserAccessToUnitChecker:
-                      hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db),
+                  hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
               }),
           )
         : configuredApp;
@@ -100,8 +102,7 @@ export async function buildApp({
     return configuredAppWithUnits.use(
         professionalsRoutes({
             professionalsRepository,
-            hasUserAccessToUnitChecker:
-                hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db),
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
         }),
     );
 }

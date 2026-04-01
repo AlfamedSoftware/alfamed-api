@@ -16,7 +16,6 @@ export type UpdateProfessionalInput = z.infer<typeof updateProfessionalSchema>;
 type DatabaseClient = typeof dbType;
 
 export class ProfessionalsRepository {
-    readonly db: DatabaseClient;
     readonly create: (data: CreateProfessionalInput) => Promise<ProfessionalProfile>;
     readonly createWithUnit: (data: CreateProfessionalInput, unitId: string) => Promise<ProfessionalProfile>;
     readonly findById: (professionalId: string) => Promise<ProfessionalProfile | null>;
@@ -27,7 +26,6 @@ export class ProfessionalsRepository {
     readonly delete: (professionalId: string) => Promise<void>;
 
     constructor(db: DatabaseClient) {
-        this.db = db;
         const toProfile = (result: {
             id: string;
             userId: string;

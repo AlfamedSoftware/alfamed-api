@@ -1,5 +1,5 @@
 import { assertUserHasUnitAccess } from "@/http/plugins/unit-access";
-import { UnitsRepository } from "./units.repository";
+import type { UnitsRepository } from "./units.repository";
 
 export class UnitsService {
     constructor(
@@ -8,8 +8,7 @@ export class UnitsService {
     ) {}
 
     async createUnit(userId: string, data: { name: string; isActive?: boolean }) {
-        void userId;
-        return this.unitsRepository.create(data);
+        return this.unitsRepository.createForUser(userId, data);
     }
 
     async getUnitById(userId: string, unitId: string) {

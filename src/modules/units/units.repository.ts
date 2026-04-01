@@ -2,6 +2,8 @@ import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "@/db/client";
 import { units } from "@/db/schema/units";
+import { professionals } from "@/db/schema/professionals";
+import { professionalUnits } from "@/db/schema/professional-units";
 import {
     createUnitSchema,
     unitProfileSchema,
@@ -16,6 +18,7 @@ type DatabaseClient = typeof dbType;
 
 export class UnitsRepository {
     readonly create: (data: CreateUnitInput) => Promise<UnitProfile>;
+    readonly createForUser: (userId: string, data: CreateUnitInput) => Promise<UnitProfile>;
     readonly findById: (unitId: string) => Promise<UnitProfile | null>;
     readonly update: (unitId: string, data: UpdateUnitInput) => Promise<UnitProfile | null>;
     readonly delete: (unitId: string) => Promise<void>;
@@ -52,6 +55,43 @@ export class UnitsRepository {
                 });
 
             return toProfile(result);
+        };
+
+        this.createForUser = async (userId, data) => {
+            const unit = await db.transaction(async (tx) => {
+                const [professional] = await tx
+                    .select({ id: professionals.id })
+                    .from(professionals)
+                    .where(eq(professionals.userId, userId))
+                    .limit(1);
+
+                if (!professional) {
+                    throw new Error("Forbidden");
+                }
+
+                const [createdUnit] = await tx
+                    .insert(units)
+                    .values({
+                        name: data.name,
+                        isActive: data.isActive,
+                    })
+                    .returning({
+                        id: units.id,
+                        name: units.name,
+                        isActive: units.isActive,
+                        createdAt: units.createdAt,
+                        updatedAt: units.updatedAt,
+                    });
+
+                await tx.insert(professionalUnits).values({
+                    professionalId: professional.id,
+                    unitId: createdUnit.id,
+                });
+
+                return createdUnit;
+            });
+
+            return toProfile(unit);
         };
 
         this.findById = async (unitId) => {

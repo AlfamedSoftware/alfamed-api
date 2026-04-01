@@ -21,12 +21,8 @@ export function getValidatedUnitIdFromRequest(request: Request) {
 export async function assertUserHasUnitAccess(
     userId: string,
     unitId: string,
-    hasAccessChecker?: (userId: string, unitId: string) => Promise<boolean>,
+    hasAccessChecker: (userId: string, unitId: string) => Promise<boolean>,
 ) {
-    if (!hasAccessChecker) {
-        throw new Error("Missing unit access checker");
-    }
-
     const hasAccess = await hasAccessChecker(userId, unitId);
 
     if (!hasAccess) {
