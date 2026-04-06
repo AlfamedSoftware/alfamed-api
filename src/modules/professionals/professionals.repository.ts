@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import type { z } from "zod";
-import type { db as dbType } from "@/db/client";
-import { professionalUnits } from "@/db/schema/professional-units";
-import { professionals } from "@/db/schema/professionals";
+import type { db as dbType } from "../../db/client";
+import { professionalUnits } from "../../db/schema/professional-units";
+import { professionals } from "../../db/schema/professionals";
 import {
     createProfessionalSchema,
     professionalProfileSchema,

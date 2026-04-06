@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
-import type { db as dbType } from "@/db/client";
-import { users } from "@/db/schema/users";
+import type { db as dbType } from "../../db/client";
+import { users } from "../../db/schema/users";
 import { userProfileSchema } from "./users.schemas";
 
 export type UserProfile = z.infer<typeof userProfileSchema>;

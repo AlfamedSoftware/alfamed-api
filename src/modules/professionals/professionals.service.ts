@@ -3,7 +3,7 @@ import type {
     ProfessionalsRepository,
     UpdateProfessionalInput,
 } from "./professionals.repository";
-import { assertUserHasUnitAccess } from "@/http/plugins/unit-access";
+import { assertUserHasUnitAccess } from "../../http/plugins/unit-access";
 
 export class ProfessionalsService {
     constructor(private readonly professionalsRepository: ProfessionalsRepository) {}

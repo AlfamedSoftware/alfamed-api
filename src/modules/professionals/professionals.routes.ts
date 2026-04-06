@@ -3,8 +3,8 @@ import { z } from "zod";
 import {
     getValidatedUnitIdFromRequest,
     invalidOrMissingUnitHeaderMessage,
-} from "@/http/plugins/unit-access";
-import { isUniqueConstraintError } from "@/http/plugins/db-errors";
+} from "../../http/plugins/unit-access";
+import { isUniqueConstraintError } from "../../http/plugins/db-errors";
 import type { ProfessionalsRepository } from "./professionals.repository";
 import { ProfessionalsService } from "./professionals.service";
 import {
