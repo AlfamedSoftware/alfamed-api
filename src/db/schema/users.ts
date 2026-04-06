@@ -4,12 +4,12 @@ import { sessions } from "./sessions";
 import { accounts } from "./accounts";
 import { twoFactor } from "./two-factor";
 import { professionals } from "./professionals";
-import { randomUUIDv7 } from "bun";
+import { randomUUID } from "node:crypto";
 
 export const sexEnum = pgEnum("sex", ["M", "F"]);
 
 export const users = pgTable("users", {
-    id: text("id").primaryKey().$defaultFn(() => randomUUIDv7()),
+    id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     name: text("name").notNull(),
     socialName: text("social_name"),
     cpf: text("cpf").notNull().unique(),

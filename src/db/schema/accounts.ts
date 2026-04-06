@@ -2,12 +2,12 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
 import { users } from "./users";
-import { randomUUIDv7 } from "bun";
+import { randomUUID } from "node:crypto";
 
 export const accounts = pgTable(
   "accounts",
   {
-    id: text("id").primaryKey().$defaultFn(() => randomUUIDv7()),
+    id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     accountId: text("account_id").notNull(),
     providerId: text("provider_id").notNull(),
     userId: text("user_id")

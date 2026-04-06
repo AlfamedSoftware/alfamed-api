@@ -1,10 +1,10 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text } from "drizzle-orm/pg-core";
 import { users } from "./users";
-import { randomUUIDv7 } from "bun";
+import { randomUUID } from "node:crypto";
 
 export const twoFactor = pgTable("two_factor", {
-    id: text("id").primaryKey().$defaultFn(() => randomUUIDv7()),
+    id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     secret: text("secret").notNull(),
     backupCodes: text("backup_codes").notNull(),
     userId: text("user_id")
