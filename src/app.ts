@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
+import { systemRoutes } from "./http/routes/system.routes";
 import { usersRoutes } from "./modules/users/users.routes";
 import type { UsersRepository } from "./modules/users/users.repository";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes";
@@ -32,6 +33,10 @@ export async function buildApp({
                 documentation: {
                     tags: [
                         {
+                            name: "System",
+                            description: "Application health and system endpoints",
+                        },
+                        {
                             name: "Users",
                             description: "Operations about users",
                         },
@@ -61,10 +66,7 @@ export async function buildApp({
                 allowedHeaders: ["Content-Type", "Authorization", "x-unit-id"],
             }),
         )
-        .get("/health", () => ({
-            status: "ok",
-            timestamp: new Date(),
-        }))
+        .use(systemRoutes())
         .use(usersRoutes({ usersRepository }));
 
     if (!professionalsRepository) {
