@@ -1,0 +1,1 @@
+ALTER TABLE "requests" ADD CONSTRAINT "requests_status_requests_status_id_fk" FOREIGN KEY ("status") REFERENCES "public"."requests_status"("id") ON DELETE no action ON UPDATE no action;
