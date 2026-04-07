@@ -22,7 +22,6 @@ export class ProfessionalsRepository {
     readonly findByIdAndUnit: (professionalId: string, unitId: string) => Promise<ProfessionalProfile | null>;
     readonly list: () => Promise<ProfessionalProfile[]>;
     readonly listByUnit: (unitId: string) => Promise<ProfessionalProfile[]>;
-    readonly hasUserAccessToUnit: (userId: string, unitId: string) => Promise<boolean>;
     readonly update: (professionalId: string, data: UpdateProfessionalInput) => Promise<ProfessionalProfile | null>;
     readonly delete: (professionalId: string) => Promise<void>;
 
@@ -129,17 +128,6 @@ export class ProfessionalsRepository {
                 .where(eq(professionalUnits.unitId, unitId));
 
             return results.map(toProfile);
-        };
-
-        this.hasUserAccessToUnit = async (userId, unitId) => {
-            const [result] = await db
-                .select({ id: professionals.id })
-                .from(professionals)
-                .innerJoin(professionalUnits, eq(professionals.id, professionalUnits.professionalId))
-                .where(and(eq(professionals.userId, userId), eq(professionalUnits.unitId, unitId)))
-                .limit(1);
-
-            return !!result;
         };
 
         this.createWithUnit = async (data, unitId) => {

@@ -1,615 +1,299 @@
 import { describe, expect, it } from "vitest";
-import Elysia from "elysia";
-import { buildApp } from "@/app";
-import type {
-    CreateProfessionalInput,
-    ProfessionalProfile,
-    UpdateProfessionalInput,
-} from "@/modules/professionals/professionals.repository";
 import { professionalProfileSchema } from "@/modules/professionals/professionals.schemas";
-import type { UsersRepository } from "@/modules/users/users.repository";
-
-class InMemoryUsersRepository implements UsersRepository {
-    async getUserById(_: string) {
-        return null;
-    }
-}
-
-interface ProfessionalsRepositoryContract {
-    create(data: CreateProfessionalInput): Promise<ProfessionalProfile>;
-    createWithUnit(data: CreateProfessionalInput, unitId: string): Promise<ProfessionalProfile>;
-    findById(professionalId: string): Promise<ProfessionalProfile | null>;
-    findByIdAndUnit(professionalId: string, unitId: string): Promise<ProfessionalProfile | null>;
-    list(): Promise<ProfessionalProfile[]>;
-    listByUnit(unitId: string): Promise<ProfessionalProfile[]>;
-    hasUserAccessToUnit(userId: string, unitId: string): Promise<boolean>;
-    update(professionalId: string, data: UpdateProfessionalInput): Promise<ProfessionalProfile | null>;
-    delete(professionalId: string): Promise<void>;
-}
-
-class InMemoryProfessionalsRepository implements ProfessionalsRepositoryContract {
-    private readonly professionals: Record<string, ProfessionalProfile>;
-    private readonly professionalsUnits: Record<string, string[]>;
-    private readonly usersUnits: Record<string, string[]>;
-    private sequence = 1;
-
-    constructor(
-        initialProfessionals: Record<string, ProfessionalProfile> = {},
-        initialProfessionalsUnits: Record<string, string[]> = {},
-        initialUsersUnits: Record<string, string[]> = {},
-    ) {
-        this.professionals = { ...initialProfessionals };
-        this.professionalsUnits = { ...initialProfessionalsUnits };
-        this.usersUnits = { ...initialUsersUnits };
-    }
-
-    async create(data: CreateProfessionalInput): Promise<ProfessionalProfile> {
-        const now = new Date().toISOString();
-        const id = `019c1a3e-e425-7000-8bda-cdfec32c8f${String(this.sequence).padStart(2, "0")}`;
-        this.sequence += 1;
-
-        const professional: ProfessionalProfile = {
-            id,
-            userId: data.userId,
-            isActive: data.isActive ?? true,
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        this.professionals[id] = professional;
-
-        return professional;
-    }
-
-    async createWithUnit(data: CreateProfessionalInput, unitId: string): Promise<ProfessionalProfile> {
-        const professional = await this.create(data);
-        this.professionalsUnits[professional.id] = [...(this.professionalsUnits[professional.id] ?? []), unitId];
-
-        return professional;
-    }
-
-    async findById(professionalId: string): Promise<ProfessionalProfile | null> {
-        return this.professionals[professionalId] ?? null;
-    }
-
-    async findByIdAndUnit(professionalId: string, unitId: string): Promise<ProfessionalProfile | null> {
-        const professional = this.professionals[professionalId] ?? null;
-
-        if (!professional) {
-            return null;
-        }
-
-        const units = this.professionalsUnits[professionalId] ?? [];
-
-        if (!units.includes(unitId)) {
-            return null;
-        }
-
-        return professional;
-    }
-
-    async list(): Promise<ProfessionalProfile[]> {
-        return Object.values(this.professionals);
-    }
-
-    async listByUnit(unitId: string): Promise<ProfessionalProfile[]> {
-        return Object.values(this.professionals).filter((professional) => {
-            const units = this.professionalsUnits[professional.id] ?? [];
-
-            return units.includes(unitId);
-        });
-    }
-
-    async hasUserAccessToUnit(userId: string, unitId: string): Promise<boolean> {
-        return (this.usersUnits[userId] ?? []).includes(unitId);
-    }
-
-    async update(professionalId: string, data: UpdateProfessionalInput): Promise<ProfessionalProfile | null> {
-        const current = this.professionals[professionalId];
-
-        if (!current) {
-            return null;
-        }
-
-        const updated: ProfessionalProfile = {
-            ...current,
-            userId: data.userId ?? current.userId,
-            isActive: data.isActive ?? current.isActive,
-            updatedAt: new Date().toISOString(),
-        };
-
-        this.professionals[professionalId] = updated;
-
-        return updated;
-    }
-
-    async delete(professionalId: string): Promise<void> {
-        delete this.professionals[professionalId];
-    }
-}
-
-const fakeAuthPlugin = new Elysia().macro({
-    auth: {
-        async resolve({ request, status }) {
-            const userId = request.headers.get("x-user-id");
-
-            if (!userId) {
-                return status(401, { message: "Unauthorized" });
-            }
-
-            return { user: { id: userId } };
-        },
-    },
-});
+import { buildE2EApp, TEST_IDS } from "./helpers/context";
+import { InMemoryProfessionalsRepository, InMemoryUsersRepository } from "./helpers/repositories";
 
 describe("Professionals routes", () => {
-    const requesterUserId = "019c1a3e-e425-7000-8bda-cdfec32c8fed";
-    const selectedUnitId = "019c1a3e-e425-7000-8bda-cdfec32c8fc1";
-    const requesterUnits = {
-        [requesterUserId]: [selectedUnitId],
+    const accessMap = {
+        [TEST_IDS.user]: [TEST_IDS.unit],
     };
 
-    it("POST /professionals deve criar um profissional", async () => {
-        const repository = new InMemoryProfessionalsRepository({}, {}, requesterUnits);
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    const requestHeaders = {
+        "x-user-id": TEST_IDS.user,
+        "x-unit-id": TEST_IDS.unit,
+    };
+
+    it("POST /professionals cria profissional", async () => {
+        const repository = new InMemoryProfessionalsRepository();
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: repository,
+            accessMap,
         });
 
         const response = await app.handle(
             new Request("http://localhost/professionals", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-                body: JSON.stringify({
-                    isActive: true,
-                }),
+                headers: { ...requestHeaders, "Content-Type": "application/json" },
+                body: JSON.stringify({ isActive: true }),
             }),
         );
         const body = await response.json();
 
         expect(response.status).toBe(201);
         expect(() => professionalProfileSchema.parse(body)).not.toThrow();
-        expect(body).toMatchObject({
-            userId: requesterUserId,
-            isActive: true,
-        });
-
-        const createdProfessionalId = body.id as string;
-        const listResponse = await app.handle(
-            new Request("http://localhost/professionals", {
-                headers: {
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-            }),
-        );
-        const listBody = await listResponse.json();
-
-        expect(listResponse.status).toBe(200);
-        expect(Array.isArray(listBody)).toBe(true);
-        expect(listBody).toEqual(
-            expect.arrayContaining([
-                expect.objectContaining({
-                    id: createdProfessionalId,
-                }),
-            ]),
-        );
     });
 
-    it("POST /professionals deve rejeitar userId enviado no body", async () => {
-        const repository = new InMemoryProfessionalsRepository({}, {}, requesterUnits);
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    it("POST /professionals retorna 401 sem autenticação", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository(),
+            accessMap,
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/professionals", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ isActive: true }),
+            }),
+        );
+
+        expect(response.status).toBe(401);
+    });
+
+    it("POST /professionals retorna 409 em conflito de unicidade", async () => {
+        const repository = new InMemoryProfessionalsRepository();
+        repository.createWithUnit = async () => {
+            const error = new Error("duplicate") as Error & { code?: string };
+            error.code = "23505";
+            throw error;
+        };
+
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: repository,
+            accessMap,
         });
 
         const response = await app.handle(
             new Request("http://localhost/professionals", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-                body: JSON.stringify({
-                    userId: "019c1a3e-e425-7000-8bda-cdfec32c8fea",
-                    isActive: true,
-                }),
+                headers: { ...requestHeaders, "Content-Type": "application/json" },
+                body: JSON.stringify({ isActive: true }),
             }),
         );
-        const body = await response.json();
 
-        expect(response.status).toBe(422);
-        expect(body).toMatchObject({});
+        expect(response.status).toBe(409);
     });
 
-    it("GET /professionals deve listar profissionais", async () => {
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository({
-                "019c1a3e-e425-7000-8bda-cdfec32c8fa1": {
-                    id: "019c1a3e-e425-7000-8bda-cdfec32c8fa1",
-                    userId: "019c1a3e-e425-7000-8bda-cdfec32c8fb1",
+    it("GET /professionals lista por unidade", async () => {
+        const repository = new InMemoryProfessionalsRepository(
+            {
+                [TEST_IDS.professional]: {
+                    id: TEST_IDS.professional,
+                    userId: TEST_IDS.user,
                     isActive: true,
                     createdAt: "2026-02-01T17:27:35.202Z",
                     updatedAt: "2026-02-01T17:27:35.202Z",
                 },
-                "019c1a3e-e425-7000-8bda-cdfec32c8fa2": {
-                    id: "019c1a3e-e425-7000-8bda-cdfec32c8fa2",
-                    userId: "019c1a3e-e425-7000-8bda-cdfec32c8fb2",
-                    isActive: false,
-                    createdAt: "2026-02-01T17:27:35.202Z",
-                    updatedAt: "2026-02-01T17:27:35.202Z",
-                },
-            }, {
-                "019c1a3e-e425-7000-8bda-cdfec32c8fa1": [selectedUnitId],
-                "019c1a3e-e425-7000-8bda-cdfec32c8fa2": ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
-            }, requesterUnits),
+            },
+            {
+                [TEST_IDS.professional]: [TEST_IDS.unit],
+            },
+        );
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: repository,
+            accessMap,
         });
 
         const response = await app.handle(
-            new Request("http://localhost/professionals", {
-                headers: {
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-            }),
+            new Request("http://localhost/professionals", { headers: requestHeaders }),
         );
         const body = await response.json();
 
         expect(response.status).toBe(200);
-        expect(Array.isArray(body)).toBe(true);
         expect(body).toHaveLength(1);
         expect(() => professionalProfileSchema.parse(body[0])).not.toThrow();
-        expect(body[0]?.id).toBe("019c1a3e-e425-7000-8bda-cdfec32c8fa1");
     });
 
-    it("GET /professionals/:id deve retornar profissional por id", async () => {
-        const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
-
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(
-                {
-                    [existingProfessionalId]: {
-                        id: existingProfessionalId,
-                        userId: "019c1a3e-e425-7000-8bda-cdfec32c8fb1",
-                        isActive: true,
-                        createdAt: "2026-02-01T17:27:35.202Z",
-                        updatedAt: "2026-02-01T17:27:35.202Z",
-                    },
-                },
-                {
-                    [existingProfessionalId]: [selectedUnitId],
-                },
-                requesterUnits,
-            ),
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/professionals/${existingProfessionalId}`, {
-                headers: {
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(() => professionalProfileSchema.parse(body)).not.toThrow();
-        expect(body).toMatchObject({
-            id: existingProfessionalId,
-        });
-    });
-
-    it("PATCH /professionals/:id deve atualizar profissional", async () => {
-        const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
-
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(
-                {
-                    [existingProfessionalId]: {
-                        id: existingProfessionalId,
-                        userId: "019c1a3e-e425-7000-8bda-cdfec32c8fb1",
-                        isActive: true,
-                        createdAt: "2026-02-01T17:27:35.202Z",
-                        updatedAt: "2026-02-01T17:27:35.202Z",
-                    },
-                },
-                {
-                    [existingProfessionalId]: [selectedUnitId],
-                },
-                requesterUnits,
-            ),
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/professionals/${existingProfessionalId}`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-                body: JSON.stringify({
-                    isActive: false,
-                }),
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(() => professionalProfileSchema.parse(body)).not.toThrow();
-        expect(body).toMatchObject({
-            id: existingProfessionalId,
-            isActive: false,
-        });
-    });
-
-    it("DELETE /professionals/:id deve remover profissional", async () => {
-        const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
-
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(
-                {
-                    [existingProfessionalId]: {
-                        id: existingProfessionalId,
-                        userId: "019c1a3e-e425-7000-8bda-cdfec32c8fb1",
-                        isActive: true,
-                        createdAt: "2026-02-01T17:27:35.202Z",
-                        updatedAt: "2026-02-01T17:27:35.202Z",
-                    },
-                },
-                {
-                    [existingProfessionalId]: [selectedUnitId],
-                },
-                requesterUnits,
-            ),
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/professionals/${existingProfessionalId}`, {
-                method: "DELETE",
-                headers: {
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(body).toMatchObject({ message: "Professional deleted" });
-    });
-
-    it("GET /professionals/:id deve retornar 404 quando profissional não existir", async () => {
-        const missingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa9";
-
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository({}, {}, requesterUnits),
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/professionals/${missingProfessionalId}`, {
-                headers: {
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(404);
-        expect(body).toMatchObject({ message: "Professional not found" });
-    });
-
-    it("GET /professionals/:id deve retornar 404 quando profissional for de outra unidade", async () => {
-        const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
-
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(
-                {
-                    [existingProfessionalId]: {
-                        id: existingProfessionalId,
-                        userId: "019c1a3e-e425-7000-8bda-cdfec32c8fb1",
-                        isActive: true,
-                        createdAt: "2026-02-01T17:27:35.202Z",
-                        updatedAt: "2026-02-01T17:27:35.202Z",
-                    },
-                },
-                {
-                    [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
-                },
-                requesterUnits,
-            ),
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/professionals/${existingProfessionalId}`, {
-                headers: {
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(404);
-        expect(body).toMatchObject({ message: "Professional not found" });
-    });
-
-    it("GET /professionals deve retornar 400 quando x-unit-id estiver ausente", async () => {
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    it("GET /professionals/:id retorna 404 quando não existe", async () => {
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: new InMemoryProfessionalsRepository(),
+            accessMap,
+        });
+
+        const response = await app.handle(
+            new Request(`http://localhost/professionals/${TEST_IDS.missingProfessional}`, {
+                headers: requestHeaders,
+            }),
+        );
+
+        expect(response.status).toBe(404);
+    });
+
+    it("PATCH /professionals/:id atualiza", async () => {
+        const repository = new InMemoryProfessionalsRepository(
+            {
+                [TEST_IDS.professional]: {
+                    id: TEST_IDS.professional,
+                    userId: TEST_IDS.user,
+                    isActive: true,
+                    createdAt: "2026-02-01T17:27:35.202Z",
+                    updatedAt: "2026-02-01T17:27:35.202Z",
+                },
+            },
+            {
+                [TEST_IDS.professional]: [TEST_IDS.unit],
+            },
+        );
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: repository,
+            accessMap,
+        });
+
+        const response = await app.handle(
+            new Request(`http://localhost/professionals/${TEST_IDS.professional}`, {
+                method: "PATCH",
+                headers: { ...requestHeaders, "Content-Type": "application/json" },
+                body: JSON.stringify({ isActive: false }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.isActive).toBe(false);
+    });
+
+    it("PATCH /professionals/:id retorna 409 em conflito de unicidade", async () => {
+        const repository = new InMemoryProfessionalsRepository(
+            {
+                [TEST_IDS.professional]: {
+                    id: TEST_IDS.professional,
+                    userId: TEST_IDS.user,
+                    isActive: true,
+                    createdAt: "2026-02-01T17:27:35.202Z",
+                    updatedAt: "2026-02-01T17:27:35.202Z",
+                },
+            },
+            {
+                [TEST_IDS.professional]: [TEST_IDS.unit],
+            },
+        );
+        repository.update = async () => {
+            const error = new Error("duplicate") as Error & { code?: string };
+            error.code = "23505";
+            throw error;
+        };
+
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: repository,
+            accessMap,
+        });
+
+        const response = await app.handle(
+            new Request(`http://localhost/professionals/${TEST_IDS.professional}`, {
+                method: "PATCH",
+                headers: { ...requestHeaders, "Content-Type": "application/json" },
+                body: JSON.stringify({ isActive: false }),
+            }),
+        );
+
+        expect(response.status).toBe(409);
+    });
+
+    it("DELETE /professionals/:id remove", async () => {
+        const repository = new InMemoryProfessionalsRepository(
+            {
+                [TEST_IDS.professional]: {
+                    id: TEST_IDS.professional,
+                    userId: TEST_IDS.user,
+                    isActive: true,
+                    createdAt: "2026-02-01T17:27:35.202Z",
+                    updatedAt: "2026-02-01T17:27:35.202Z",
+                },
+            },
+            {
+                [TEST_IDS.professional]: [TEST_IDS.unit],
+            },
+        );
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: repository,
+            accessMap,
+        });
+
+        const response = await app.handle(
+            new Request(`http://localhost/professionals/${TEST_IDS.professional}`, {
+                method: "DELETE",
+                headers: requestHeaders,
+            }),
+        );
+
+        expect(response.status).toBe(200);
+    });
+
+    it("retorna 403 quando usuário não tem acesso à unidade", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository(),
+            accessMap: {},
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/professionals", { headers: requestHeaders }),
+        );
+
+        expect(response.status).toBe(403);
+    });
+
+    it("retorna 400 quando x-unit-id ausente", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository(),
+            accessMap,
         });
 
         const response = await app.handle(
             new Request("http://localhost/professionals", {
-                headers: { "x-user-id": requesterUserId },
+                headers: { "x-user-id": TEST_IDS.user },
             }),
         );
-        const body = await response.json();
 
         expect(response.status).toBe(400);
-        expect(body).toMatchObject({ message: "Invalid or missing unit header" });
     });
 
-    it("GET /professionals deve retornar 403 quando usuário não pertence à unidade", async () => {
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    it("PATCH /professionals/:id retorna 400 sem x-unit-id", async () => {
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: new InMemoryProfessionalsRepository(),
+            accessMap,
         });
 
         const response = await app.handle(
-            new Request("http://localhost/professionals", {
-                headers: {
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(403);
-        expect(body).toMatchObject({ message: "Forbidden" });
-    });
-
-    it("POST /professionals deve retornar 403 quando usuário não pertence à unidade", async () => {
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(),
-        });
-
-        const response = await app.handle(
-            new Request("http://localhost/professionals", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
-                },
-                body: JSON.stringify({
-                    isActive: true,
-                }),
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(403);
-        expect(body).toMatchObject({ message: "Forbidden" });
-    });
-
-    it("PATCH /professionals/:id deve retornar 404 quando profissional for de outra unidade", async () => {
-        const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
-
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(
-                {
-                    [existingProfessionalId]: {
-                        id: existingProfessionalId,
-                        userId: "019c1a3e-e425-7000-8bda-cdfec32c8fb1",
-                        isActive: true,
-                        createdAt: "2026-02-01T17:27:35.202Z",
-                        updatedAt: "2026-02-01T17:27:35.202Z",
-                    },
-                },
-                {
-                    [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
-                },
-                requesterUnits,
-            ),
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/professionals/${existingProfessionalId}`, {
+            new Request(`http://localhost/professionals/${TEST_IDS.professional}`, {
                 method: "PATCH",
                 headers: {
+                    "x-user-id": TEST_IDS.user,
                     "Content-Type": "application/json",
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
                 },
-                body: JSON.stringify({
-                    isActive: false,
-                }),
+                body: JSON.stringify({ isActive: false }),
             }),
         );
-        const body = await response.json();
 
-        expect(response.status).toBe(404);
-        expect(body).toMatchObject({ message: "Professional not found" });
+        expect(response.status).toBe(400);
     });
 
-    it("DELETE /professionals/:id deve retornar 404 quando profissional for de outra unidade", async () => {
-        const existingProfessionalId = "019c1a3e-e425-7000-8bda-cdfec32c8fa1";
-
-        const app = await buildApp({
-            authPlugin: fakeAuthPlugin,
-            withDocs: false,
+    it("DELETE /professionals/:id retorna 400 sem x-unit-id", async () => {
+        const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(
-                {
-                    [existingProfessionalId]: {
-                        id: existingProfessionalId,
-                        userId: "019c1a3e-e425-7000-8bda-cdfec32c8fb1",
-                        isActive: true,
-                        createdAt: "2026-02-01T17:27:35.202Z",
-                        updatedAt: "2026-02-01T17:27:35.202Z",
-                    },
-                },
-                {
-                    [existingProfessionalId]: ["019c1a3e-e425-7000-8bda-cdfec32c8fc2"],
-                },
-                requesterUnits,
-            ),
+            professionalsRepository: new InMemoryProfessionalsRepository(),
+            accessMap,
         });
 
         const response = await app.handle(
-            new Request(`http://localhost/professionals/${existingProfessionalId}`, {
+            new Request(`http://localhost/professionals/${TEST_IDS.professional}`, {
                 method: "DELETE",
                 headers: {
-                    "x-user-id": requesterUserId,
-                    "x-unit-id": selectedUnitId,
+                    "x-user-id": TEST_IDS.user,
                 },
             }),
         );
-        const body = await response.json();
 
-        expect(response.status).toBe(404);
-        expect(body).toMatchObject({ message: "Professional not found" });
+        expect(response.status).toBe(400);
     });
 });

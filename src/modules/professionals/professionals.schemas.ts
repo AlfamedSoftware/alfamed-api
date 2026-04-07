@@ -7,7 +7,7 @@ export const createProfessionalSchema = z.object({
 export const updateProfessionalSchema = z.object({
     userId: z.string().uuid().optional(),
     isActive: z.boolean().optional(),
-});
+}).strict();
 
 export const professionalProfileSchema = z.object({
     id: z.string().uuid(),
