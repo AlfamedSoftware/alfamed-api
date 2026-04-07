@@ -1,15 +1,15 @@
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
-import type { db as dbType } from "@/db/client";
-import { units } from "@/db/schema/units";
-import { professionals } from "@/db/schema/professionals";
-import { professionalUnits } from "@/db/schema/professional-units";
-import { DomainError } from "@/http/plugins/domain-error";
+import type { db as dbType } from "../../db/client.js";
+import { units } from "../../db/schema/units.js";
+import { professionals } from "../../db/schema/professionals.js";
+import { professionalUnits } from "../../db/schema/professional-units.js";
+import { DomainError } from "../../http/plugins/domain-error.js";
 import {
     createUnitSchema,
     unitProfileSchema,
     updateUnitSchema,
-} from "./units.schemas";
+} from "./units.schemas.js";
 
 export type UnitProfile = z.infer<typeof unitProfileSchema>;
 export type CreateUnitInput = z.infer<typeof createUnitSchema>;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { AppointmentsService } from "@/modules/appointments/appointments.service";
-import type { AppointmentsRepository, ScheduleProfile } from "@/modules/appointments/appointments.repository";
-import { DomainError } from "@/http/plugins/domain-error";
+import { AppointmentsService } from "../../src/modules/appointments/appointments.service";
+import type { AppointmentsRepository, ScheduleProfile } from "../../src/modules/appointments/appointments.repository";
+import { DomainError } from "../../src/http/plugins/domain-error";
 
 class InMemoryAppointmentsRepository implements AppointmentsRepository {
     constructor(

@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
-import type { db as dbType } from "@/db/client";
-import { professionals } from "@/db/schema/professionals";
-import { professionalUnits } from "@/db/schema/professional-units";
-import { DomainError } from "./domain-error";
+import type { db as dbType } from "../../db/client.js";
+import { professionals } from "../../db/schema/professionals.js";
+import { professionalUnits } from "../../db/schema/professional-units.js";
+import { DomainError } from "./domain-error.js";
 
 export const unitHeaderName = "x-unit-id";
 export const invalidOrMissingUnitHeaderMessage = "Invalid or missing unit header";

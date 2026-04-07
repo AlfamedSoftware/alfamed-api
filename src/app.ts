@@ -9,6 +9,8 @@ import { professionalsRoutes } from "./modules/professionals/professionals.route
 import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
 import type { PatientsRepository } from "./modules/patients/patients.repository.js";
+import { specialtiesRoutes } from "./modules/specialties/specialties.routes.js";
+import type { SpecialtiesRepository } from "./modules/specialties/specialties.repository.js";
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
 import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
@@ -25,6 +27,7 @@ type BuildAppOptions = {
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
     patientsRepository: PatientsRepository;
+    specialtiesRepository?: SpecialtiesRepository;
     unitsRepository?: UnitsRepository;
     appointmentsRepository?: AppointmentsRepository;
     hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
@@ -37,6 +40,7 @@ export async function buildApp({
     usersRepository,
     patientsRepository,
     professionalsRepository,
+    specialtiesRepository,
     unitsRepository,
     appointmentsRepository,
     hasUserAccessToUnitChecker,
@@ -74,6 +78,10 @@ export async function buildApp({
                             description: "Operations about patients",
                         },
                         {
+                            name: "Specialties",
+                            description: "Operations about specialties",
+                        },
+                        {
                             name: "Better Auth",
                             description: "Authentication and session operations",
                         },
@@ -106,14 +114,23 @@ export async function buildApp({
     const resolvedHasUserAccessToUnitChecker =
         hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
 
-    const configuredAppWithUnits = unitsRepository
+    const configuredAppWithSpecialties = specialtiesRepository
         ? configuredApp.use(
+              specialtiesRoutes({
+                  specialtiesRepository,
+                  hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+              }),
+          )
+        : configuredApp;
+
+    const configuredAppWithUnits = unitsRepository
+        ? configuredAppWithSpecialties.use(
               unitsRoutes({
                   unitsRepository,
                   hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
               }),
           )
-        : configuredApp;
+        : configuredAppWithSpecialties;
 
     if (!professionalsRepository) {
         return appointmentsRepository

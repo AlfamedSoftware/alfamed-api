@@ -8,7 +8,6 @@ export default defineConfig({
     },
     resolve: {
         alias: {
-            "@": fileURLToPath(new URL("./src", import.meta.url)),
             bun: fileURLToPath(new URL("./tests/mocks/bun.ts", import.meta.url)),
         },
     },

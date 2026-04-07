@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { unitProfileSchema } from "@/modules/units/units.schemas";
+import { unitProfileSchema } from "../../src/modules/units/units.schemas";
 import { buildE2EApp, TEST_IDS } from "./helpers/context";
 import { InMemoryUnitsRepository, InMemoryUsersRepository } from "./helpers/repositories";
 

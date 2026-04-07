@@ -25,6 +25,7 @@ const professionalsRepository = new ProfessionalsRepository(db);
 const patientsRepository = new PatientsRepository(db);
 
 const appPromise = buildApp({
+	db,
 	usersRepository,
 	professionalsRepository,
 	patientsRepository,
