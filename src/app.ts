@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { systemRoutes } from "./http/routes/system.routes.js";
+import { trustedOrigins } from "./http/plugins/unit-access.js";
 import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
@@ -23,16 +24,6 @@ export async function buildApp({
     withDocs = true,
 }: BuildAppOptions) {
     const app = new Elysia();
-    const fixedTrustedOrigins = [
-        "https://dev-alfamed.vercel.app",
-        "https://web-alfamed.vercel.app",
-        "http://localhost:5137",
-    ];
-    const trustedOrigins = (process.env.TRUSTED_ORIGINS ?? "")
-        .split(",")
-        .map((origin) => origin.trim())
-        .filter(Boolean);
-    const allowedOrigins = Array.from(new Set([...fixedTrustedOrigins, ...trustedOrigins]));
 
     if (withDocs) {
         const { OpenAPI } = await import("./http/plugins/better-auth.js");
@@ -70,7 +61,7 @@ export async function buildApp({
         .use(authPlugin)
         .use(
             cors({
-                origin: allowedOrigins,
+                origin: trustedOrigins,
                 methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 credentials: true,
                 allowedHeaders: ["Content-Type", "Authorization", "x-unit-id"],
