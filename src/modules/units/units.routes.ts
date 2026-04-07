@@ -1,8 +1,4 @@
 import { Elysia, t } from "elysia";
-import {
-    getValidatedUnitIdFromRequest,
-    invalidOrMissingUnitHeaderMessage,
-} from "@/http/plugins/unit-access";
 import type { UnitsRepository } from "./units.repository";
 import { UnitsService } from "./units.service";
 import {
@@ -48,7 +44,8 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                 body: createUnitSchema,
                 detail: {
                     summary: "Create unit",
-                    description: "Creates a unit.",
+                    description:
+                        "Creates a new unit linked to the authenticated professional. If the authenticated user is not linked to a professional, returns 403 Forbidden.",
                     tags: ["Units"],
                 },
                 response: {
@@ -104,23 +101,17 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             },
         )
         .patch(
-            "/",
+            "/:id",
             async (context) => {
-                const { body, status } = context;
+                const { body, params, status } = context;
                 const userId = (context as { user?: { id?: string } }).user?.id;
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
 
-                const unitId = getValidatedUnitIdFromRequest(context.request);
-
-                if (!unitId) {
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
-                }
-
                 try {
-                    const unit = await unitsService.updateUnit(userId, unitId, body);
+                    const unit = await unitsService.updateUnit(userId, params.id, body);
 
                     return status(200, unit);
                 } catch (error) {
@@ -136,16 +127,19 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             },
             {
                 auth: true,
+                params: t.Object({
+                    id: t.String({ format: "uuid" }),
+                }),
                 body: updateUnitSchema,
                 detail: {
                     summary: "Update unit",
-                    description: "Updates the unit selected in x-unit-id header if it's linked to the authenticated professional.",
+                    description:
+                        "Updates the unit selected by route id if the authenticated user has access to that unit.",
                     tags: ["Units"],
                 },
                 response: {
                     200: unitProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Unit not found") }),
                     500: unitsErrorSchema,
@@ -153,23 +147,17 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             },
         )
         .delete(
-            "/",
+            "/:id",
             async (context) => {
-                const { status } = context;
+                const { params, status } = context;
                 const userId = (context as { user?: { id?: string } }).user?.id;
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
 
-                const unitId = getValidatedUnitIdFromRequest(context.request);
-
-                if (!unitId) {
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
-                }
-
                 try {
-                    await unitsService.deleteUnit(userId, unitId);
+                    await unitsService.deleteUnit(userId, params.id);
 
                     return status(200, { message: "Unit deleted" });
                 } catch (error) {
@@ -185,15 +173,18 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             },
             {
                 auth: true,
+                params: t.Object({
+                    id: t.String({ format: "uuid" }),
+                }),
                 detail: {
                     summary: "Delete unit",
-                    description: "Deletes the unit selected in x-unit-id header if it's linked to the authenticated professional.",
+                    description:
+                        "Deletes the unit selected by route id if the authenticated user has access to that unit.",
                     tags: ["Units"],
                 },
                 response: {
                     200: t.Object({ message: t.Literal("Unit deleted") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Unit not found") }),
                     500: unitsErrorSchema,

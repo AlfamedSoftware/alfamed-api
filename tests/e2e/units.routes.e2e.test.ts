@@ -72,6 +72,36 @@ describe("Units routes", () => {
         expect(body).toMatchObject({ message: "Unauthorized" });
     });
 
+    it("POST /units retorna 403 quando usuário não é profissional", async () => {
+        const repository = new InMemoryUnitsRepository();
+        repository.createForUser = async () => {
+            throw new Error("Forbidden");
+        };
+
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: repository,
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/units", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": TEST_IDS.user,
+                },
+                body: JSON.stringify({
+                    name: "Unidade Centro",
+                    isActive: true,
+                }),
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(body).toMatchObject({ message: "Forbidden" });
+    });
+
     it("GET /units/:id retorna unidade", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
@@ -142,12 +172,11 @@ describe("Units routes", () => {
         });
 
         const response = await app.handle(
-            new Request("http://localhost/units", {
+            new Request(`http://localhost/units/${TEST_IDS.unit}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                     "x-user-id": TEST_IDS.user,
-                    "x-unit-id": TEST_IDS.unit,
                 },
                 body: JSON.stringify({
                     name: "Unidade A - Atualizada",
@@ -164,28 +193,6 @@ describe("Units routes", () => {
         });
     });
 
-    it("PATCH /units retorna 400 sem x-unit-id", async () => {
-        const app = await buildE2EApp({
-            usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: new InMemoryUnitsRepository(),
-        });
-
-        const response = await app.handle(
-            new Request("http://localhost/units", {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-user-id": TEST_IDS.user,
-                },
-                body: JSON.stringify({ name: "X" }),
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(body).toMatchObject({ message: "Invalid or missing unit header" });
-    });
-
     it("PATCH /units retorna 403 sem acesso", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
@@ -194,12 +201,11 @@ describe("Units routes", () => {
         });
 
         const response = await app.handle(
-            new Request("http://localhost/units", {
+            new Request(`http://localhost/units/${TEST_IDS.unit}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                     "x-user-id": TEST_IDS.user,
-                    "x-unit-id": TEST_IDS.unit,
                 },
                 body: JSON.stringify({ name: "X" }),
             }),
@@ -218,12 +224,11 @@ describe("Units routes", () => {
         });
 
         const response = await app.handle(
-            new Request("http://localhost/units", {
+            new Request(`http://localhost/units/${TEST_IDS.missingUnit}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                     "x-user-id": TEST_IDS.user,
-                    "x-unit-id": TEST_IDS.missingUnit,
                 },
                 body: JSON.stringify({ name: "X" }),
             }),
@@ -242,11 +247,10 @@ describe("Units routes", () => {
         });
 
         const response = await app.handle(
-            new Request("http://localhost/units", {
+            new Request(`http://localhost/units/${TEST_IDS.unit}`, {
                 method: "DELETE",
                 headers: {
                     "x-user-id": TEST_IDS.user,
-                    "x-unit-id": TEST_IDS.unit,
                 },
             }),
         );

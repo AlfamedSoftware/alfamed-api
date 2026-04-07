@@ -12,18 +12,24 @@ export class UnitsService {
     }
 
     async getUnitById(userId: string, unitId: string) {
-        await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
-
         const unit = await this.unitsRepository.findById(unitId);
 
         if (!unit) {
             throw new Error("Unit not found");
         }
 
+        await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
+
         return unit;
     }
 
     async updateUnit(userId: string, unitId: string, data: { name?: string; isActive?: boolean }) {
+        const existing = await this.unitsRepository.findById(unitId);
+
+        if (!existing) {
+            throw new Error("Unit not found");
+        }
+
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
 
         const unit = await this.unitsRepository.update(unitId, data);
@@ -36,13 +42,13 @@ export class UnitsService {
     }
 
     async deleteUnit(userId: string, unitId: string) {
-        await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
-
         const existing = await this.unitsRepository.findById(unitId);
 
         if (!existing) {
             throw new Error("Unit not found");
         }
+
+        await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
 
         await this.unitsRepository.delete(unitId);
     }
