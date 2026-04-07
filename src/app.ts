@@ -23,10 +23,16 @@ export async function buildApp({
     withDocs = true,
 }: BuildAppOptions) {
     const app = new Elysia();
+    const fixedTrustedOrigins = [
+        "https://dev-alfamed.vercel.app",
+        "https://web-alfamed.vercel.app",
+        "http://localhost:5137",
+    ];
     const trustedOrigins = (process.env.TRUSTED_ORIGINS ?? "")
         .split(",")
         .map((origin) => origin.trim())
         .filter(Boolean);
+    const allowedOrigins = Array.from(new Set([...fixedTrustedOrigins, ...trustedOrigins]));
 
     if (withDocs) {
         const { OpenAPI } = await import("./http/plugins/better-auth.js");
@@ -64,7 +70,7 @@ export async function buildApp({
         .use(authPlugin)
         .use(
             cors({
-                origin: trustedOrigins,
+                origin: allowedOrigins,
                 methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 credentials: true,
                 allowedHeaders: ["Content-Type", "Authorization", "x-unit-id"],
