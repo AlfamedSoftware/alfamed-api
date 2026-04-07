@@ -13,7 +13,14 @@ if (!betterAuthSecret) {
     throw new Error("BETTER_AUTH_SECRET is required. Set it in the environment variables for Vercel and local development.");
 }
 
+const fixedTrustedOrigins = [
+    "https://dev-alfamed.vercel.app",
+    "https://web-alfamed.vercel.app",
+    "http://localhost:5137",
+];
+
 const trustedOrigins = [
+    ...fixedTrustedOrigins,
     ...(process.env.TRUSTED_ORIGINS ?? "")
         .split(",")
         .map((origin) => origin.trim())
