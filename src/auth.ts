@@ -47,6 +47,11 @@ export const auth = betterAuth({
                 enabled: true,
                 maxAge: 60 * 5,
             }
+        },
+        defaultCookieAttributes: {
+            secure: true,
+            sameSite: "none",
+            httpOnly: true,
         }
     },
 });
