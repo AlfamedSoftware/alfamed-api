@@ -4,6 +4,7 @@ import type {
     UpdateProfessionalInput,
 } from "./professionals.repository";
 import { assertUserHasUnitAccess } from "@/http/plugins/unit-access";
+import { DomainError } from "@/http/plugins/domain-error";
 
 export class ProfessionalsService {
     constructor(
@@ -23,7 +24,7 @@ export class ProfessionalsService {
         const professional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
 
         if (!professional) {
-            throw new Error("Professional not found");
+            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
         }
 
         return professional;
@@ -46,13 +47,13 @@ export class ProfessionalsService {
         const existingProfessional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
 
         if (!existingProfessional) {
-            throw new Error("Professional not found");
+            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
         }
 
         const updatedProfessional = await this.professionalsRepository.update(professionalId, data);
 
         if (!updatedProfessional) {
-            throw new Error("Professional not found");
+            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
         }
 
         return updatedProfessional;
@@ -64,7 +65,7 @@ export class ProfessionalsService {
         const existingProfessional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
 
         if (!existingProfessional) {
-            throw new Error("Professional not found");
+            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
         }
 
         await this.professionalsRepository.delete(professionalId);

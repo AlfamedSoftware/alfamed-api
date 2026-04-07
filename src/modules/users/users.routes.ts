@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { getAuthenticatedUserId } from "@/http/plugins/unit-access";
 import type { UsersRepository } from "./users.repository";
 import { UsersService } from "./users.service";
 import { userProfileSchema } from "./users.schemas";
@@ -9,19 +10,21 @@ type UsersRoutesOptions = {
 
 export const usersRoutes = ({ usersRepository }: UsersRoutesOptions) => {
     const usersService = new UsersService(usersRepository);
+    const unauthorizedResponse = { message: "Unauthorized" } as const;
+    const forbiddenResponse = { message: "Forbidden" } as const;
 
     return new Elysia({ name: "users-routes", prefix: "/users" }).get(
         "/:id",
         async (context) => {
             const { params, status } = context;
-            const userId = (context as { user?: { id?: string } }).user?.id;
+            const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
 
             if (!userId) {
-                return status(401, { message: "Unauthorized" });
+                return status(401, unauthorizedResponse);
             }
 
             if (params.id !== userId) {
-                return status(403, { message: "Forbidden" });
+                return status(403, forbiddenResponse);
             }
 
             const user = await usersService.getUserById(userId);

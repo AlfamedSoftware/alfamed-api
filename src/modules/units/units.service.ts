@@ -1,4 +1,5 @@
 import { assertUserHasUnitAccess } from "@/http/plugins/unit-access";
+import { DomainError } from "@/http/plugins/domain-error";
 import type { UnitsRepository } from "./units.repository";
 
 export class UnitsService {
@@ -15,7 +16,7 @@ export class UnitsService {
         const unit = await this.unitsRepository.findById(unitId);
 
         if (!unit) {
-            throw new Error("Unit not found");
+            throw new DomainError("UNIT_NOT_FOUND", "Unit not found");
         }
 
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
@@ -27,7 +28,7 @@ export class UnitsService {
         const existing = await this.unitsRepository.findById(unitId);
 
         if (!existing) {
-            throw new Error("Unit not found");
+            throw new DomainError("UNIT_NOT_FOUND", "Unit not found");
         }
 
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
@@ -35,7 +36,7 @@ export class UnitsService {
         const unit = await this.unitsRepository.update(unitId, data);
 
         if (!unit) {
-            throw new Error("Unit not found");
+            throw new DomainError("UNIT_NOT_FOUND", "Unit not found");
         }
 
         return unit;
@@ -45,7 +46,7 @@ export class UnitsService {
         const existing = await this.unitsRepository.findById(unitId);
 
         if (!existing) {
-            throw new Error("Unit not found");
+            throw new DomainError("UNIT_NOT_FOUND", "Unit not found");
         }
 
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);

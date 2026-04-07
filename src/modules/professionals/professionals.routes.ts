@@ -1,9 +1,11 @@
 import { Elysia, t } from "elysia";
 import { z } from "zod";
 import {
-    getValidatedUnitIdFromRequest,
+    getAuthenticatedUserId,
+    getRequiredUnitIdFromRequest,
     invalidOrMissingUnitHeaderMessage,
 } from "@/http/plugins/unit-access";
+import { isDomainError } from "@/http/plugins/domain-error";
 import { isUniqueConstraintError } from "@/http/plugins/db-errors";
 import type { ProfessionalsRepository } from "./professionals.repository";
 import { ProfessionalsService } from "./professionals.service";
@@ -24,38 +26,55 @@ export const professionalsRoutes = ({
     hasUserAccessToUnitChecker,
 }: ProfessionalsRoutesOptions) => {
     const professionalsService = new ProfessionalsService(professionalsRepository, hasUserAccessToUnitChecker);
+    const resolveRequestScope = (context: { request: Request; user?: { id?: string } }) => {
+        const userId = getAuthenticatedUserId(context);
+
+        if (!userId) {
+            return { error: "unauthorized" as const };
+        }
+
+        try {
+            const unitId = getRequiredUnitIdFromRequest(context.request);
+
+            return { userId, unitId };
+        } catch {
+            return { error: "invalid_unit" as const };
+        }
+    };
 
     return new Elysia({ name: "professionals-routes", prefix: "/professionals" })
         .post(
             "/",
             async (context) => {
                 const { body, status } = context;
-                const userId = (context as { user?: { id?: string } }).user?.id;
+                const scope = resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
+                if ("error" in scope) {
+                    if (scope.error === "unauthorized") {
+                        return status(401, { message: "Unauthorized" });
+                    }
 
-                const unitId = getValidatedUnitIdFromRequest(context.request);
-
-                if (!unitId) {
                     return status(400, { message: invalidOrMissingUnitHeaderMessage });
                 }
 
                 try {
                     const createPayload = {
                         isActive: body.isActive,
-                        userId,
+                        userId: scope.userId,
                     };
-                    const professional = await professionalsService.createProfessional(userId, unitId, createPayload);
+                    const professional = await professionalsService.createProfessional(
+                        scope.userId,
+                        scope.unitId,
+                        createPayload,
+                    );
 
                     return status(201, professional);
                 } catch (error) {
-                    if (error instanceof Error && error.message === "Forbidden") {
-                        return status(403, { message: "Forbidden" });
-                    }
                     if (isUniqueConstraintError(error)) {
                         return status(409, { message: "Professional already exists for this user" });
+                    }
+                    if (isDomainError(error, "FORBIDDEN")) {
+                        return status(403, { message: "Forbidden" });
                     }
 
                     return status(500, { message: "Internal server error" });
@@ -83,24 +102,22 @@ export const professionalsRoutes = ({
             "/",
             async (context) => {
                 const { status } = context;
-                const userId = (context as { user?: { id?: string } }).user?.id;
+                const scope = resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
+                if ("error" in scope) {
+                    if (scope.error === "unauthorized") {
+                        return status(401, { message: "Unauthorized" });
+                    }
 
-                const unitId = getValidatedUnitIdFromRequest(context.request);
-
-                if (!unitId) {
                     return status(400, { message: invalidOrMissingUnitHeaderMessage });
                 }
 
                 try {
-                    const professionals = await professionalsService.listProfessionals(userId, unitId);
+                    const professionals = await professionalsService.listProfessionals(scope.userId, scope.unitId);
 
                     return status(200, professionals);
                 } catch (error) {
-                    if (error instanceof Error && error.message === "Forbidden") {
+                    if (isDomainError(error, "FORBIDDEN")) {
                         return status(403, { message: "Forbidden" });
                     }
 
@@ -127,32 +144,30 @@ export const professionalsRoutes = ({
             "/:id",
             async (context) => {
                 const { params, status } = context;
-                const userId = (context as { user?: { id?: string } }).user?.id;
+                const scope = resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
+                if ("error" in scope) {
+                    if (scope.error === "unauthorized") {
+                        return status(401, { message: "Unauthorized" });
+                    }
 
-                const unitId = getValidatedUnitIdFromRequest(context.request);
-
-                if (!unitId) {
                     return status(400, { message: invalidOrMissingUnitHeaderMessage });
                 }
 
                 try {
                     const professional = await professionalsService.getProfessionalById(
-                        userId,
+                        scope.userId,
                         params.id,
-                        unitId,
+                        scope.unitId,
                     );
 
                     return status(200, professional);
                 } catch (error) {
-                    if (error instanceof Error && error.message === "Professional not found") {
-                        return status(404, { message: "Professional not found" });
-                    }
-                    if (error instanceof Error && error.message === "Forbidden") {
+                    if (isDomainError(error, "FORBIDDEN")) {
                         return status(403, { message: "Forbidden" });
+                    }
+                    if (isDomainError(error, "PROFESSIONAL_NOT_FOUND")) {
+                        return status(404, { message: "Professional not found" });
                     }
 
                     return status(500, { message: "Internal server error" });
@@ -182,36 +197,34 @@ export const professionalsRoutes = ({
             "/:id",
             async (context) => {
                 const { params, body, status } = context;
-                const userId = (context as { user?: { id?: string } }).user?.id;
+                const scope = resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
+                if ("error" in scope) {
+                    if (scope.error === "unauthorized") {
+                        return status(401, { message: "Unauthorized" });
+                    }
 
-                const unitId = getValidatedUnitIdFromRequest(context.request);
-
-                if (!unitId) {
                     return status(400, { message: invalidOrMissingUnitHeaderMessage });
                 }
 
                 try {
                     const professional = await professionalsService.updateProfessional(
-                        userId,
+                        scope.userId,
                         params.id,
-                        unitId,
+                        scope.unitId,
                         body,
                     );
 
                     return status(200, professional);
                 } catch (error) {
-                    if (error instanceof Error && error.message === "Professional not found") {
-                        return status(404, { message: "Professional not found" });
-                    }
-                    if (error instanceof Error && error.message === "Forbidden") {
-                        return status(403, { message: "Forbidden" });
-                    }
                     if (isUniqueConstraintError(error)) {
                         return status(409, { message: "Professional already exists for this user" });
+                    }
+                    if (isDomainError(error, "FORBIDDEN")) {
+                        return status(403, { message: "Forbidden" });
+                    }
+                    if (isDomainError(error, "PROFESSIONAL_NOT_FOUND")) {
+                        return status(404, { message: "Professional not found" });
                     }
 
                     return status(500, { message: "Internal server error" });
@@ -243,28 +256,26 @@ export const professionalsRoutes = ({
             "/:id",
             async (context) => {
                 const { params, status } = context;
-                const userId = (context as { user?: { id?: string } }).user?.id;
+                const scope = resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
+                if ("error" in scope) {
+                    if (scope.error === "unauthorized") {
+                        return status(401, { message: "Unauthorized" });
+                    }
 
-                const unitId = getValidatedUnitIdFromRequest(context.request);
-
-                if (!unitId) {
                     return status(400, { message: invalidOrMissingUnitHeaderMessage });
                 }
 
                 try {
-                    await professionalsService.deleteProfessional(userId, params.id, unitId);
+                    await professionalsService.deleteProfessional(scope.userId, params.id, scope.unitId);
 
                     return status(200, { message: "Professional deleted" });
                 } catch (error) {
-                    if (error instanceof Error && error.message === "Professional not found") {
-                        return status(404, { message: "Professional not found" });
-                    }
-                    if (error instanceof Error && error.message === "Forbidden") {
+                    if (isDomainError(error, "FORBIDDEN")) {
                         return status(403, { message: "Forbidden" });
+                    }
+                    if (isDomainError(error, "PROFESSIONAL_NOT_FOUND")) {
+                        return status(404, { message: "Professional not found" });
                     }
 
                     return status(500, { message: "Internal server error" });

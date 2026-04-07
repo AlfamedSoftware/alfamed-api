@@ -259,4 +259,42 @@ describe("Units routes", () => {
         expect(response.status).toBe(200);
         expect(body).toMatchObject({ message: "Unit deleted" });
     });
+
+    it("DELETE /units/:id retorna 403 sem acesso", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(unitFixture),
+            accessMap: { [TEST_IDS.otherUser]: [TEST_IDS.unit] },
+        });
+
+        const response = await app.handle(
+            new Request(`http://localhost/units/${TEST_IDS.unit}`, {
+                method: "DELETE",
+                headers: {
+                    "x-user-id": TEST_IDS.user,
+                },
+            }),
+        );
+
+        expect(response.status).toBe(403);
+    });
+
+    it("DELETE /units/:id retorna 404 para unidade inexistente", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(),
+            accessMap,
+        });
+
+        const response = await app.handle(
+            new Request(`http://localhost/units/${TEST_IDS.missingUnit}`, {
+                method: "DELETE",
+                headers: {
+                    "x-user-id": TEST_IDS.user,
+                },
+            }),
+        );
+
+        expect(response.status).toBe(404);
+    });
 });

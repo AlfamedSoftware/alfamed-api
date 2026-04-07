@@ -1,4 +1,6 @@
 import { Elysia, t } from "elysia";
+import { getAuthenticatedUserId } from "@/http/plugins/unit-access";
+import { isDomainError } from "@/http/plugins/domain-error";
 import type { UnitsRepository } from "./units.repository";
 import { UnitsService } from "./units.service";
 import {
@@ -15,13 +17,15 @@ type UnitsRoutesOptions = {
 
 export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: UnitsRoutesOptions) => {
     const unitsService = new UnitsService(unitsRepository, hasUserAccessToUnitChecker);
+    const resolveAuthenticatedUser = (context: { user?: { id?: string } }) =>
+        getAuthenticatedUserId(context);
 
     return new Elysia({ name: "units-routes", prefix: "/units" })
         .post(
             "/",
             async (context) => {
                 const { body, status } = context;
-                const userId = (context as { user?: { id?: string } }).user?.id;
+                const userId = resolveAuthenticatedUser(context as { user?: { id?: string } });
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
@@ -60,7 +64,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             "/:id",
             async (context) => {
                 const { params, status } = context;
-                const userId = (context as { user?: { id?: string } }).user?.id;
+                const userId = resolveAuthenticatedUser(context as { user?: { id?: string } });
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
@@ -71,10 +75,10 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
 
                     return status(200, unit);
                 } catch (error) {
-                    if (error instanceof Error && error.message === "Forbidden") {
+                    if (isDomainError(error, "FORBIDDEN")) {
                         return status(403, { message: "Forbidden" });
                     }
-                    if (error instanceof Error && error.message === "Unit not found") {
+                    if (isDomainError(error, "UNIT_NOT_FOUND")) {
                         return status(404, { message: "Unit not found" });
                     }
 
@@ -104,7 +108,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             "/:id",
             async (context) => {
                 const { body, params, status } = context;
-                const userId = (context as { user?: { id?: string } }).user?.id;
+                const userId = resolveAuthenticatedUser(context as { user?: { id?: string } });
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
@@ -115,10 +119,10 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
 
                     return status(200, unit);
                 } catch (error) {
-                    if (error instanceof Error && error.message === "Forbidden") {
+                    if (isDomainError(error, "FORBIDDEN")) {
                         return status(403, { message: "Forbidden" });
                     }
-                    if (error instanceof Error && error.message === "Unit not found") {
+                    if (isDomainError(error, "UNIT_NOT_FOUND")) {
                         return status(404, { message: "Unit not found" });
                     }
 
@@ -150,7 +154,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             "/:id",
             async (context) => {
                 const { params, status } = context;
-                const userId = (context as { user?: { id?: string } }).user?.id;
+                const userId = resolveAuthenticatedUser(context as { user?: { id?: string } });
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
@@ -161,10 +165,10 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
 
                     return status(200, { message: "Unit deleted" });
                 } catch (error) {
-                    if (error instanceof Error && error.message === "Forbidden") {
+                    if (isDomainError(error, "FORBIDDEN")) {
                         return status(403, { message: "Forbidden" });
                     }
-                    if (error instanceof Error && error.message === "Unit not found") {
+                    if (isDomainError(error, "UNIT_NOT_FOUND")) {
                         return status(404, { message: "Unit not found" });
                     }
 

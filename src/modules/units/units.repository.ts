@@ -4,6 +4,7 @@ import type { db as dbType } from "@/db/client";
 import { units } from "@/db/schema/units";
 import { professionals } from "@/db/schema/professionals";
 import { professionalUnits } from "@/db/schema/professional-units";
+import { DomainError } from "@/http/plugins/domain-error";
 import {
     createUnitSchema,
     unitProfileSchema,
@@ -66,7 +67,7 @@ export class UnitsRepository {
                     .limit(1);
 
                 if (!professional) {
-                    throw new Error("Forbidden");
+                    throw new DomainError("FORBIDDEN", "Forbidden");
                 }
 
                 const [createdUnit] = await tx
