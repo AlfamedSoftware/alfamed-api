@@ -9,21 +9,37 @@ import { professionalsRoutes } from "./modules/professionals/professionals.route
 import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
 import type { PatientsRepository } from "./modules/patients/patients.repository.js";
+import { unitsRoutes } from "./modules/units/units.routes.js";
+import type { UnitsRepository } from "./modules/units/units.repository.js";
+import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
+import type { AppointmentsRepository } from "./modules/appointments/appointments.repository.js";
+import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
+import type { db as dbType } from "./db/client.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
+type DatabaseClient = typeof dbType;
+
 type BuildAppOptions = {
+    db: DatabaseClient;
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
     patientsRepository: PatientsRepository;
+    unitsRepository?: UnitsRepository;
+    appointmentsRepository?: AppointmentsRepository;
+    hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
     authPlugin: ElysiaPlugin;
     withDocs?: boolean;
 };
 
 export async function buildApp({
+    db,
     usersRepository,
     patientsRepository,
     professionalsRepository,
+    unitsRepository,
+    appointmentsRepository,
+    hasUserAccessToUnitChecker,
     authPlugin,
     withDocs = true,
 }: BuildAppOptions) {
@@ -46,6 +62,10 @@ export async function buildApp({
                             description: "Operations about users",
                         },
                         {
+                            name: "Units",
+                            description: "Operations about units",
+                        },
+                        {
                             name: "Professionals",
                             description: "Operations about professionals",
                         },
@@ -56,6 +76,10 @@ export async function buildApp({
                         {
                             name: "Better Auth",
                             description: "Authentication and session operations",
+                        },
+                        {
+                            name: "Appointments",
+                            description: "Scheduling and booking request operations",
                         },
                     ],
                     components: await OpenAPI.components,
@@ -79,9 +103,44 @@ export async function buildApp({
         .use(usersRoutes({ usersRepository }))
         .use(patientsRoutes({ patientsRepository }));
 
+    const resolvedHasUserAccessToUnitChecker =
+        hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
+
+    const configuredAppWithUnits = unitsRepository
+        ? configuredApp.use(
+              unitsRoutes({
+                  unitsRepository,
+                  hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+              }),
+          )
+        : configuredApp;
+
     if (!professionalsRepository) {
-        return configuredApp;
+        return appointmentsRepository
+            ? configuredAppWithUnits.use(
+                  appointmentsRoutes({
+                      appointmentsRepository,
+                      hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+                  }),
+              )
+            : configuredAppWithUnits;
     }
 
-    return configuredApp.use(professionalsRoutes({ professionalsRepository }));
+    const configuredAppWithProfessionals = configuredAppWithUnits.use(
+        professionalsRoutes({
+            professionalsRepository,
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+        }),
+    );
+
+    if (!appointmentsRepository) {
+        return configuredAppWithProfessionals;
+    }
+
+    return configuredAppWithProfessionals.use(
+        appointmentsRoutes({
+            appointmentsRepository,
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+        }),
+    );
 }
