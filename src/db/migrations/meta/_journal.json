@@ -78,6 +78,13 @@
       "when": 1773789734923,
       "tag": "0010_magenta_darkstar",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1775545394720,
+      "tag": "0011_clumsy_moondragon",
+      "breakpoints": true
     }
   ]
 }
