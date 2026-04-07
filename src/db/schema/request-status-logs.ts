@@ -1,6 +1,6 @@
 import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
-import { requests } from "./requests";
-import { users } from "./users";
+import { requests } from "./requests.js";
+import { users } from "./users.js";
 
 export const requestStatusLogs = pgTable("request_status_logs", {
     id: text("id").primaryKey(),
