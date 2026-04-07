@@ -1,13 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import type { z } from "zod";
-import type { db as dbType } from "@/db/client";
-import { professionalUnits } from "@/db/schema/professional-units";
-import { professionals } from "@/db/schema/professionals";
+import type { db as dbType } from "../../db/client.js";
+import { professionalUnits } from "../../db/schema/professional-units.js";
+import { professionals } from "../../db/schema/professionals.js";
 import {
     createProfessionalSchema,
     professionalProfileSchema,
     updateProfessionalSchema,
-} from "./professionals.schemas";
+} from "./professionals.schemas.js";
 
 export type ProfessionalProfile = z.infer<typeof professionalProfileSchema>;
 export type CreateProfessionalInput = z.infer<typeof createProfessionalSchema> & { userId: string };

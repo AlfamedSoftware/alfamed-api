@@ -1,11 +1,26 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI, twoFactor } from "better-auth/plugins";
-import { db } from "./db/client";
+import { compare, hash } from "bcryptjs";
+import { db } from "./db/client.js";
+import { trustedOrigins } from "./http/plugins/unit-access.js";
+
+const betterAuthSecret = process.env.BETTER_AUTH_SECRET;
+const betterAuthBaseUrl = process.env.BETTER_AUTH_BASE_URL;
+
+if (!betterAuthSecret) {
+    throw new Error("BETTER_AUTH_SECRET is required. Set it in the environment variables for Vercel and local development.");
+}
+
+if (!betterAuthBaseUrl) {
+    throw new Error("BETTER_AUTH_BASE_URL is required. Set it in the environment variables for Vercel and local development.");
+}
 
 export const auth = betterAuth({
     basePath: "/auth",
-    trustedOrigins: ["http://localhost:5173"],
+    baseURL: betterAuthBaseUrl,
+    secret: betterAuthSecret,
+    trustedOrigins,
     plugins: [
         openAPI(),
         twoFactor()
@@ -18,8 +33,8 @@ export const auth = betterAuth({
         enabled: true,
         autoSignIn: true,
         password: {
-            hash: (password: string) => Bun.password.hash(password),
-            verify: ({ password, hash }) => Bun.password.verify(password, hash)
+            hash: (password: string) => hash(password, 12),
+            verify: ({ password, hash: hashedPassword }) => compare(password, hashedPassword),
         },
     },
     advanced: {

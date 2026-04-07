@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
-import type { UsersRepository } from "./users.repository";
-import { UsersService } from "./users.service";
-import { userProfileSchema } from "./users.schemas";
+import type { UsersRepository } from "./users.repository.js";
+import { UsersService } from "./users.service.js";
+import { userProfileSchema } from "./users.schemas.js";
 
 type UsersRoutesOptions = {
     usersRepository: UsersRepository;

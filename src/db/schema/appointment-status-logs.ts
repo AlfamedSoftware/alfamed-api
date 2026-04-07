@@ -1,11 +1,11 @@
 import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
-import { randomUUIDv7 } from "bun";
-import { appointments } from "./appointments";
-import { users } from "./users";
-import { appointmentsStatus } from "./appointments-status";
+import { randomUUID } from "node:crypto";
+import { appointments } from "./appointments.js";
+import { users } from "./users.js";
+import { appointmentsStatus } from "./appointments-status.js";
 
 export const appointmentStatusLogs = pgTable("appointment_status_logs", {
-    id: text("id").primaryKey().$defaultFn(() => randomUUIDv7()),
+    id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     appointmentId: text("appointment_id")
         .notNull()
         .references(() => appointments.id, { onDelete: "cascade" }),

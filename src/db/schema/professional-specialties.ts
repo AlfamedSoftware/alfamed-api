@@ -1,13 +1,13 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
-import { professionals } from "./professionals";
-import { specialties } from "./specialties";
-import { randomUUIDv7 } from "bun";
+import { professionals } from "./professionals.js";
+import { specialties } from "./specialties.js";
+import { randomUUID } from "node:crypto";
 
 export const professionalSpecialties = pgTable(
     "professional_specialties",
     {
-        id: text("id").primaryKey().$defaultFn(() => randomUUIDv7()),
+        id: text("id").primaryKey().$defaultFn(() => randomUUID()),
         professionalId: text("professional_id")
             .notNull()
             .references(() => professionals.id, { onDelete: "cascade" }),
