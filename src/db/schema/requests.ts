@@ -1,6 +1,6 @@
 import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
-import { appointments } from "./appointments";
-import { requestsStatus } from "./requests-status";
+import { appointments } from "./appointments.js";
+import { requestsStatus } from "./requests-status.js";
 
 export const requests = pgTable("requests", {
     id: text("id").primaryKey(),
