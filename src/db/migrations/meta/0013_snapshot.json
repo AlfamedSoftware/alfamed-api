@@ -1,6 +1,6 @@
 {
-  "id": "c4c5d006-9b35-4ef4-b51b-c6451d75ad63",
-  "prevId": "9e202285-9b24-4e3e-b0d5-405a1d6e2841",
+  "id": "2bc848d6-b000-4a43-b8ce-b4f90e6fc8f2",
+  "prevId": "8260ffe1-bd2a-4c4d-9db7-1279989e0b75",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -796,7 +796,34 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "request_status_logs_request_id_requests_id_fk": {
+          "name": "request_status_logs_request_id_requests_id_fk",
+          "tableFrom": "request_status_logs",
+          "tableTo": "requests",
+          "columnsFrom": [
+            "request_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "request_status_logs_changed_by_users_id_fk": {
+          "name": "request_status_logs_changed_by_users_id_fk",
+          "tableFrom": "request_status_logs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "changed_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -854,7 +881,21 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "requests_appointment_id_appointments_id_fk": {
+          "name": "requests_appointment_id_appointments_id_fk",
+          "tableFrom": "requests",
+          "tableTo": "appointments",
+          "columnsFrom": [
+            "appointment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -912,7 +953,34 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "requests_procedures_request_id_requests_id_fk": {
+          "name": "requests_procedures_request_id_requests_id_fk",
+          "tableFrom": "requests_procedures",
+          "tableTo": "requests",
+          "columnsFrom": [
+            "request_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "requests_procedures_procedure_id_procedures_id_fk": {
+          "name": "requests_procedures_procedure_id_procedures_id_fk",
+          "tableFrom": "requests_procedures",
+          "tableTo": "procedures",
+          "columnsFrom": [
+            "procedure_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -977,7 +1045,34 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "requests_procedures_outcomes_request_procedure_id_requests_procedures_id_fk": {
+          "name": "requests_procedures_outcomes_request_procedure_id_requests_procedures_id_fk",
+          "tableFrom": "requests_procedures_outcomes",
+          "tableTo": "requests_procedures",
+          "columnsFrom": [
+            "request_procedure_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "requests_procedures_outcomes_professional_id_professionals_id_fk": {
+          "name": "requests_procedures_outcomes_professional_id_professionals_id_fk",
+          "tableFrom": "requests_procedures_outcomes",
+          "tableTo": "professionals",
+          "columnsFrom": [
+            "professional_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1406,12 +1501,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "social_name": {
-          "name": "social_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "cpf": {
           "name": "cpf",

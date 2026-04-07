@@ -1,6 +1,6 @@
 {
-  "id": "c4c5d006-9b35-4ef4-b51b-c6451d75ad63",
-  "prevId": "9e202285-9b24-4e3e-b0d5-405a1d6e2841",
+  "id": "8260ffe1-bd2a-4c4d-9db7-1279989e0b75",
+  "prevId": "c4c5d006-9b35-4ef4-b51b-c6451d75ad63",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1406,12 +1406,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "social_name": {
-          "name": "social_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "cpf": {
           "name": "cpf",
