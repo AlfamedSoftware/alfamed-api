@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { UsersService } from "@/modules/users/users.service";
-import type { UserProfile, UsersRepository } from "@/modules/users/users.repository";
+import { UsersService } from "../../src/modules/users/users.service";
+import type { UserProfile, UsersRepository } from "../../src/modules/users/users.repository";
 
 class InMemoryUsersRepository implements UsersRepository {
     constructor(private readonly users: Record<string, UserProfile> = {}) {}

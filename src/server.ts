@@ -3,6 +3,7 @@ import { db } from "./db/client.js";
 import { UsersRepository } from "./modules/users/users.repository.js";
 import { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
 import { PatientsRepository } from "./modules/patients/patients.repository.js";
+import { SpecialtiesRepository } from "./modules/specialties/specialties.repository.js";
 import { UnitsRepository } from "./modules/units/units.repository.js";
 import { AppointmentsRepository } from "./modules/appointments/appointments.repository.js";
 import { betterAuthPlugin } from "./http/plugins/better-auth.js";
@@ -10,6 +11,7 @@ import { betterAuthPlugin } from "./http/plugins/better-auth.js";
 const usersRepository = new UsersRepository(db);
 const professionalsRepository = new ProfessionalsRepository(db);
 const patientsRepository = new PatientsRepository(db);
+const specialtiesRepository = new SpecialtiesRepository(db);
 const unitsRepository = new UnitsRepository(db);
 const appointmentsRepository = new AppointmentsRepository(db);
 const app = await buildApp({
@@ -17,6 +19,7 @@ const app = await buildApp({
     usersRepository,
     professionalsRepository,
     patientsRepository,
+    specialtiesRepository,
     unitsRepository,
     appointmentsRepository,
     authPlugin: betterAuthPlugin,

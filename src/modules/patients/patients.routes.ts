@@ -1,7 +1,9 @@
 import { Elysia, t } from "elysia";
+import { isDomainError } from "../../http/plugins/domain-error.js";
+import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
 import type { PatientsRepository } from "./patients.repository.js";
 import { PatientsService } from "./patients.service.js";
-import { patientResponseSchema, createPatientSchema } from "./patients.schemas.js";
+import { patientProfileSchema, patientsErrorSchema } from "./patients.schemas.js";
 
 type PatientsRoutesOptions = {
     patientsRepository: PatientsRepository;
@@ -12,34 +14,38 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
 
     return new Elysia({ name: "patients-routes", prefix: "/patients" })
         .post(
-            "/createPatient",
+            "/",
             async (context) => {
-                const { body, status } = context;
+                const { status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
 
                 try {
-                    const patient = await patientsService.createPatient(body.userId);
-                    return status(201, patient as any);
+                    const patient = await patientsService.createPatient(userId);
+                    return status(201, patient);
                 } catch (error) {
-                    const message = error instanceof Error ? error.message : "Failed to create patient";
-
-                    if (message.includes("already exists")) {
+                    if (isDomainError(error, "PATIENT_ALREADY_EXISTS")) {
                         return status(409, { message: "Patient already exists for this user" });
                     }
 
-                    return status(400, { message });
+                    return status(500, { message: "Internal server error" });
                 }
             },
             {
-                body: createPatientSchema,
+                auth: true,
                 detail: {
-                    summary: "Link a user to patient",
-                    description: "Creates a patient record for an existing user, identifying them as a patient in the system.",
+                    summary: "Create current user patient profile",
+                    description: "Creates a patient profile linked to the authenticated user.",
                     tags: ["Patients"],
                 },
                 response: {
-                    201: patientResponseSchema,
-                    400: t.Object({ message: t.String() }),
+                    201: patientProfileSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
                     409: t.Object({ message: t.Literal("Patient already exists for this user") }),
+                    500: patientsErrorSchema,
                 },
             },
         )
@@ -47,49 +53,74 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
             "/:patientId",
             async (context) => {
                 const { params, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
 
-                const patient = await patientsService.getPatientById(params.patientId);
-
-                if (!patient) {
-                    return status(404, { message: "Patient not found" });
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
                 }
 
-                return status(200, patient as any);
+                try {
+                    const patient = await patientsService.getPatientById(params.patientId);
+                    if (patient.userId !== userId) {
+                        return status(403, { message: "Forbidden" });
+                    }
+                    return status(200, patient);
+                } catch (error) {
+                    if (isDomainError(error, "PATIENT_NOT_FOUND")) {
+                        return status(404, { message: "Patient not found" });
+                    }
+                    return status(500, { message: "Internal server error" });
+                }
             },
             {
+                auth: true,
+                params: t.Object({
+                    patientId: t.String({ format: "uuid" }),
+                }),
                 detail: {
-                    summary: "Get patient by id",
-                    description: "Returns patient details by patient id.",
+                    summary: "Get own patient by id",
+                    description: "Returns patient details by id when owned by the authenticated user.",
                     tags: ["Patients"],
                 },
                 response: {
-                    200: patientResponseSchema,
+                    200: patientProfileSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Patient not found") }),
+                    500: patientsErrorSchema,
                 },
             },
         )
         .get(
-            "/user/:userId",
+            "/me",
             async (context) => {
-                const { params, status } = context;
+                const { status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
 
-                const patient = await patientsService.getPatientByUserId(params.userId);
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                const patient = await patientsService.getPatientByUserId(userId);
 
                 if (!patient) {
                     return status(404, { message: "Patient not found" });
                 }
 
-                return status(200, patient as any);
+                return status(200, patient);
             },
             {
+                auth: true,
                 detail: {
-                    summary: "Get patient by user id",
-                    description: "Returns patient details associated with a specific user.",
+                    summary: "Get current user patient profile",
+                    description: "Returns the patient profile for the authenticated user.",
                     tags: ["Patients"],
                 },
                 response: {
-                    200: patientResponseSchema,
+                    200: patientProfileSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
                     404: t.Object({ message: t.Literal("Patient not found") }),
+                    500: patientsErrorSchema,
                 },
             },
         );

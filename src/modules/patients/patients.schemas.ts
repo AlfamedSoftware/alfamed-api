@@ -1,21 +1,13 @@
-import { t } from "elysia";
+import { z } from "zod";
 
-export const patientSchema = t.Object({
-    id: t.String(),
-    userId: t.String(),
-    isActive: t.Boolean(),
-    createdAt: t.Date(),
-    updatedAt: t.Date(),
+export const patientProfileSchema = z.object({
+    id: z.string().uuid(),
+    userId: z.string().uuid(),
+    isActive: z.boolean(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
 });
 
-export const createPatientSchema = t.Object({
-    userId: t.String(),
-});
-
-export const patientResponseSchema = t.Object({
-    id: t.String(),
-    userId: t.String(),
-    isActive: t.Boolean(),
-    createdAt: t.Date(),
-    updatedAt: t.Date(),
+export const patientsErrorSchema = z.object({
+    message: z.string().min(1),
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { appointmentRequestProfileSchema, scheduleProfileSchema } from "@/modules/appointments/appointments.schemas";
-import { DomainError } from "@/http/plugins/domain-error";
+import { appointmentRequestProfileSchema, scheduleProfileSchema } from "../../src/modules/appointments/appointments.schemas";
+import { DomainError } from "../../src/http/plugins/domain-error";
 import { buildE2EApp, TEST_IDS } from "./helpers/context";
 import { InMemoryAppointmentsRepository, InMemoryUsersRepository } from "./helpers/repositories";
 
