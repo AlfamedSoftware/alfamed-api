@@ -4,45 +4,34 @@ import type {
     UpdateProfessionalInput,
 } from "./professionals.repository.js";
 import { assertUserHasUnitAccess } from "../../http/plugins/unit-access.js";
+import { DomainError } from "../../http/plugins/domain-error.js";
 
 export class ProfessionalsService {
-    constructor(private readonly professionalsRepository: ProfessionalsRepository) {}
+    constructor(
+        private readonly professionalsRepository: ProfessionalsRepository,
+        private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
+    ) {}
 
     async createProfessional(requestUserId: string, unitId: string, data: CreateProfessionalInput) {
-        await assertUserHasUnitAccess(
-            requestUserId,
-            unitId,
-            (userId, selectedUnitId) =>
-                this.professionalsRepository.hasUserAccessToUnit(userId, selectedUnitId),
-        );
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         return this.professionalsRepository.createWithUnit(data, unitId);
     }
 
     async getProfessionalById(requestUserId: string, professionalId: string, unitId: string) {
-        await assertUserHasUnitAccess(
-            requestUserId,
-            unitId,
-            (userId, selectedUnitId) =>
-                this.professionalsRepository.hasUserAccessToUnit(userId, selectedUnitId),
-        );
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         const professional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
 
         if (!professional) {
-            throw new Error("Professional not found");
+            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
         }
 
         return professional;
     }
 
     async listProfessionals(requestUserId: string, unitId: string) {
-        await assertUserHasUnitAccess(
-            requestUserId,
-            unitId,
-            (userId, selectedUnitId) =>
-                this.professionalsRepository.hasUserAccessToUnit(userId, selectedUnitId),
-        );
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         return this.professionalsRepository.listByUnit(unitId);
     }
@@ -53,40 +42,30 @@ export class ProfessionalsService {
         unitId: string,
         data: UpdateProfessionalInput,
     ) {
-        await assertUserHasUnitAccess(
-            requestUserId,
-            unitId,
-            (userId, selectedUnitId) =>
-                this.professionalsRepository.hasUserAccessToUnit(userId, selectedUnitId),
-        );
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         const existingProfessional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
 
         if (!existingProfessional) {
-            throw new Error("Professional not found");
+            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
         }
 
         const updatedProfessional = await this.professionalsRepository.update(professionalId, data);
 
         if (!updatedProfessional) {
-            throw new Error("Professional not found");
+            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
         }
 
         return updatedProfessional;
     }
 
     async deleteProfessional(requestUserId: string, professionalId: string, unitId: string) {
-        await assertUserHasUnitAccess(
-            requestUserId,
-            unitId,
-            (userId, selectedUnitId) =>
-                this.professionalsRepository.hasUserAccessToUnit(userId, selectedUnitId),
-        );
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         const existingProfessional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
 
         if (!existingProfessional) {
-            throw new Error("Professional not found");
+            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
         }
 
         await this.professionalsRepository.delete(professionalId);

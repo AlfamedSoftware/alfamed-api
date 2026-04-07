@@ -7,19 +7,31 @@ import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
 import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
+import { unitsRoutes } from "./modules/units/units.routes.js";
+import type { UnitsRepository } from "./modules/units/units.repository.js";
+import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
+import type { db as dbType } from "./db/client.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
+type DatabaseClient = typeof dbType;
+
 type BuildAppOptions = {
+    db: DatabaseClient;
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
+    unitsRepository?: UnitsRepository;
+    hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
     authPlugin: ElysiaPlugin;
     withDocs?: boolean;
 };
 
 export async function buildApp({
+    db,
     usersRepository,
     professionalsRepository,
+    unitsRepository,
+    hasUserAccessToUnitChecker,
     authPlugin,
     withDocs = true,
 }: BuildAppOptions) {
@@ -40,6 +52,10 @@ export async function buildApp({
                         {
                             name: "Users",
                             description: "Operations about users",
+                        },
+                        {
+                            name: "Units",
+                            description: "Operations about units",
                         },
                         {
                             name: "Professionals",
@@ -70,9 +86,26 @@ export async function buildApp({
         .use(systemRoutes())
         .use(usersRoutes({ usersRepository }));
 
+    const resolvedHasUserAccessToUnitChecker =
+        hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
+
+    const configuredAppWithUnits = unitsRepository
+        ? configuredApp.use(
+              unitsRoutes({
+                  unitsRepository,
+                  hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+              }),
+          )
+        : configuredApp;
+
     if (!professionalsRepository) {
-        return configuredApp;
+        return configuredAppWithUnits;
     }
 
-    return configuredApp.use(professionalsRoutes({ professionalsRepository }));
+    return configuredAppWithUnits.use(
+        professionalsRoutes({
+            professionalsRepository,
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+        }),
+    );
 }
