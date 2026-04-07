@@ -23,6 +23,10 @@ export async function buildApp({
     withDocs = true,
 }: BuildAppOptions) {
     const app = new Elysia();
+    const trustedOrigins = (process.env.TRUSTED_ORIGINS ?? "")
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean);
 
     if (withDocs) {
         const { OpenAPI } = await import("./http/plugins/better-auth.js");
@@ -60,7 +64,7 @@ export async function buildApp({
         .use(authPlugin)
         .use(
             cors({
-                origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+                origin: trustedOrigins,
                 methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 credentials: true,
                 allowedHeaders: ["Content-Type", "Authorization", "x-unit-id"],

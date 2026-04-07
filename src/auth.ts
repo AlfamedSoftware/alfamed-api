@@ -14,11 +14,10 @@ if (!betterAuthSecret) {
 }
 
 const trustedOrigins = [
-    ...(process.env.TRUSTED_ORIGINS ?? process.env.CORS_ORIGIN ?? "http://localhost:5173")
+    ...(process.env.TRUSTED_ORIGINS ?? "")
         .split(",")
         .map((origin) => origin.trim())
         .filter(Boolean),
-    ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
 ];
 
 export const auth = betterAuth({
