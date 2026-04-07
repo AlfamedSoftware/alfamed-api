@@ -3,6 +3,7 @@ import { db } from "../src/db/client.js";
 import { betterAuthPlugin } from "../src/http/plugins/better-auth.js";
 import { ProfessionalsRepository } from "../src/modules/professionals/professionals.repository.js";
 import { UsersRepository } from "../src/modules/users/users.repository.js";
+import { PatientsRepository } from "../src/modules/patients/patients.repository.js";
 
 type ServerlessRequest = {
 	method?: string;
@@ -21,10 +22,12 @@ type ServerlessResponse = {
 
 const usersRepository = new UsersRepository(db);
 const professionalsRepository = new ProfessionalsRepository(db);
+const patientsRepository = new PatientsRepository(db);
 
 const appPromise = buildApp({
 	usersRepository,
 	professionalsRepository,
+	patientsRepository,
 	authPlugin: betterAuthPlugin,
 	withDocs: true,
 });

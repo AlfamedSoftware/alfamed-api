@@ -7,6 +7,8 @@ import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
 import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
+import { patientsRoutes } from "./modules/patients/patients.routes.js";
+import type { PatientsRepository } from "./modules/patients/patients.repository.js";
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
 import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
@@ -22,6 +24,7 @@ type BuildAppOptions = {
     db: DatabaseClient;
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
+    patientsRepository: PatientsRepository;
     unitsRepository?: UnitsRepository;
     appointmentsRepository?: AppointmentsRepository;
     hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
@@ -32,6 +35,7 @@ type BuildAppOptions = {
 export async function buildApp({
     db,
     usersRepository,
+    patientsRepository,
     professionalsRepository,
     unitsRepository,
     appointmentsRepository,
@@ -66,6 +70,10 @@ export async function buildApp({
                             description: "Operations about professionals",
                         },
                         {
+                            name: "Patients",
+                            description: "Operations about patients",
+                        },
+                        {
                             name: "Better Auth",
                             description: "Authentication and session operations",
                         },
@@ -92,7 +100,8 @@ export async function buildApp({
             }),
         )
         .use(systemRoutes())
-        .use(usersRoutes({ usersRepository }));
+        .use(usersRoutes({ usersRepository }))
+        .use(patientsRoutes({ patientsRepository }));
 
     const resolvedHasUserAccessToUnitChecker =
         hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
