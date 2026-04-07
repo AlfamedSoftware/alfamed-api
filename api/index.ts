@@ -1,8 +1,8 @@
-import { buildApp } from "../src/app";
-import { db } from "../src/db/client";
-import { betterAuthPlugin } from "../src/http/plugins/better-auth";
-import { ProfessionalsRepository } from "../src/modules/professionals/professionals.repository";
-import { UsersRepository } from "../src/modules/users/users.repository";
+import { buildApp } from "../src/app.js";
+import { db } from "../src/db/client.js";
+import { betterAuthPlugin } from "../src/http/plugins/better-auth.js";
+import { ProfessionalsRepository } from "../src/modules/professionals/professionals.repository.js";
+import { UsersRepository } from "../src/modules/users/users.repository.js";
 
 type ServerlessRequest = {
 	method?: string;
