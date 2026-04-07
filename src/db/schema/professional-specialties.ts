@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
-import { professionals } from "./professionals";
-import { specialties } from "./specialties";
+import { professionals } from "./professionals.js";
+import { specialties } from "./specialties.js";
 import { randomUUID } from "node:crypto";
 
 export const professionalSpecialties = pgTable(

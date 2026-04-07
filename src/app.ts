@@ -1,11 +1,11 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
-import { systemRoutes } from "./http/routes/system.routes";
-import { usersRoutes } from "./modules/users/users.routes";
-import type { UsersRepository } from "./modules/users/users.repository";
-import { professionalsRoutes } from "./modules/professionals/professionals.routes";
-import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository";
+import { systemRoutes } from "./http/routes/system.routes.js";
+import { usersRoutes } from "./modules/users/users.routes.js";
+import type { UsersRepository } from "./modules/users/users.repository.js";
+import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
+import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -25,7 +25,7 @@ export async function buildApp({
     const app = new Elysia();
 
     if (withDocs) {
-        const { OpenAPI } = await import("./http/plugins/better-auth");
+        const { OpenAPI } = await import("./http/plugins/better-auth.js");
 
         app.use(
             openapi({

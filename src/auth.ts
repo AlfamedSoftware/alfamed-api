@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI, twoFactor } from "better-auth/plugins";
 import { compare, hash } from "bcryptjs";
-import { db } from "./db/client";
+import { db } from "./db/client.js";
 
 const trustedOrigins = [
     ...(process.env.TRUSTED_ORIGINS ?? process.env.CORS_ORIGIN ?? "http://localhost:5173")

@@ -1,8 +1,8 @@
-import { buildApp } from "./app";
-import { db } from "./db/client";
-import { UsersRepository } from "./modules/users/users.repository";
-import { ProfessionalsRepository } from "./modules/professionals/professionals.repository";
-import { betterAuthPlugin } from "./http/plugins/better-auth";
+import { buildApp } from "./app.js";
+import { db } from "./db/client.js";
+import { UsersRepository } from "./modules/users/users.repository.js";
+import { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
+import { betterAuthPlugin } from "./http/plugins/better-auth.js";
 
 const usersRepository = new UsersRepository(db);
 const professionalsRepository = new ProfessionalsRepository(db);

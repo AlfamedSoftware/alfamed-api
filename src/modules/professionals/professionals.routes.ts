@@ -3,16 +3,16 @@ import { z } from "zod";
 import {
     getValidatedUnitIdFromRequest,
     invalidOrMissingUnitHeaderMessage,
-} from "../../http/plugins/unit-access";
-import { isUniqueConstraintError } from "../../http/plugins/db-errors";
-import type { ProfessionalsRepository } from "./professionals.repository";
-import { ProfessionalsService } from "./professionals.service";
+} from "../../http/plugins/unit-access.js";
+import { isUniqueConstraintError } from "../../http/plugins/db-errors.js";
+import type { ProfessionalsRepository } from "./professionals.repository.js";
+import { ProfessionalsService } from "./professionals.service.js";
 import {
     createProfessionalSchema,
     professionalProfileSchema,
     professionalsErrorSchema,
     updateProfessionalSchema,
-} from "./professionals.schemas";
+} from "./professionals.schemas.js";
 
 type ProfessionalsRoutesOptions = {
     professionalsRepository: ProfessionalsRepository;

@@ -1,8 +1,8 @@
 import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { randomUUID } from "node:crypto";
-import { appointments } from "./appointments";
-import { users } from "./users";
-import { appointmentsStatus } from "./appointments-status";
+import { appointments } from "./appointments.js";
+import { users } from "./users.js";
+import { appointmentsStatus } from "./appointments-status.js";
 
 export const appointmentStatusLogs = pgTable("appointment_status_logs", {
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),

@@ -1,6 +1,6 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text } from "drizzle-orm/pg-core";
-import { users } from "./users";
+import { users } from "./users.js";
 import { randomUUID } from "node:crypto";
 
 export const twoFactor = pgTable("two_factor", {

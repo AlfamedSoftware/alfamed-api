@@ -1,9 +1,9 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
-import { sessions } from "./sessions";
-import { accounts } from "./accounts";
-import { twoFactor } from "./two-factor";
-import { professionals } from "./professionals";
+import { sessions } from "./sessions.js";
+import { accounts } from "./accounts.js";
+import { twoFactor } from "./two-factor.js";
+import { professionals } from "./professionals.js";
 import { randomUUID } from "node:crypto";
 
 export const sexEnum = pgEnum("sex", ["M", "F"]);

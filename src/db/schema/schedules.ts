@@ -1,7 +1,7 @@
 import { pgTable, text, integer, date, time, boolean, timestamp } from "drizzle-orm/pg-core";
 import { randomUUID } from "node:crypto";
-import { professionalSpecialties } from "./professional-specialties";
-import { professionalUnits } from "./professional-units";
+import { professionalSpecialties } from "./professional-specialties.js";
+import { professionalUnits } from "./professional-units.js";
 
 export const schedules = pgTable("schedules", {
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),
