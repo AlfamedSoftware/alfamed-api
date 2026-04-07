@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { professionalProfileSchema } from "@/modules/professionals/professionals.schemas";
+import { professionalProfileSchema } from "../../src/modules/professionals/professionals.schemas";
 import { buildE2EApp, TEST_IDS } from "./helpers/context";
 import { InMemoryProfessionalsRepository, InMemoryUsersRepository } from "./helpers/repositories";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { userProfileSchema } from "@/modules/users/users.schemas";
+import { userProfileSchema } from "../../src/modules/users/users.schemas";
 import {
     buildE2EApp,
     fakeAuthWithoutUserPlugin,

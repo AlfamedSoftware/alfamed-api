@@ -1,16 +1,16 @@
-import type { UserProfile, UsersRepository } from "@/modules/users/users.repository";
+import type { UserProfile, UsersRepository } from "../../../src/modules/users/users.repository";
 import type {
     CreateProfessionalInput,
     ProfessionalProfile,
     ProfessionalsRepository,
     UpdateProfessionalInput,
-} from "@/modules/professionals/professionals.repository";
+} from "../../../src/modules/professionals/professionals.repository";
 import type {
     CreateUnitInput,
     UnitProfile,
     UnitsRepository,
     UpdateUnitInput,
-} from "@/modules/units/units.repository";
+} from "../../../src/modules/units/units.repository";
 import type {
     AppointmentRequestProfile,
     AppointmentsRepository,
@@ -18,14 +18,62 @@ import type {
     CreateScheduleInput,
     ScheduleProfile,
     UpdateScheduleInput,
-} from "@/modules/appointments/appointments.repository";
-import { DomainError } from "@/http/plugins/domain-error";
+} from "../../../src/modules/appointments/appointments.repository";
+import type { Patient, PatientsRepository } from "../../../src/modules/patients/patients.repository";
+import type {
+    CreateSpecialtyInput,
+    SpecialtiesRepository,
+    SpecialtyProfile,
+    UpdateSpecialtyInput,
+} from "../../../src/modules/specialties/specialties.repository";
+import { DomainError } from "../../../src/http/plugins/domain-error";
 
 export class InMemoryUsersRepository implements UsersRepository {
     constructor(private readonly users: Record<string, UserProfile> = {}) {}
 
     async getUserById(userId: string): Promise<UserProfile | null> {
         return this.users[userId] ?? null;
+    }
+}
+
+export class InMemoryPatientsRepository implements PatientsRepository {
+    private readonly patients: Record<string, Patient>;
+    private sequence = 1;
+
+    constructor(initialPatients: Record<string, Patient> = {}) {
+        this.patients = { ...initialPatients };
+    }
+
+    async createPatient(userId: string): Promise<Patient> {
+        const now = new Date().toISOString();
+        const id = `019c1a3e-e425-7000-8bda-cdfec32c7f${String(this.sequence).padStart(2, "0")}`;
+        this.sequence += 1;
+
+        const patient: Patient = {
+            id,
+            userId,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        this.patients[id] = patient;
+        return patient;
+    }
+
+    async getPatientByUserId(userId: string): Promise<Patient | null> {
+        for (const patientId in this.patients) {
+            const patient = this.patients[patientId] as Patient & { userId: string };
+            if (patient.userId === userId) {
+                return patient as Patient;
+            }
+        }
+
+        return null;
+    }
+
+    async getPatientById(patientId: string): Promise<Patient | null> {
+        return this.patients[patientId] ?? null;
     }
 }
 
@@ -440,5 +488,128 @@ export class InMemoryAppointmentsRepository implements AppointmentsRepository {
         fromSchedule.slotsUsed = Math.max(0, fromSchedule.slotsUsed - 1);
         toSchedule.slotsUsed += 1;
         this.appointmentSchedules[args.appointmentId] = args.toScheduleId;
+    }
+}
+
+export class InMemorySpecialtiesRepository implements SpecialtiesRepository {
+    private readonly specialties: Record<string, SpecialtyProfile>;
+    private readonly professionalUnitByProfessionalId: Record<string, string>;
+    private readonly links = new Set<string>();
+    private sequence = 1;
+
+    constructor(args?: {
+        specialties?: Record<string, SpecialtyProfile>;
+        professionalUnitByProfessionalId?: Record<string, string>;
+        links?: Array<{ professionalId: string; specialtyId: string }>;
+    }) {
+        this.specialties = { ...(args?.specialties ?? {}) };
+        this.professionalUnitByProfessionalId = { ...(args?.professionalUnitByProfessionalId ?? {}) };
+        args?.links?.forEach((item) => this.links.add(`${item.professionalId}:${item.specialtyId}`));
+    }
+
+    async create(data: CreateSpecialtyInput): Promise<SpecialtyProfile> {
+        const now = new Date().toISOString();
+        const id = `019c1a3e-e425-7000-8bda-cdfec32e1f${String(this.sequence).padStart(2, "0")}`;
+        this.sequence += 1;
+
+        const exists = Object.values(this.specialties).some(
+            (specialty) => specialty.name.toLowerCase() === data.name.toLowerCase(),
+        );
+
+        if (exists) {
+            const error = new Error("duplicate") as Error & { code?: string };
+            error.code = "23505";
+            throw error;
+        }
+
+        const specialty: SpecialtyProfile = {
+            id,
+            name: data.name,
+            isActive: data.isActive ?? true,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        this.specialties[id] = specialty;
+        return specialty;
+    }
+
+    async findById(specialtyId: string): Promise<SpecialtyProfile | null> {
+        return this.specialties[specialtyId] ?? null;
+    }
+
+    async list(): Promise<SpecialtyProfile[]> {
+        return Object.values(this.specialties);
+    }
+
+    async update(specialtyId: string, data: UpdateSpecialtyInput): Promise<SpecialtyProfile | null> {
+        const current = this.specialties[specialtyId];
+
+        if (!current) {
+            return null;
+        }
+
+        if (data.name) {
+            const exists = Object.values(this.specialties).some(
+                (specialty) =>
+                    specialty.id !== specialtyId && specialty.name.toLowerCase() === data.name?.toLowerCase(),
+            );
+            if (exists) {
+                const error = new Error("duplicate") as Error & { code?: string };
+                error.code = "23505";
+                throw error;
+            }
+        }
+
+        const updated: SpecialtyProfile = {
+            ...current,
+            name: data.name ?? current.name,
+            isActive: data.isActive ?? current.isActive,
+            updatedAt: new Date().toISOString(),
+        };
+
+        this.specialties[specialtyId] = updated;
+        return updated;
+    }
+
+    async delete(specialtyId: string): Promise<void> {
+        delete this.specialties[specialtyId];
+    }
+
+    async findProfessionalByIdAndUnit(professionalId: string, unitId: string): Promise<{ id: string } | null> {
+        return this.professionalUnitByProfessionalId[professionalId] === unitId ? { id: professionalId } : null;
+    }
+
+    async linkProfessionalSpecialty(professionalId: string, specialtyId: string): Promise<void> {
+        const key = `${professionalId}:${specialtyId}`;
+        if (this.links.has(key)) {
+            const error = new Error("duplicate") as Error & { code?: string };
+            error.code = "23505";
+            throw error;
+        }
+        this.links.add(key);
+    }
+
+    async unlinkProfessionalSpecialty(professionalId: string, specialtyId: string): Promise<boolean> {
+        const key = `${professionalId}:${specialtyId}`;
+        const hasLink = this.links.has(key);
+        if (hasLink) {
+            this.links.delete(key);
+        }
+        return hasLink;
+    }
+
+    async listByProfessionalAndUnit(professionalId: string, unitId: string): Promise<SpecialtyProfile[]> {
+        if (this.professionalUnitByProfessionalId[professionalId] !== unitId) {
+            return [];
+        }
+
+        const specialtyIds = [...this.links]
+            .filter((key) => key.startsWith(`${professionalId}:`))
+            .map((key) => key.split(":")[1]);
+
+        return specialtyIds
+            .map((id) => this.specialties[id])
+            .filter((specialty): specialty is SpecialtyProfile => !!specialty);
     }
 }

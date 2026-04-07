@@ -1,14 +1,14 @@
 import { Elysia, t } from "elysia";
-import { getAuthenticatedUserId } from "@/http/plugins/unit-access";
-import { isDomainError } from "@/http/plugins/domain-error";
-import type { UnitsRepository } from "./units.repository";
-import { UnitsService } from "./units.service";
+import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
+import { isDomainError } from "../../http/plugins/domain-error.js";
+import type { UnitsRepository } from "./units.repository.js";
+import { UnitsService } from "./units.service.js";
 import {
     createUnitSchema,
     unitProfileSchema,
     unitsErrorSchema,
     updateUnitSchema,
-} from "./units.schemas";
+} from "./units.schemas.js";
 
 type UnitsRoutesOptions = {
     unitsRepository: UnitsRepository;
