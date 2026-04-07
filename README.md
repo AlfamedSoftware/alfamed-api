@@ -35,15 +35,48 @@ Crie as variáveis abaixo no ambiente local. Na Vercel, configure os mesmos valo
 DATABASE_URL=postgresql://usuario:senha@localhost:5432/alfamed
 BETTER_AUTH_SECRET=sua_chave_secreta_forte
 BETTER_AUTH_BASE_URL=http://localhost:3333
-TRUSTED_ORIGINS=https://dev-alfamed.vercel.app,https://web-alfamed.vercel.app
+```
+
+Exemplo para produção (Vercel):
+
+```env
+BETTER_AUTH_BASE_URL=https://alfamed-api-prod.vercel.app
 ```
 
 Observações:
 
 - `BETTER_AUTH_SECRET` é obrigatório.
-- `BETTER_AUTH_BASE_URL` evita o warning do Better Auth sobre URL base indefinida.
-- `TRUSTED_ORIGINS` deve receber somente URLs HTTPS do frontend. Você pode separar múltiplas URLs por vírgula.
-- A aplicação também usa `VERCEL_URL` automaticamente quando está em deploy na Vercel.
+- `BETTER_AUTH_BASE_URL` é obrigatório e nao possui fallback.
+- Em producao, configure `BETTER_AUTH_BASE_URL` com a URL publica da API.
+
+Valores recomendados para `BETTER_AUTH_BASE_URL` por modo de execucao:
+
+- `bun run dev` -> `http://localhost:3333`
+- `npx vercel dev` -> `http://localhost:3000`
+- Deploy na Vercel -> `https://seu-dominio-da-api`
+
+## Origens confiáveis (CORS e Better Auth)
+
+As URLs permitidas de frontend nao sao mais configuradas por variavel de ambiente.
+
+Agora elas ficam centralizadas no backend em um unico ponto compartilhado:
+
+- `src/http/plugins/unit-access.ts` (constante `trustedOrigins`)
+
+Esse valor e reutilizado por:
+
+- CORS da API
+- `trustedOrigins` do Better Auth
+
+URLs atuais permitidas:
+
+- `https://dev-alfamed.vercel.app`
+- `https://web-alfamed.vercel.app`
+- `http://localhost:5137`
+
+Para adicionar ou remover dominios, altere apenas essa constante.
+
+Importante: após alterar `trustedOrigins`, faça novo deploy da API para aplicar as mudanças.
 
 ## Instalação
 
@@ -69,7 +102,7 @@ npx vercel dev
 
 Use essa opção se quiser testar o mesmo fluxo do deploy localmente, incluindo a função serverless em `api/index.ts`.
 
-Observação: para esse modo, garanta que o arquivo `.env` tenha pelo menos `DATABASE_URL`, `BETTER_AUTH_SECRET` e `BETTER_AUTH_BASE_URL`.
+Observação: para esse modo, garanta que o arquivo `.env` tenha pelo menos `DATABASE_URL`, `BETTER_AUTH_SECRET` e `BETTER_AUTH_BASE_URL=http://localhost:3000`.
 
 ## Banco de dados
 
@@ -141,7 +174,7 @@ Antes de publicar, confirme:
 - `DATABASE_URL` está configurada
 - `BETTER_AUTH_SECRET` está configurado
 - `BETTER_AUTH_BASE_URL` aponta para a URL pública correta da aplicação
-- `TRUSTED_ORIGINS` inclui a URL do frontend de produção e, se necessário, a URL de preview
+- As URLs confiáveis de frontend estão corretas na constante `trustedOrigins`
 
 ## Estrutura resumida
 
