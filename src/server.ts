@@ -2,13 +2,16 @@ import { buildApp } from "./app.js";
 import { db } from "./db/client.js";
 import { UsersRepository } from "./modules/users/users.repository.js";
 import { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
+import { PatientsRepository } from "./modules/patients/patients.repository.js";
 import { betterAuthPlugin } from "./http/plugins/better-auth.js";
 
 const usersRepository = new UsersRepository(db);
 const professionalsRepository = new ProfessionalsRepository(db);
+const patientsRepository = new PatientsRepository(db);
 const app = await buildApp({
     usersRepository,
     professionalsRepository,
+    patientsRepository,
     authPlugin: betterAuthPlugin,
     withDocs: true,
 });

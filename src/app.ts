@@ -7,18 +7,22 @@ import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
 import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
+import { patientsRoutes } from "./modules/patients/patients.routes.js";
+import type { PatientsRepository } from "./modules/patients/patients.repository.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
 type BuildAppOptions = {
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
+    patientsRepository: PatientsRepository;
     authPlugin: ElysiaPlugin;
     withDocs?: boolean;
 };
 
 export async function buildApp({
     usersRepository,
+    patientsRepository,
     professionalsRepository,
     authPlugin,
     withDocs = true,
@@ -46,6 +50,10 @@ export async function buildApp({
                             description: "Operations about professionals",
                         },
                         {
+                            name: "Patients",
+                            description: "Operations about patients",
+                        },
+                        {
                             name: "Better Auth",
                             description: "Authentication and session operations",
                         },
@@ -68,7 +76,8 @@ export async function buildApp({
             }),
         )
         .use(systemRoutes())
-        .use(usersRoutes({ usersRepository }));
+        .use(usersRoutes({ usersRepository }))
+        .use(patientsRoutes({ patientsRepository }));
 
     if (!professionalsRepository) {
         return configuredApp;
