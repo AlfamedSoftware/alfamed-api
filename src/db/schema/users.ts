@@ -1,17 +1,20 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
-import { sessions } from "./sessions";
-import { accounts } from "./accounts";
-import { twoFactor } from "./two-factor";
-import { professionals } from "./professionals";
-import { randomUUIDv7 } from "bun";
+import { sessions } from "./sessions.js";
+import { accounts } from "./accounts.js";
+import { twoFactor } from "./two-factor.js";
+import { professionals } from "./professionals.js";
+import { randomUUID } from "node:crypto";
 
 export const sexEnum = pgEnum("sex", ["M", "F"]);
 
 export const users = pgTable("users", {
-    id: text("id").primaryKey().$defaultFn(() => randomUUIDv7()),
+    id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     name: text("name").notNull(),
-    cpf: text("cpf").unique(),
+    socialName: text("social_name"),
+    cpf: text("cpf").notNull().unique(),
+    birthdate: timestamp("birthdate", { mode: "date" }).notNull(),
+    phone: text("phone").notNull(),
     email: text("email").notNull().unique(),
     sex: sexEnum("sex"),
     emailVerified: boolean("email_verified").default(false).notNull(),

@@ -1,8 +1,8 @@
 import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
-import { randomUUIDv7 } from "bun";
+import { randomUUID } from "node:crypto";
 
 export const units = pgTable("units", {
-    id: text("id").primaryKey().$defaultFn(() => randomUUIDv7()),
+    id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     name: text("name").notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),

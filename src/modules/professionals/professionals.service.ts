@@ -2,9 +2,9 @@ import type {
     CreateProfessionalInput,
     ProfessionalsRepository,
     UpdateProfessionalInput,
-} from "./professionals.repository";
-import { assertUserHasUnitAccess } from "@/http/plugins/unit-access";
-import { DomainError } from "@/http/plugins/domain-error";
+} from "./professionals.repository.js";
+import { assertUserHasUnitAccess } from "../../http/plugins/unit-access.js";
+import { DomainError } from "../../http/plugins/domain-error.js";
 
 export class ProfessionalsService {
     constructor(
