@@ -35,15 +35,14 @@ Crie as variáveis abaixo no ambiente local. Na Vercel, configure os mesmos valo
 DATABASE_URL=postgresql://usuario:senha@localhost:5432/alfamed
 BETTER_AUTH_SECRET=sua_chave_secreta_forte
 BETTER_AUTH_BASE_URL=http://localhost:3333
-CORS_ORIGIN=http://localhost:5173
-TRUSTED_ORIGINS=http://localhost:5173
+TRUSTED_ORIGINS=https://dev-alfamed.vercel.app,https://web-alfamed.vercel.app
 ```
 
 Observações:
 
 - `BETTER_AUTH_SECRET` é obrigatório.
 - `BETTER_AUTH_BASE_URL` evita o warning do Better Auth sobre URL base indefinida.
-- Em produção, configure também os domínios reais permitidos em `TRUSTED_ORIGINS`.
+- `TRUSTED_ORIGINS` deve receber somente URLs HTTPS do frontend. Você pode separar múltiplas URLs por vírgula.
 - A aplicação também usa `VERCEL_URL` automaticamente quando está em deploy na Vercel.
 
 ## Instalação
@@ -142,7 +141,7 @@ Antes de publicar, confirme:
 - `DATABASE_URL` está configurada
 - `BETTER_AUTH_SECRET` está configurado
 - `BETTER_AUTH_BASE_URL` aponta para a URL pública correta da aplicação
-- os domínios permitidos estão corretos em `TRUSTED_ORIGINS`
+- `TRUSTED_ORIGINS` inclui a URL do frontend de produção e, se necessário, a URL de preview
 
 ## Estrutura resumida
 
