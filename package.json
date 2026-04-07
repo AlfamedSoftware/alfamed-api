@@ -25,6 +25,5 @@
     "bun-types": "latest",
     "drizzle-kit": "^0.31.8",
     "vitest": "^4.0.18"
-  },
-  "module": "src/server.js"
+  }
 }

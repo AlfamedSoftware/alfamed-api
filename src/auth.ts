@@ -5,6 +5,9 @@ import { compare, hash } from "bcryptjs";
 import { db } from "./db/client.js";
 
 const betterAuthSecret = process.env.BETTER_AUTH_SECRET;
+const betterAuthBaseUrl =
+    process.env.BETTER_AUTH_BASE_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3333");
 
 if (!betterAuthSecret) {
     throw new Error("BETTER_AUTH_SECRET is required. Set it in the environment variables for Vercel and local development.");
@@ -20,6 +23,7 @@ const trustedOrigins = [
 
 export const auth = betterAuth({
     basePath: "/auth",
+    baseURL: betterAuthBaseUrl,
     secret: betterAuthSecret,
     trustedOrigins: Array.from(new Set(trustedOrigins)),
     plugins: [
