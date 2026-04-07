@@ -4,9 +4,8 @@ export const unitHeaderName = "x-unit-id";
 export const invalidOrMissingUnitHeaderMessage = "Invalid or missing unit header";
 export const trustedOrigins = [
     "https://dev-alfamed.vercel.app",
-    "https://web-alfamed.vercel.app",    
-    "https://*.vercel.app",    
-    "http://localhost:5137",
+    "https://web-alfamed.vercel.app",
+    "http://localhost:5173",
 ];
 
 export function getValidatedUnitIdFromRequest(request: Request) {
