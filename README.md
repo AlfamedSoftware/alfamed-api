@@ -146,6 +146,11 @@ A documentação OpenAPI fica disponível em:
 - `GET /` - health check da aplicação, padrão ao acessar a raiz
 - `GET /health` - health check da aplicação
 
+### Auth
+
+- `POST /auth/register` - registra usuário com email, senha e dados obrigatórios do perfil (`cpf`, `phone`, `birthdate`) (alias para `/auth/sign-up/email` do Better Auth)
+- `POST /auth/sign-in/email` - realiza login com email e senha (endpoint nativo do Better Auth)
+
 ### Users
 
 - `GET /users/:id` - retorna o perfil do usuário autenticado quando o `id` da rota bate com a sessão

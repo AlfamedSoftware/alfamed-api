@@ -21,6 +21,38 @@ export const auth = betterAuth({
     baseURL: betterAuthBaseUrl,
     secret: betterAuthSecret,
     trustedOrigins,
+    user: {
+        additionalFields: {
+            cpf: {
+                type: "string",
+                required: true,
+                fieldName: "cpf",
+            },
+            phone: {
+                type: "string",
+                required: true,
+                fieldName: "phone",
+            },
+            birthdate: {
+                type: "date",
+                required: true,
+                fieldName: "birthdate",
+                transform: {
+                    input: (value) => {
+                        if (value instanceof Date) {
+                            return value;
+                        }
+
+                        if (typeof value === "string" || typeof value === "number") {
+                            return new Date(value);
+                        }
+
+                        return value;
+                    },
+                },
+            },
+        },
+    },
     plugins: [
         openAPI(),
         twoFactor()

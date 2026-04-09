@@ -37,8 +37,8 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
             {
                 auth: true,
                 detail: {
-                    summary: "Create current user patient profile",
-                    description: "Creates a patient profile linked to the authenticated user.",
+                    summary: "Create patient",
+                    description: "Creates a patient linked to a user.",
                     tags: ["Patients"],
                 },
                 response: {
