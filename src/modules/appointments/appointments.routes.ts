@@ -17,6 +17,7 @@ import {
     scheduleProfileSchema,
     updateScheduleSchema,
 } from "./appointments.schemas.js";
+import { any } from "zod";
 
 type AppointmentsRoutesOptions = {
     appointmentsRepository: AppointmentsRepository;
@@ -201,7 +202,7 @@ export const appointmentsRoutes = ({
 
                 try {
                     const request = await appointmentsService.getAppointmentRequest(userId, params.id);
-                    return status(200, request);
+                    return status(200, request as any);
                 } catch (error) {
                     if (isDomainError(error, "FORBIDDEN")) {
                         return status(403, { message: "Forbidden" });

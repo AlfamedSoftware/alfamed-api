@@ -1,8 +1,42 @@
-import Elysia from "elysia";
+import Elysia, { t } from "elysia";
 import { auth } from "../../auth.js";
 
 export const betterAuthPlugin = new Elysia({ name: "better-auth" })
     .mount(auth.handler)
+    .post(
+        "/auth/register",
+        async ({ body, request }) => {
+            const headers = new Headers(request.headers);
+            headers.set("content-type", "application/json");
+
+            // Reutiliza o fluxo nativo de cadastro do Better Auth.
+            return auth.handler(
+                new Request(new URL("/auth/sign-up/email", request.url), {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify(body),
+                }),
+            );
+        },
+        {
+            body: t.Object({
+                name: t.String({ minLength: 1 }),
+                email: t.String({ format: "email" }),
+                password: t.String({ minLength: 8 }),
+                cpf: t.String({ minLength: 1 }),
+                phone: t.String({ minLength: 1 }),
+                birthdate: t.String({ format: "date-time" }),
+                image: t.Optional(t.String()),
+                callbackURL: t.Optional(t.String()),
+                rememberMe: t.Optional(t.Boolean()),
+            }),
+            detail: {
+                summary: "Register with email and password",
+                description: "Registers a new user by forwarding the request to Better Auth native sign-up endpoint, including required profile fields.",
+                tags: ["Better Auth"],
+            },
+        },
+    )
     .macro({
         auth: {
             async resolve({ status, request: { headers } }) {
