@@ -168,6 +168,14 @@ Observação de domínio: o mesmo usuário pode possuir vínculo de `patient` e 
 - `PATCH /professionals/:id` - atualiza um profissional
 - `DELETE /professionals/:id` - remove um profissional
 
+### Patients
+
+As rotas de patients exigem autenticação.
+
+- `POST /patients/link-user` - cria um patient para um `userId` informado no body
+- `GET /patients/:patientId` - busca um patient por id (somente quando pertence ao usuário autenticado)
+- `GET /patients/me` - retorna o profile de patient do usuário autenticado
+
 ## Headers importantes
 
 - `Authorization` - autenticação

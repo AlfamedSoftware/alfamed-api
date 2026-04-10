@@ -3,7 +3,11 @@ import { isDomainError } from "../../http/plugins/domain-error.js";
 import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
 import type { PatientsRepository } from "./patients.repository.js";
 import { PatientsService } from "./patients.service.js";
-import { patientProfileSchema, patientsErrorSchema } from "./patients.schemas.js";
+import {
+    createPatientForUserSchema,
+    patientProfileSchema,
+    patientsErrorSchema,
+} from "./patients.schemas.js";
 
 type PatientsRoutesOptions = {
     patientsRepository: PatientsRepository;
@@ -14,9 +18,9 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
 
     return new Elysia({ name: "patients-routes", prefix: "/patients" })
         .post(
-            "/",
+            "/link-user",
             async (context) => {
-                const { status } = context;
+                const { body, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
 
                 if (!userId) {
@@ -24,7 +28,10 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 }
 
                 try {
-                    const patient = await patientsService.createPatient(userId);
+                    const patient = await patientsService.createPatient({
+                        userId: body.userId,
+                        isActive: body.isActive,
+                    });
                     return status(201, patient);
                 } catch (error) {
                     if (isDomainError(error, "PATIENT_ALREADY_EXISTS")) {
@@ -36,9 +43,10 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
             },
             {
                 auth: true,
+                body: createPatientForUserSchema,
                 detail: {
-                    summary: "Create patient",
-                    description: "Creates a patient linked to a user.",
+                    summary: "Create patient for user",
+                    description: "Creates a patient linked to the userId provided in the request body.",
                     tags: ["Patients"],
                 },
                 response: {

@@ -1,17 +1,17 @@
-import type { PatientsRepository } from "./patients.repository.js";
+import type { CreatePatientInput, PatientsRepository } from "./patients.repository.js";
 import { DomainError } from "../../http/plugins/domain-error.js";
 
 export class PatientsService {
     constructor(private readonly patientsRepository: PatientsRepository) {}
 
-    async createPatient(userId: string) {
-        const existingPatient = await this.patientsRepository.getPatientByUserId(userId);
+    async createPatient(data: CreatePatientInput) {
+        const existingPatient = await this.patientsRepository.getPatientByUserId(data.userId);
 
         if (existingPatient) {
             throw new DomainError("PATIENT_ALREADY_EXISTS", "Patient already exists for this user");
         }
 
-        return this.patientsRepository.createPatient(userId);
+        return this.patientsRepository.createPatient(data);
     }
 
     async getPatientByUserId(userId: string) {

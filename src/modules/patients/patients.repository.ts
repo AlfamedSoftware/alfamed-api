@@ -2,14 +2,15 @@ import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { patients } from "../../db/schema/patients.js";
-import { patientProfileSchema } from "./patients.schemas.js";
+import { createPatientForUserSchema, patientProfileSchema } from "./patients.schemas.js";
 
 export type Patient = z.infer<typeof patientProfileSchema>;
+export type CreatePatientInput = z.infer<typeof createPatientForUserSchema>;
 
 type DatabaseClient = typeof dbType;
 
 export class PatientsRepository {
-    readonly createPatient: (userId: string) => Promise<Patient>;
+    readonly createPatient: (data: CreatePatientInput) => Promise<Patient>;
     readonly getPatientByUserId: (userId: string) => Promise<Patient | null>;
     readonly getPatientById: (patientId: string) => Promise<Patient | null>;
 
@@ -29,12 +30,12 @@ export class PatientsRepository {
                 updatedAt: row.updatedAt.toISOString(),
             });
 
-        this.createPatient = async (userId: string) => {
+        this.createPatient = async (data: CreatePatientInput) => {
             const [newPatient] = await db
                 .insert(patients)
                 .values({
-                    userId,
-                    isActive: true,
+                    userId: data.userId,
+                    isActive: data.isActive,
                 })
                 .returning({
                     id: patients.id,
