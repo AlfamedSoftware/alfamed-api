@@ -159,11 +159,22 @@ A documentação OpenAPI fica disponível em:
 
 As rotas de profissionais exigem autenticação e o header `x-unit-id`.
 
-- `POST /professionals` - cria um profissional
+Observação de domínio: o mesmo usuário pode possuir vínculo de `patient` e `professional` ao mesmo tempo.
+
+- `POST /professionals` - cria um profissional para o usuário autenticado
+- `POST /professionals/link-user` - cria um profissional para um `userId` informado no body
 - `GET /professionals` - lista profissionais da unidade
 - `GET /professionals/:id` - busca um profissional por id
 - `PATCH /professionals/:id` - atualiza um profissional
 - `DELETE /professionals/:id` - remove um profissional
+
+### Patients
+
+As rotas de patients exigem autenticação.
+
+- `POST /patients/link-user` - cria um patient para um `userId` informado no body
+- `GET /patients/:patientId` - busca um patient por id (somente quando pertence ao usuário autenticado)
+- `GET /patients/me` - retorna o profile de patient do usuário autenticado
 
 ## Headers importantes
 

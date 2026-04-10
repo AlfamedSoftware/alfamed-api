@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { professionalProfileSchema } from "../../src/modules/professionals/professionals.schemas";
 import { buildE2EApp, TEST_IDS } from "./helpers/context";
-import { InMemoryProfessionalsRepository, InMemoryUsersRepository } from "./helpers/repositories";
+import {
+    InMemoryPatientsRepository,
+    InMemoryProfessionalsRepository,
+    InMemoryUsersRepository,
+} from "./helpers/repositories";
 
 describe("Professionals routes", () => {
     const accessMap = {
@@ -75,6 +79,52 @@ describe("Professionals routes", () => {
         );
 
         expect(response.status).toBe(409);
+    });
+
+    it("POST /professionals/link-user cria profissional para userId informado", async () => {
+        const repository = new InMemoryProfessionalsRepository();
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: repository,
+            accessMap,
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/professionals/link-user", {
+                method: "POST",
+                headers: { "x-user-id": TEST_IDS.user, "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: TEST_IDS.otherUser, isActive: true }),
+            }),
+        );
+
+        expect(response.status).toBe(201);
+    });
+
+    it("POST /professionals/link-user permite user já vinculado a patient", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository(),
+            patientsRepository: new InMemoryPatientsRepository({
+                [TEST_IDS.patient]: {
+                    id: TEST_IDS.patient,
+                    userId: TEST_IDS.otherUser,
+                    isActive: true,
+                    createdAt: "2026-02-01T17:27:35.202Z",
+                    updatedAt: "2026-02-01T17:27:35.202Z",
+                },
+            }),
+            accessMap,
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/professionals/link-user", {
+                method: "POST",
+                headers: { "x-user-id": TEST_IDS.user, "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: TEST_IDS.otherUser, isActive: true }),
+            }),
+        );
+
+        expect(response.status).toBe(201);
     });
 
     it("GET /professionals lista por unidade", async () => {

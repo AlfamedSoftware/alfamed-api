@@ -19,7 +19,11 @@ import type {
     ScheduleProfile,
     UpdateScheduleInput,
 } from "../../../src/modules/appointments/appointments.repository";
-import type { Patient, PatientsRepository } from "../../../src/modules/patients/patients.repository";
+import type {
+    CreatePatientInput,
+    Patient,
+    PatientsRepository,
+} from "../../../src/modules/patients/patients.repository";
 import type {
     CreateSpecialtyInput,
     SpecialtiesRepository,
@@ -44,15 +48,15 @@ export class InMemoryPatientsRepository implements PatientsRepository {
         this.patients = { ...initialPatients };
     }
 
-    async createPatient(userId: string): Promise<Patient> {
+    async createPatient(data: CreatePatientInput): Promise<Patient> {
         const now = new Date().toISOString();
         const id = `019c1a3e-e425-7000-8bda-cdfec32c7f${String(this.sequence).padStart(2, "0")}`;
         this.sequence += 1;
 
         const patient: Patient = {
             id,
-            userId,
-            isActive: true,
+            userId: data.userId,
+            isActive: data.isActive ?? true,
             createdAt: now,
             updatedAt: now,
         };

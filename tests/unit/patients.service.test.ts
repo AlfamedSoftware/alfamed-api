@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { DomainError } from "../../src/http/plugins/domain-error";
 import { PatientsService } from "../../src/modules/patients/patients.service";
-import type { Patient, PatientsRepository } from "../../src/modules/patients/patients.repository";
+import type {
+    CreatePatientInput,
+    Patient,
+    PatientsRepository,
+} from "../../src/modules/patients/patients.repository";
 
 class InMemoryPatientsRepository implements PatientsRepository {
     constructor(private readonly patients: Record<string, Patient> = {}) {}
 
-    async createPatient(userId: string): Promise<Patient> {
+    async createPatient(data: CreatePatientInput): Promise<Patient> {
         const now = new Date().toISOString();
         return {
             id: "019c1a3e-e425-7000-8bda-cdfec32c7f01",
-            userId,
-            isActive: true,
+            userId: data.userId,
+            isActive: data.isActive ?? true,
             createdAt: now,
             updatedAt: now,
         };
@@ -30,7 +34,10 @@ describe("PatientsService", () => {
     it("deve criar paciente quando usuário ainda não tem vínculo", async () => {
         const service = new PatientsService(new InMemoryPatientsRepository());
 
-        const result = await service.createPatient("019c1a3e-e425-7000-8bda-cdfec32c8fed");
+        const result = await service.createPatient({
+            userId: "019c1a3e-e425-7000-8bda-cdfec32c8fed",
+            isActive: true,
+        });
 
         expect(result.userId).toBe("019c1a3e-e425-7000-8bda-cdfec32c8fed");
     });
@@ -49,7 +56,12 @@ describe("PatientsService", () => {
             }),
         );
 
-        await expect(service.createPatient("019c1a3e-e425-7000-8bda-cdfec32c8fed")).rejects.toEqual(
+        await expect(
+            service.createPatient({
+                userId: "019c1a3e-e425-7000-8bda-cdfec32c8fed",
+                isActive: true,
+            }),
+        ).rejects.toEqual(
             new DomainError("PATIENT_ALREADY_EXISTS", "Patient already exists for this user"),
         );
     });
