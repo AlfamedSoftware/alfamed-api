@@ -1,24 +1,20 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { sessions } from "./sessions.js";
 import { accounts } from "./accounts.js";
 import { twoFactor } from "./two-factor.js";
 import { professionals } from "./professionals.js";
+import { usersAdditionalInfo } from "./users-additional-info.js";
 import { randomUUID } from "node:crypto";
-
-export const sexEnum = pgEnum("sex", ["M", "F"]);
 
 export const users = pgTable("users", {
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     name: text("name").notNull(),
-    socialName: text("social_name"),
     cpf: text("cpf").notNull().unique(),
     birthdate: timestamp("birthdate", { mode: "date" }).notNull(),
     phone: text("phone").notNull(),
     email: text("email").notNull().unique(),
-    sex: sexEnum("sex"),
     emailVerified: boolean("email_verified").default(false).notNull(),
-    image: text("image"),
     isActive: boolean("is_active").default(true).notNull(),
     twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -31,6 +27,10 @@ export const users = pgTable("users", {
 export const usersRelations = relations(users, ({ many, one }) => ({
     sessions: many(sessions),
     accounts: many(accounts),
+    additionalInfo: one(usersAdditionalInfo, {
+        fields: [users.id],
+        references: [usersAdditionalInfo.userId],
+    }),
     professional: one(professionals, {
         fields: [users.id],
         references: [professionals.userId],

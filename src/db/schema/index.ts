@@ -15,3 +15,4 @@ export * from "./requests-procedures.js";
 export * from "./requests-status.js";
 export * from "./request-status-logs.js";
 export * from "./requests_procedures_outcomes.js";
+export * from "./users-additional-info.js";
