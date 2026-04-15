@@ -7,6 +7,7 @@ import {
     createUnitSchema,
     unitProfileSchema,
     unitsErrorSchema,
+    unitsListSchema,
     updateUnitSchema,
 } from "./units.schemas.js";
 
@@ -56,6 +57,39 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                     201: unitProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
+                    500: unitsErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/by-user",
+            async (context) => {
+                const { status } = context;
+                const userId = resolveAuthenticatedUser(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                try {
+                    const units = await unitsService.listUnitsByUserId(userId);
+
+                    return status(200, units);
+                } catch (error) {
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                detail: {
+                    summary: "List user units",
+                    description:
+                        "Lists all units linked to the authenticated user through their professional profile.",
+                    tags: ["Units"],
+                },
+                response: {
+                    200: unitsListSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
                     500: unitsErrorSchema,
                 },
             },

@@ -24,6 +24,10 @@ export class UnitsService {
         return unit;
     }
 
+    async listUnitsByUserId(userId: string) {
+        return this.unitsRepository.listByUserId(userId);
+    }
+
     async updateUnit(userId: string, unitId: string, data: { name?: string; isActive?: boolean }) {
         const existing = await this.unitsRepository.findById(unitId);
 
