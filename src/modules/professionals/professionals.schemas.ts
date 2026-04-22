@@ -4,6 +4,11 @@ export const createProfessionalSchema = z.object({
     isActive: z.boolean().optional(),
 }).strict();
 
+export const createProfessionalForUserSchema = z.object({
+    userId: z.string().uuid(),
+    isActive: z.boolean().optional(),
+}).strict();
+
 export const updateProfessionalSchema = z.object({
     userId: z.string().uuid().optional(),
     isActive: z.boolean().optional(),

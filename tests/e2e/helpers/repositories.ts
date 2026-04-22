@@ -19,7 +19,11 @@ import type {
     ScheduleProfile,
     UpdateScheduleInput,
 } from "../../../src/modules/appointments/appointments.repository";
-import type { Patient, PatientsRepository } from "../../../src/modules/patients/patients.repository";
+import type {
+    CreatePatientInput,
+    Patient,
+    PatientsRepository,
+} from "../../../src/modules/patients/patients.repository";
 import type {
     CreateSpecialtyInput,
     SpecialtiesRepository,
@@ -44,15 +48,15 @@ export class InMemoryPatientsRepository implements PatientsRepository {
         this.patients = { ...initialPatients };
     }
 
-    async createPatient(userId: string): Promise<Patient> {
+    async createPatient(data: CreatePatientInput): Promise<Patient> {
         const now = new Date().toISOString();
         const id = `019c1a3e-e425-7000-8bda-cdfec32c7f${String(this.sequence).padStart(2, "0")}`;
         this.sequence += 1;
 
         const patient: Patient = {
             id,
-            userId,
-            isActive: true,
+            userId: data.userId,
+            isActive: data.isActive ?? true,
             createdAt: now,
             updatedAt: now,
         };
@@ -79,10 +83,21 @@ export class InMemoryPatientsRepository implements PatientsRepository {
 
 export class InMemoryUnitsRepository implements UnitsRepository {
     private readonly units: Record<string, UnitProfile>;
+    private readonly userUnits: Record<string, string[]>;
+    private readonly userIsActive: Record<string, boolean>;
+    private readonly professionalIsActiveByUser: Record<string, boolean>;
     private sequence = 1;
 
-    constructor(initialUnits: Record<string, UnitProfile> = {}) {
+    constructor(
+        initialUnits: Record<string, UnitProfile> = {},
+        initialUserUnits: Record<string, string[]> = {},
+        initialUserIsActive: Record<string, boolean> = {},
+        initialProfessionalIsActiveByUser: Record<string, boolean> = {},
+    ) {
         this.units = { ...initialUnits };
+        this.userUnits = { ...initialUserUnits };
+        this.userIsActive = { ...initialUserIsActive };
+        this.professionalIsActiveByUser = { ...initialProfessionalIsActiveByUser };
     }
 
     async create(data: CreateUnitInput): Promise<UnitProfile> {
@@ -108,6 +123,23 @@ export class InMemoryUnitsRepository implements UnitsRepository {
 
     async findById(unitId: string): Promise<UnitProfile | null> {
         return this.units[unitId] ?? null;
+    }
+
+    async listByUserId(userId: string): Promise<UnitProfile[]> {
+        if (this.userIsActive[userId] === false) {
+            return [];
+        }
+
+        if (this.professionalIsActiveByUser[userId] === false) {
+            return [];
+        }
+
+        const unitIds = this.userUnits[userId] ?? [];
+
+        return unitIds
+            .map((unitId) => this.units[unitId])
+            .filter((unit): unit is UnitProfile => unit !== undefined)
+            .filter((unit) => unit.isActive);
     }
 
     async update(unitId: string, data: UpdateUnitInput): Promise<UnitProfile | null> {
