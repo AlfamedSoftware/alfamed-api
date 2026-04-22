@@ -323,8 +323,8 @@ export class AdminUnitsRepository {
         await this.db.delete(units).where(eq(units.id, unitId));
     }
 
-    async listUnitProfessionals(unitId: string) {
-        const rows = await this.db
+    private async listUnitProfessionalsWithExecutor(unitId: string, executor: DatabaseClient | TransactionClient = this.db) {
+        const rows = await executor
             .select({
                 professional: {
                     id: professionals.id,
@@ -349,7 +349,7 @@ export class AdminUnitsRepository {
 
         const mapped = await Promise.all(
             rows.map(async (row) => {
-                const specialtiesRows = await this.db
+                const specialtiesRows = await executor
                     .select({ specialtyId: professionalSpecialties.specialtyId })
                     .from(professionalSpecialties)
                     .where(eq(professionalSpecialties.professionalId, row.professional.id));
@@ -373,6 +373,10 @@ export class AdminUnitsRepository {
         );
 
         return mapped;
+    }
+
+    async listUnitProfessionals(unitId: string) {
+        return this.listUnitProfessionalsWithExecutor(unitId, this.db);
     }
 
     async createUnitProfessional(unitId: string, data: CreateAdminProfessionalInput) {
@@ -402,7 +406,7 @@ export class AdminUnitsRepository {
                 );
             }
 
-            const [created] = await this.listUnitProfessionals(unitId).then((list) =>
+            const [created] = await this.listUnitProfessionalsWithExecutor(unitId, tx).then((list) =>
                 list.filter((item) => item.id === createdProfessional.id),
             );
 
