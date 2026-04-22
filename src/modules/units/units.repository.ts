@@ -28,6 +28,13 @@ export class UnitsRepository {
         const toProfile = (result: {
             id: string;
             name: string;
+            cnpj: string | null;
+            address: string | null;
+            city: string | null;
+            state: string | null;
+            phone: string | null;
+            email: string | null;
+            ownerUserId: string | null;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
@@ -35,6 +42,13 @@ export class UnitsRepository {
             unitProfileSchema.parse({
                 id: result.id,
                 name: result.name,
+                cnpj: result.cnpj,
+                address: result.address,
+                city: result.city,
+                state: result.state,
+                phone: result.phone,
+                email: result.email,
+                ownerUserId: result.ownerUserId,
                 isActive: result.isActive,
                 createdAt: result.createdAt.toISOString(),
                 updatedAt: result.updatedAt.toISOString(),
@@ -45,11 +59,25 @@ export class UnitsRepository {
                 .insert(units)
                 .values({
                     name: data.name,
+                    cnpj: data.cnpj,
+                    address: data.address,
+                    city: data.city,
+                    state: data.state,
+                    phone: data.phone,
+                    email: data.email,
+                    ownerUserId: data.ownerUserId,
                     isActive: data.isActive,
                 })
                 .returning({
                     id: units.id,
                     name: units.name,
+                    cnpj: units.cnpj,
+                    address: units.address,
+                    city: units.city,
+                    state: units.state,
+                    phone: units.phone,
+                    email: units.email,
+                    ownerUserId: units.ownerUserId,
                     isActive: units.isActive,
                     createdAt: units.createdAt,
                     updatedAt: units.updatedAt,
@@ -74,11 +102,25 @@ export class UnitsRepository {
                     .insert(units)
                     .values({
                         name: data.name,
+                        cnpj: data.cnpj,
+                        address: data.address,
+                        city: data.city,
+                        state: data.state,
+                        phone: data.phone,
+                        email: data.email,
+                        ownerUserId: data.ownerUserId,
                         isActive: data.isActive,
                     })
                     .returning({
                         id: units.id,
                         name: units.name,
+                        cnpj: units.cnpj,
+                        address: units.address,
+                        city: units.city,
+                        state: units.state,
+                        phone: units.phone,
+                        email: units.email,
+                        ownerUserId: units.ownerUserId,
                         isActive: units.isActive,
                         createdAt: units.createdAt,
                         updatedAt: units.updatedAt,
@@ -100,6 +142,13 @@ export class UnitsRepository {
                 .select({
                     id: units.id,
                     name: units.name,
+                    cnpj: units.cnpj,
+                    address: units.address,
+                    city: units.city,
+                    state: units.state,
+                    phone: units.phone,
+                    email: units.email,
+                    ownerUserId: units.ownerUserId,
                     isActive: units.isActive,
                     createdAt: units.createdAt,
                     updatedAt: units.updatedAt,
@@ -120,12 +169,26 @@ export class UnitsRepository {
                 .update(units)
                 .set({
                     name: data.name,
+                    cnpj: data.cnpj,
+                    address: data.address,
+                    city: data.city,
+                    state: data.state,
+                    phone: data.phone,
+                    email: data.email,
+                    ownerUserId: data.ownerUserId,
                     isActive: data.isActive,
                 })
                 .where(eq(units.id, unitId))
                 .returning({
                     id: units.id,
                     name: units.name,
+                    cnpj: units.cnpj,
+                    address: units.address,
+                    city: units.city,
+                    state: units.state,
+                    phone: units.phone,
+                    email: units.email,
+                    ownerUserId: units.ownerUserId,
                     isActive: units.isActive,
                     createdAt: units.createdAt,
                     updatedAt: units.updatedAt,

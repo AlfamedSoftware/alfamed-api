@@ -24,6 +24,7 @@ export class ProfessionalsRepository {
     readonly listByUnit: (unitId: string) => Promise<ProfessionalProfile[]>;
     readonly update: (professionalId: string, data: UpdateProfessionalInput) => Promise<ProfessionalProfile | null>;
     readonly delete: (professionalId: string) => Promise<void>;
+    readonly listUnitIdsByUserId: (userId: string) => Promise<string[]>;
 
     constructor(db: DatabaseClient) {
         const toProfile = (result: {
@@ -182,6 +183,16 @@ export class ProfessionalsRepository {
 
         this.delete = async (professionalId) => {
             await db.delete(professionals).where(eq(professionals.id, professionalId));
+        };
+
+        this.listUnitIdsByUserId = async (userId) => {
+            const results = await db
+                .select({ unitId: professionalUnits.unitId })
+                .from(professionals)
+                .innerJoin(professionalUnits, eq(professionals.id, professionalUnits.professionalId))
+                .where(eq(professionals.userId, userId));
+
+            return [...new Set(results.map((row) => row.unitId))];
         };
     }
 }

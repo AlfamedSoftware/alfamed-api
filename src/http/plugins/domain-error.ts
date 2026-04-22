@@ -11,7 +11,8 @@ export type DomainErrorCode =
     | "NO_SLOTS_AVAILABLE"
     | "INVALID_STATUS_TRANSITION"
     | "INVALID_COUNTER_PROPOSAL"
-    | "STATUS_NOT_FOUND";
+    | "STATUS_NOT_FOUND"
+    | "UNIT_HAS_LINKED_PROFESSIONALS";
 
 export class DomainError extends Error {
     constructor(

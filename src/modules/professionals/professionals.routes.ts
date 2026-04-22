@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { z } from "zod";
 import {
     getAuthenticatedUserId,
-    getRequiredUnitIdFromRequest,
+    getValidatedUnitIdFromRequest,
     invalidOrMissingUnitHeaderMessage,
 } from "../../http/plugins/unit-access.js";
 import { isDomainError } from "../../http/plugins/domain-error.js";
@@ -26,20 +26,26 @@ export const professionalsRoutes = ({
     hasUserAccessToUnitChecker,
 }: ProfessionalsRoutesOptions) => {
     const professionalsService = new ProfessionalsService(professionalsRepository, hasUserAccessToUnitChecker);
-    const resolveRequestScope = (context: { request: Request; user?: { id?: string } }) => {
+    const resolveRequestScope = async (context: { request: Request; user?: { id?: string } }) => {
         const userId = getAuthenticatedUserId(context);
 
         if (!userId) {
             return { error: "unauthorized" as const };
         }
 
-        try {
-            const unitId = getRequiredUnitIdFromRequest(context.request);
+        const unitIdFromHeader = getValidatedUnitIdFromRequest(context.request);
 
-            return { userId, unitId };
-        } catch {
-            return { error: "invalid_unit" as const };
+        if (unitIdFromHeader) {
+            return { userId, unitId: unitIdFromHeader };
         }
+
+        const linkedUnitIds = await professionalsRepository.listUnitIdsByUserId(userId);
+
+        if (linkedUnitIds.length === 1) {
+            return { userId, unitId: linkedUnitIds[0] };
+        }
+
+        return { error: "invalid_unit" as const };
     };
 
     return new Elysia({ name: "professionals-routes", prefix: "/professionals" })
@@ -47,7 +53,7 @@ export const professionalsRoutes = ({
             "/",
             async (context) => {
                 const { body, status } = context;
-                const scope = resolveRequestScope(context as { request: Request; user?: { id?: string } });
+                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
                 if ("error" in scope) {
                     if (scope.error === "unauthorized") {
@@ -102,7 +108,7 @@ export const professionalsRoutes = ({
             "/",
             async (context) => {
                 const { status } = context;
-                const scope = resolveRequestScope(context as { request: Request; user?: { id?: string } });
+                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
                 if ("error" in scope) {
                     if (scope.error === "unauthorized") {
@@ -144,7 +150,7 @@ export const professionalsRoutes = ({
             "/:id",
             async (context) => {
                 const { params, status } = context;
-                const scope = resolveRequestScope(context as { request: Request; user?: { id?: string } });
+                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
                 if ("error" in scope) {
                     if (scope.error === "unauthorized") {
@@ -197,7 +203,7 @@ export const professionalsRoutes = ({
             "/:id",
             async (context) => {
                 const { params, body, status } = context;
-                const scope = resolveRequestScope(context as { request: Request; user?: { id?: string } });
+                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
                 if ("error" in scope) {
                     if (scope.error === "unauthorized") {
@@ -256,7 +262,7 @@ export const professionalsRoutes = ({
             "/:id",
             async (context) => {
                 const { params, status } = context;
-                const scope = resolveRequestScope(context as { request: Request; user?: { id?: string } });
+                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
                 if ("error" in scope) {
                     if (scope.error === "unauthorized") {

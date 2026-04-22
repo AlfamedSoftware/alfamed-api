@@ -17,6 +17,7 @@ import { appointmentsRoutes } from "./modules/appointments/appointments.routes.j
 import type { AppointmentsRepository } from "./modules/appointments/appointments.repository.js";
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
+import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -89,6 +90,10 @@ export async function buildApp({
                             name: "Appointments",
                             description: "Scheduling and booking request operations",
                         },
+                        {
+                            name: "Admin",
+                            description: "Internal administration operations",
+                        },
                     ],
                     components: await OpenAPI.components,
                     paths: await OpenAPI.getPaths(),
@@ -132,18 +137,24 @@ export async function buildApp({
           )
         : configuredAppWithSpecialties;
 
+    const configuredAppWithAdmin = configuredAppWithUnits.use(
+        adminUnitsRoutes({
+            db,
+        }),
+    );
+
     if (!professionalsRepository) {
         return appointmentsRepository
-            ? configuredAppWithUnits.use(
+            ? configuredAppWithAdmin.use(
                   appointmentsRoutes({
                       appointmentsRepository,
                       hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
                   }),
               )
-            : configuredAppWithUnits;
+            : configuredAppWithAdmin;
     }
 
-    const configuredAppWithProfessionals = configuredAppWithUnits.use(
+    const configuredAppWithProfessionals = configuredAppWithAdmin.use(
         professionalsRoutes({
             professionalsRepository,
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
