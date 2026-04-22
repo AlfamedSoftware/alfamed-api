@@ -11,6 +11,7 @@ export const trustedOrigins = [
     "https://dev-alfamed.vercel.app",
     "https://web-alfamed.vercel.app",
     "http://localhost:5173",
+    "http://localhost:53441",
 ];
 
 export function getValidatedUnitIdFromRequest(request: Request) {

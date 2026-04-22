@@ -11,6 +11,7 @@ import type { ProfessionalsRepository } from "./professionals.repository.js";
 import { ProfessionalsService } from "./professionals.service.js";
 import {
     createProfessionalSchema,
+    createProfessionalForUserSchema,
     professionalProfileSchema,
     professionalsErrorSchema,
     updateProfessionalSchema,
@@ -25,7 +26,10 @@ export const professionalsRoutes = ({
     professionalsRepository,
     hasUserAccessToUnitChecker,
 }: ProfessionalsRoutesOptions) => {
-    const professionalsService = new ProfessionalsService(professionalsRepository, hasUserAccessToUnitChecker);
+    const professionalsService = new ProfessionalsService(
+        professionalsRepository,
+        hasUserAccessToUnitChecker,
+    );
     const resolveRequestScope = async (context: { request: Request; user?: { id?: string } }) => {
         const userId = getAuthenticatedUserId(context);
 
@@ -91,7 +95,7 @@ export const professionalsRoutes = ({
                 body: createProfessionalSchema,
                 detail: {
                     summary: "Create professional",
-                    description: "Creates a professional linked to a user.",
+                    description: "Creates a professional linked to the authenticated user.",
                     tags: ["Professionals"],
                 },
                 response: {
@@ -100,6 +104,49 @@ export const professionalsRoutes = ({
                     400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.Literal("Professional already exists for this user") }),
+                    500: professionalsErrorSchema,
+                },
+            },
+        )
+        .post(
+            "/link-user",
+            async (context) => {
+                const { body, status } = context;
+                const userId = getAuthenticatedUserId(context as { request: Request; user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                try {
+                    const professional = await professionalsService.createProfessionalForUser(
+                        {
+                            userId: body.userId,
+                            isActive: body.isActive,
+                        },
+                    );
+
+                    return status(201, professional);
+                } catch (error) {
+                    if (isUniqueConstraintError(error)) {
+                        return status(409, { message: "Professional already exists for this user" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                body: createProfessionalForUserSchema,
+                detail: {
+                    summary: "Create professional for user",
+                    description: "Creates a professional linked to the userId provided in the request body. Requires only authentication.",
+                    tags: ["Professionals"],
+                },
+                response: {
+                    201: professionalProfileSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    409: t.Object({ message: t.String() }),
                     500: professionalsErrorSchema,
                 },
             },

@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+export const createPatientForUserSchema = z.object({
+    userId: z.string().uuid(),
+    isActive: z.boolean().optional(),
+}).strict();
+
 export const patientProfileSchema = z.object({
     id: z.string().uuid(),
     userId: z.string().uuid(),

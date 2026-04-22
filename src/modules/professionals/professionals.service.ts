@@ -18,6 +18,10 @@ export class ProfessionalsService {
         return this.professionalsRepository.createWithUnit(data, unitId);
     }
 
+    async createProfessionalForUser(data: CreateProfessionalInput) {
+        return this.professionalsRepository.create(data);
+    }
+
     async getProfessionalById(requestUserId: string, professionalId: string, unitId: string) {
         await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
