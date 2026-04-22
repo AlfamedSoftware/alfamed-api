@@ -83,10 +83,21 @@ export class InMemoryPatientsRepository implements PatientsRepository {
 
 export class InMemoryUnitsRepository implements UnitsRepository {
     private readonly units: Record<string, UnitProfile>;
+    private readonly userUnits: Record<string, string[]>;
+    private readonly userIsActive: Record<string, boolean>;
+    private readonly professionalIsActiveByUser: Record<string, boolean>;
     private sequence = 1;
 
-    constructor(initialUnits: Record<string, UnitProfile> = {}) {
+    constructor(
+        initialUnits: Record<string, UnitProfile> = {},
+        initialUserUnits: Record<string, string[]> = {},
+        initialUserIsActive: Record<string, boolean> = {},
+        initialProfessionalIsActiveByUser: Record<string, boolean> = {},
+    ) {
         this.units = { ...initialUnits };
+        this.userUnits = { ...initialUserUnits };
+        this.userIsActive = { ...initialUserIsActive };
+        this.professionalIsActiveByUser = { ...initialProfessionalIsActiveByUser };
     }
 
     async create(data: CreateUnitInput): Promise<UnitProfile> {
@@ -112,6 +123,23 @@ export class InMemoryUnitsRepository implements UnitsRepository {
 
     async findById(unitId: string): Promise<UnitProfile | null> {
         return this.units[unitId] ?? null;
+    }
+
+    async listByUserId(userId: string): Promise<UnitProfile[]> {
+        if (this.userIsActive[userId] === false) {
+            return [];
+        }
+
+        if (this.professionalIsActiveByUser[userId] === false) {
+            return [];
+        }
+
+        const unitIds = this.userUnits[userId] ?? [];
+
+        return unitIds
+            .map((unitId) => this.units[unitId])
+            .filter((unit): unit is UnitProfile => unit !== undefined)
+            .filter((unit) => unit.isActive);
     }
 
     async update(unitId: string, data: UpdateUnitInput): Promise<UnitProfile | null> {

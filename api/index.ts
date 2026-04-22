@@ -4,6 +4,9 @@ import { betterAuthPlugin } from "../src/http/plugins/better-auth.js";
 import { ProfessionalsRepository } from "../src/modules/professionals/professionals.repository.js";
 import { UsersRepository } from "../src/modules/users/users.repository.js";
 import { PatientsRepository } from "../src/modules/patients/patients.repository.js";
+import { UnitsRepository } from "../src/modules/units/units.repository.js";
+import { SpecialtiesRepository } from "../src/modules/specialties/specialties.repository.js";
+import { AppointmentsRepository } from "../src/modules/appointments/appointments.repository.js";
 
 type ServerlessRequest = {
 	method?: string;
@@ -23,12 +26,18 @@ type ServerlessResponse = {
 const usersRepository = new UsersRepository(db);
 const professionalsRepository = new ProfessionalsRepository(db);
 const patientsRepository = new PatientsRepository(db);
+const unitsRepository = new UnitsRepository(db);
+const specialtiesRepository = new SpecialtiesRepository(db);
+const appointmentsRepository = new AppointmentsRepository(db);
 
 const appPromise = buildApp({
 	db,
 	usersRepository,
 	professionalsRepository,
 	patientsRepository,
+	unitsRepository,
+	specialtiesRepository,
+	appointmentsRepository,
 	authPlugin: betterAuthPlugin,
 	withDocs: true,
 });
