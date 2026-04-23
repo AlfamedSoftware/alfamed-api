@@ -46,3 +46,5 @@ export const updateUnitSchema = z
 export const unitsErrorSchema = z.object({
     message: z.string(),
 });
+
+export const unitsListSchema = z.array(unitProfileSchema);

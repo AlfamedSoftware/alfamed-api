@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { units } from "../../db/schema/units.js";
 import { professionals } from "../../db/schema/professionals.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
+import { users } from "../../db/schema/users.js";
 import { DomainError } from "../../http/plugins/domain-error.js";
 import {
     createUnitSchema,
@@ -21,6 +22,7 @@ export class UnitsRepository {
     readonly create: (data: CreateUnitInput) => Promise<UnitProfile>;
     readonly createForUser: (userId: string, data: CreateUnitInput) => Promise<UnitProfile>;
     readonly findById: (unitId: string) => Promise<UnitProfile | null>;
+    readonly listByUserId: (userId: string) => Promise<UnitProfile[]>;
     readonly update: (unitId: string, data: UpdateUnitInput) => Promise<UnitProfile | null>;
     readonly delete: (unitId: string) => Promise<void>;
 
@@ -162,6 +164,39 @@ export class UnitsRepository {
             }
 
             return toProfile(result);
+        };
+
+        this.listByUserId = async (userId) => {
+            const results = await db
+                .select({
+                    id: units.id,
+                    name: units.name,
+                    isActive: units.isActive,
+                    createdAt: units.createdAt,
+                    updatedAt: units.updatedAt,
+                })
+                .from(professionals)
+                .innerJoin(professionalUnits, eq(professionals.id, professionalUnits.professionalId))
+                .innerJoin(users, eq(users.id, professionals.userId))
+                .innerJoin(units, eq(units.id, professionalUnits.unitId))
+                .where(
+                    and(
+                        eq(users.id, userId),
+                        eq(users.isActive, true),
+                        eq(professionals.isActive, true),
+                        eq(units.isActive, true),
+                    ),
+                );
+
+            return results.map((result) =>
+                toProfile({
+                    id: result.id,
+                    name: result.name,
+                    isActive: result.isActive,
+                    createdAt: result.createdAt,
+                    updatedAt: result.updatedAt,
+                }),
+            );
         };
 
         this.update = async (unitId, data) => {

@@ -109,6 +109,159 @@ describe("Units routes", () => {
         expect(body).toMatchObject({ message: "Forbidden" });
     });
 
+    it("GET /units/by-user lista unidades do usuário", async () => {
+        const userUnits = {
+            [TEST_IDS.user]: [TEST_IDS.unit],
+        };
+
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(unitFixture, userUnits),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/units/by-user", {
+                headers: {
+                    "x-user-id": TEST_IDS.user,
+                },
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(Array.isArray(body)).toBe(true);
+        expect(body.length).toBe(1);
+        expect(() => body.forEach((unit: unknown) => unitProfileSchema.parse(unit))).not.toThrow();
+        expect(body[0]).toMatchObject({ id: TEST_IDS.unit });
+    });
+
+    it("GET /units/by-user retorna array vazio quando usuário não tem unidades", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(unitFixture),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/units/by-user", {
+                headers: {
+                    "x-user-id": TEST_IDS.user,
+                },
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(Array.isArray(body)).toBe(true);
+        expect(body.length).toBe(0);
+    });
+
+    it("GET /units/by-user ignora unidade inativa", async () => {
+        const inactiveUnitFixture = {
+            [TEST_IDS.unit]: {
+                id: TEST_IDS.unit,
+                name: "Unidade A",
+                isActive: false,
+                createdAt: "2026-02-01T17:27:35.202Z",
+                updatedAt: "2026-02-01T17:27:35.202Z",
+            },
+        };
+        const userUnits = {
+            [TEST_IDS.user]: [TEST_IDS.unit],
+        };
+
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(inactiveUnitFixture, userUnits),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/units/by-user", {
+                headers: {
+                    "x-user-id": TEST_IDS.user,
+                },
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(Array.isArray(body)).toBe(true);
+        expect(body.length).toBe(0);
+    });
+
+    it("GET /units/by-user retorna array vazio quando usuário está inativo", async () => {
+        const userUnits = {
+            [TEST_IDS.user]: [TEST_IDS.unit],
+        };
+        const userIsActive = {
+            [TEST_IDS.user]: false,
+        };
+
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(unitFixture, userUnits, userIsActive),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/units/by-user", {
+                headers: {
+                    "x-user-id": TEST_IDS.user,
+                },
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(Array.isArray(body)).toBe(true);
+        expect(body.length).toBe(0);
+    });
+
+    it("GET /units/by-user retorna array vazio quando profissional está inativo", async () => {
+        const userUnits = {
+            [TEST_IDS.user]: [TEST_IDS.unit],
+        };
+        const professionalIsActiveByUser = {
+            [TEST_IDS.user]: false,
+        };
+
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(
+                unitFixture,
+                userUnits,
+                {},
+                professionalIsActiveByUser,
+            ),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/units/by-user", {
+                headers: {
+                    "x-user-id": TEST_IDS.user,
+                },
+            }),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(Array.isArray(body)).toBe(true);
+        expect(body.length).toBe(0);
+    });
+
+    it("GET /units/by-user retorna 401 sem autenticação", async () => {
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            unitsRepository: new InMemoryUnitsRepository(),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/units/by-user"),
+        );
+        const body = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(body).toMatchObject({ message: "Unauthorized" });
+    });
+
     it("GET /units/:id retorna unidade", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
