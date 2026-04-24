@@ -18,6 +18,7 @@ import type { AppointmentsRepository } from "./modules/appointments/appointments
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
 import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
+import { createSessionRoutes } from "./modules/session/session.routes.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -109,9 +110,10 @@ export async function buildApp({
                 origin: trustedOrigins,
                 methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 credentials: true,
-                allowedHeaders: ["Content-Type", "Authorization", "x-unit-id"],
+                allowedHeaders: ["Content-Type", "Authorization"],
             }),
         )
+        .use(createSessionRoutes(db))
         .use(systemRoutes())
         .use(usersRoutes({ usersRepository }))
         .use(patientsRoutes({ patientsRepository }));
@@ -121,20 +123,21 @@ export async function buildApp({
 
     const configuredAppWithSpecialties = specialtiesRepository
         ? configuredApp.use(
-              specialtiesRoutes({
-                  specialtiesRepository,
-                  hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-              }),
-          )
+            specialtiesRoutes({
+                specialtiesRepository,
+                hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+                getUserUnitIdsByUserId: professionalsRepository?.listUnitIdsByUserId,
+            }),
+        )
         : configuredApp;
 
     const configuredAppWithUnits = unitsRepository
         ? configuredAppWithSpecialties.use(
-              unitsRoutes({
-                  unitsRepository,
-                  hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-              }),
-          )
+            unitsRoutes({
+                unitsRepository,
+                hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+            }),
+        )
         : configuredAppWithSpecialties;
 
     const configuredAppWithAdmin = configuredAppWithUnits.use(
@@ -146,11 +149,12 @@ export async function buildApp({
     if (!professionalsRepository) {
         return appointmentsRepository
             ? configuredAppWithAdmin.use(
-                  appointmentsRoutes({
-                      appointmentsRepository,
-                      hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-                  }),
-              )
+                appointmentsRoutes({
+                    appointmentsRepository,
+                    hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+                    getUserUnitIdsByUserId: professionalsRepository?.listUnitIdsByUserId,
+                }),
+            )
             : configuredAppWithAdmin;
     }
 
@@ -169,6 +173,7 @@ export async function buildApp({
         appointmentsRoutes({
             appointmentsRepository,
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+            getUserUnitIdsByUserId: professionalsRepository.listUnitIdsByUserId,
         }),
     );
 }

@@ -5,8 +5,13 @@ import { compare, hash } from "bcryptjs";
 import { db } from "./db/client.js";
 import { trustedOrigins } from "./http/plugins/unit-access.js";
 
-const betterAuthSecret = process.env.BETTER_AUTH_SECRET;
-const betterAuthBaseUrl = process.env.BETTER_AUTH_BASE_URL;
+const isTestEnv =
+    process.env.NODE_ENV === "test" ||
+    process.env.VITEST === "true" ||
+    process.env.BUN_TEST === "1";
+
+const betterAuthSecret = process.env.BETTER_AUTH_SECRET ?? (isTestEnv ? "test-secret" : undefined);
+const betterAuthBaseUrl = process.env.BETTER_AUTH_BASE_URL ?? (isTestEnv ? "http://localhost:3333" : undefined);
 
 if (!betterAuthSecret) {
     throw new Error("BETTER_AUTH_SECRET is required. Set it in the environment variables for Vercel and local development.");
@@ -63,7 +68,7 @@ export const auth = betterAuth({
     }),
     emailAndPassword: {
         enabled: true,
-        autoSignIn: true,
+        autoSignIn: false,
         password: {
             hash: (password: string) => hash(password, 12),
             verify: ({ password, hash: hashedPassword }) => compare(password, hashedPassword),

@@ -1,10 +1,7 @@
 import { Elysia, t } from "elysia";
 import { z } from "zod";
-import {
-    getAuthenticatedUserId,
-    getValidatedUnitIdFromRequest,
-    invalidOrMissingUnitHeaderMessage,
-} from "../../http/plugins/unit-access.js";
+import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
+import { getClinicIdFromRequest } from "../../http/plugins/clinic-context.js";
 import { isDomainError } from "../../http/plugins/domain-error.js";
 import { isUniqueConstraintError } from "../../http/plugins/db-errors.js";
 import type { ProfessionalsRepository } from "./professionals.repository.js";
@@ -37,16 +34,10 @@ export const professionalsRoutes = ({
             return { error: "unauthorized" as const };
         }
 
-        const unitIdFromHeader = getValidatedUnitIdFromRequest(context.request);
+        const selectedClinicId = getClinicIdFromRequest(context.request);
 
-        if (unitIdFromHeader) {
-            return { userId, unitId: unitIdFromHeader };
-        }
-
-        const linkedUnitIds = await professionalsRepository.listUnitIdsByUserId(userId);
-
-        if (linkedUnitIds.length === 1) {
-            return { userId, unitId: linkedUnitIds[0] };
+        if (selectedClinicId) {
+            return { userId, unitId: selectedClinicId };
         }
 
         return { error: "invalid_unit" as const };
@@ -64,7 +55,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: "Selecione uma clínica para continuar" });
                 }
 
                 try {
@@ -101,7 +92,7 @@ export const professionalsRoutes = ({
                 response: {
                     201: professionalProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.Literal("Professional already exists for this user") }),
                     500: professionalsErrorSchema,
@@ -112,24 +103,34 @@ export const professionalsRoutes = ({
             "/link-user",
             async (context) => {
                 const { body, status } = context;
-                const userId = getAuthenticatedUserId(context as { request: Request; user?: { id?: string } });
+                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
 
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
+                if ("error" in scope) {
+                    if (scope.error === "unauthorized") {
+                        return status(401, { message: "Unauthorized" });
+                    }
+
+                    return status(400, { message: "Selecione uma clínica para continuar" });
                 }
 
                 try {
-                    const professional = await professionalsService.createProfessionalForUser(
+                    const professional = await professionalsService.createProfessional(
+                        scope.userId,
+                        scope.unitId,
                         {
                             userId: body.userId,
                             isActive: body.isActive,
-                        },
+                        }
                     );
 
                     return status(201, professional);
                 } catch (error) {
                     if (isUniqueConstraintError(error)) {
                         return status(409, { message: "Professional already exists for this user" });
+                    }
+
+                    if (isDomainError(error, "FORBIDDEN")) {
+                        return status(403, { message: "Forbidden" });
                     }
 
                     return status(500, { message: "Internal server error" });
@@ -140,12 +141,14 @@ export const professionalsRoutes = ({
                 body: createProfessionalForUserSchema,
                 detail: {
                     summary: "Create professional for user",
-                    description: "Creates a professional linked to the userId provided in the request body. Requires only authentication.",
+                    description: "Creates a professional linked to the userId provided in the request body and to the selected clinic.",
                     tags: ["Professionals"],
                 },
                 response: {
                     201: professionalProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
+                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.String() }),
                     500: professionalsErrorSchema,
                 },
@@ -162,7 +165,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: "Selecione uma clínica para continuar" });
                 }
 
                 try {
@@ -181,13 +184,13 @@ export const professionalsRoutes = ({
                 auth: true,
                 detail: {
                     summary: "List professionals",
-                    description: "Returns professionals for the unit selected in x-unit-id header.",
+                    description: "Returns professionals for the selected clinic.",
                     tags: ["Professionals"],
                 },
                 response: {
                     200: z.array(professionalProfileSchema),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     500: professionalsErrorSchema,
                 },
@@ -204,7 +207,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: "Selecione uma clínica para continuar" });
                 }
 
                 try {
@@ -239,7 +242,7 @@ export const professionalsRoutes = ({
                 response: {
                     200: professionalProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
                     500: professionalsErrorSchema,
@@ -257,7 +260,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: "Selecione uma clínica para continuar" });
                 }
 
                 try {
@@ -297,7 +300,7 @@ export const professionalsRoutes = ({
                 response: {
                     200: professionalProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
                     409: t.Object({ message: t.Literal("Professional already exists for this user") }),
@@ -316,7 +319,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: "Selecione uma clínica para continuar" });
                 }
 
                 try {
@@ -347,7 +350,7 @@ export const professionalsRoutes = ({
                 response: {
                     200: t.Object({ message: t.Literal("Professional deleted") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
                     500: professionalsErrorSchema,
