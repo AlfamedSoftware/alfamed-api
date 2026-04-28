@@ -17,6 +17,8 @@ import { appointmentsRoutes } from "./modules/appointments/appointments.routes.j
 import type { AppointmentsRepository } from "./modules/appointments/appointments.repository.js";
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
+import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
+import { createSessionRoutes } from "./modules/session/session.routes.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -89,6 +91,10 @@ export async function buildApp({
                             name: "Appointments",
                             description: "Scheduling and booking request operations",
                         },
+                        {
+                            name: "Admin",
+                            description: "Internal administration operations",
+                        },
                     ],
                     components: await OpenAPI.components,
                     paths: await OpenAPI.getPaths(),
@@ -104,9 +110,10 @@ export async function buildApp({
                 origin: trustedOrigins,
                 methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 credentials: true,
-                allowedHeaders: ["Content-Type", "Authorization", "x-unit-id"],
+                allowedHeaders: ["Content-Type", "Authorization"],
             }),
         )
+        .use(createSessionRoutes(db))
         .use(systemRoutes())
         .use(usersRoutes({ usersRepository }))
         .use(patientsRoutes({ patientsRepository }));
@@ -116,34 +123,42 @@ export async function buildApp({
 
     const configuredAppWithSpecialties = specialtiesRepository
         ? configuredApp.use(
-              specialtiesRoutes({
-                  specialtiesRepository,
-                  hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-              }),
-          )
+            specialtiesRoutes({
+                specialtiesRepository,
+                hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+                getUserUnitIdsByUserId: professionalsRepository?.listUnitIdsByUserId,
+            }),
+        )
         : configuredApp;
 
     const configuredAppWithUnits = unitsRepository
         ? configuredAppWithSpecialties.use(
-              unitsRoutes({
-                  unitsRepository,
-                  hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-              }),
-          )
+            unitsRoutes({
+                unitsRepository,
+                hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+            }),
+        )
         : configuredAppWithSpecialties;
+
+    const configuredAppWithAdmin = configuredAppWithUnits.use(
+        adminUnitsRoutes({
+            db,
+        }),
+    );
 
     if (!professionalsRepository) {
         return appointmentsRepository
-            ? configuredAppWithUnits.use(
-                  appointmentsRoutes({
-                      appointmentsRepository,
-                      hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-                  }),
-              )
-            : configuredAppWithUnits;
+            ? configuredAppWithAdmin.use(
+                appointmentsRoutes({
+                    appointmentsRepository,
+                    hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+                    getUserUnitIdsByUserId: professionalsRepository?.listUnitIdsByUserId,
+                }),
+            )
+            : configuredAppWithAdmin;
     }
 
-    const configuredAppWithProfessionals = configuredAppWithUnits.use(
+    const configuredAppWithProfessionals = configuredAppWithAdmin.use(
         professionalsRoutes({
             professionalsRepository,
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
@@ -158,6 +173,7 @@ export async function buildApp({
         appointmentsRoutes({
             appointmentsRepository,
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+            getUserUnitIdsByUserId: professionalsRepository.listUnitIdsByUserId,
         }),
     );
 }

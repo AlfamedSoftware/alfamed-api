@@ -1,10 +1,7 @@
 import { Elysia, t } from "elysia";
 import { isDomainError } from "../../http/plugins/domain-error.js";
-import {
-    getAuthenticatedUserId,
-    getRequiredUnitIdFromRequest,
-    invalidOrMissingUnitHeaderMessage,
-} from "../../http/plugins/unit-access.js";
+import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
+import { getClinicIdFromRequest } from "../../http/plugins/clinic-context.js";
 import type { AppointmentsRepository } from "./appointments.repository.js";
 import { AppointmentsService, isConflictDomainError } from "./appointments.service.js";
 import {
@@ -22,36 +19,51 @@ import { any } from "zod";
 type AppointmentsRoutesOptions = {
     appointmentsRepository: AppointmentsRepository;
     hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>;
+    getUserUnitIdsByUserId?: (userId: string) => Promise<string[]>;
 };
 
 export const appointmentsRoutes = ({
     appointmentsRepository,
     hasUserAccessToUnitChecker,
+    getUserUnitIdsByUserId,
 }: AppointmentsRoutesOptions) => {
     const appointmentsService = new AppointmentsService(appointmentsRepository, hasUserAccessToUnitChecker);
 
     const getUserId = (context: { user?: { id?: string } }) => getAuthenticatedUserId(context);
+
+    const resolveUnitId = async (context: { request: Request; user?: { id?: string } }) => {
+        const userId = getUserId(context);
+
+        if (!userId) {
+            return { error: "unauthorized" as const };
+        }
+
+        const selectedClinicId = getClinicIdFromRequest(context.request);
+
+        if (selectedClinicId) {
+            return { userId, unitId: selectedClinicId };
+        }
+
+        return { error: "invalid_unit" as const };
+    };
 
     return new Elysia({ name: "appointments-routes", prefix: "/appointments" })
         .post(
             "/schedules",
             async (context) => {
                 const { body, status } = context;
-                const userId = getUserId(context as { user?: { id?: string } });
+                const scope = await resolveUnitId(context as { request: Request; user?: { id?: string } });
 
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
+                if ("error" in scope) {
+                    if (scope.error === "unauthorized") {
+                        return status(401, { message: "Unauthorized" });
+                    }
 
-                let unitId: string;
-                try {
-                    unitId = getRequiredUnitIdFromRequest(context.request);
-                } catch {
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: "Selecione uma clínica para continuar" });
                 }
 
                 try {
-                    const created = await appointmentsService.createSchedule(userId, unitId, body);
+                    const created = await appointmentsService.createSchedule(scope.userId, scope.unitId, body);
                     return status(201, created);
                 } catch (error) {
                     if (isDomainError(error, "FORBIDDEN")) {
@@ -71,7 +83,7 @@ export const appointmentsRoutes = ({
                 response: {
                     201: scheduleProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     500: appointmentsErrorSchema,
                 },

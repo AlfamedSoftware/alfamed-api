@@ -108,6 +108,13 @@ export class InMemoryUnitsRepository implements UnitsRepository {
         const unit: UnitProfile = {
             id,
             name: data.name,
+            cnpj: data.cnpj ?? null,
+            address: data.address ?? null,
+            city: data.city ?? null,
+            state: data.state ?? null,
+            phone: data.phone ?? null,
+            email: data.email ?? null,
+            ownerUserId: data.ownerUserId ?? null,
             isActive: data.isActive ?? true,
             createdAt: now,
             updatedAt: now,
@@ -152,6 +159,16 @@ export class InMemoryUnitsRepository implements UnitsRepository {
         const updated: UnitProfile = {
             ...current,
             name: data.name ?? current.name,
+            cnpj: data.cnpj ?? current.cnpj,
+            address: data.address ?? current.address,
+            city: data.city ?? current.city,
+            state: data.state ?? current.state,
+            phone: data.phone ?? current.phone,
+            email: data.email ?? current.email,
+            ownerUserId:
+                data.ownerUserId === undefined
+                    ? current.ownerUserId
+                    : data.ownerUserId,
             isActive: data.isActive ?? current.isActive,
             updatedAt: new Date().toISOString(),
         };

@@ -3,6 +3,7 @@ import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionals } from "../../db/schema/professionals.js";
+import { users } from "../../db/schema/users.js";
 import {
     createProfessionalSchema,
     professionalProfileSchema,
@@ -24,11 +25,14 @@ export class ProfessionalsRepository {
     readonly listByUnit: (unitId: string) => Promise<ProfessionalProfile[]>;
     readonly update: (professionalId: string, data: UpdateProfessionalInput) => Promise<ProfessionalProfile | null>;
     readonly delete: (professionalId: string) => Promise<void>;
+    readonly listUnitIdsByUserId: (userId: string) => Promise<string[]>;
 
     constructor(db: DatabaseClient) {
         const toProfile = (result: {
             id: string;
             userId: string;
+            name: string | null;
+            email: string | null;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
@@ -36,6 +40,8 @@ export class ProfessionalsRepository {
             professionalProfileSchema.parse({
                 id: result.id,
                 userId: result.userId,
+                name: result.name ?? undefined,
+                email: result.email ?? undefined,
                 isActive: result.isActive,
                 createdAt: result.createdAt.toISOString(),
                 updatedAt: result.updatedAt.toISOString(),
@@ -50,13 +56,15 @@ export class ProfessionalsRepository {
                 })
                 .returning({
                     id: professionals.id,
-                    userId: professionals.userId,
-                    isActive: professionals.isActive,
-                    createdAt: professionals.createdAt,
-                    updatedAt: professionals.updatedAt,
                 });
 
-            return toProfile(result);
+            const created = await this.findById(result.id);
+
+            if (!created) {
+                throw new Error("Failed to load created professional");
+            }
+
+            return created;
         };
 
         this.findById = async (professionalId) => {
@@ -64,11 +72,14 @@ export class ProfessionalsRepository {
                 .select({
                     id: professionals.id,
                     userId: professionals.userId,
+                    name: users.name,
+                    email: users.email,
                     isActive: professionals.isActive,
                     createdAt: professionals.createdAt,
                     updatedAt: professionals.updatedAt,
                 })
                 .from(professionals)
+                .innerJoin(users, eq(users.id, professionals.userId))
                 .where(eq(professionals.id, professionalId))
                 .limit(1);
 
@@ -80,17 +91,20 @@ export class ProfessionalsRepository {
         };
 
         this.list = async () => {
-            const results = await db
+            const rows = await db
                 .select({
                     id: professionals.id,
                     userId: professionals.userId,
+                    name: users.name,
+                    email: users.email,
                     isActive: professionals.isActive,
                     createdAt: professionals.createdAt,
                     updatedAt: professionals.updatedAt,
                 })
-                .from(professionals);
+                .from(professionals)
+                .innerJoin(users, eq(users.id, professionals.userId));
 
-            return results.map(toProfile);
+            return rows.map(toProfile);
         };
 
         this.findByIdAndUnit = async (professionalId, unitId) => {
@@ -98,11 +112,14 @@ export class ProfessionalsRepository {
                 .select({
                     id: professionals.id,
                     userId: professionals.userId,
+                    name: users.name,
+                    email: users.email,
                     isActive: professionals.isActive,
                     createdAt: professionals.createdAt,
                     updatedAt: professionals.updatedAt,
                 })
                 .from(professionals)
+                .innerJoin(users, eq(users.id, professionals.userId))
                 .innerJoin(professionalUnits, eq(professionals.id, professionalUnits.professionalId))
                 .where(and(eq(professionals.id, professionalId), eq(professionalUnits.unitId, unitId)))
                 .limit(1);
@@ -119,11 +136,14 @@ export class ProfessionalsRepository {
                 .select({
                     id: professionals.id,
                     userId: professionals.userId,
+                    name: users.name,
+                    email: users.email,
                     isActive: professionals.isActive,
                     createdAt: professionals.createdAt,
                     updatedAt: professionals.updatedAt,
                 })
                 .from(professionals)
+                .innerJoin(users, eq(users.id, professionals.userId))
                 .innerJoin(professionalUnits, eq(professionals.id, professionalUnits.professionalId))
                 .where(eq(professionalUnits.unitId, unitId));
 
@@ -154,7 +174,13 @@ export class ProfessionalsRepository {
                 return result;
             });
 
-            return toProfile(createdProfessional);
+            const created = await this.findById(createdProfessional.id);
+
+            if (!created) {
+                throw new Error("Failed to load created professional");
+            }
+
+            return created;
         };
 
         this.update = async (professionalId, data) => {
@@ -167,21 +193,27 @@ export class ProfessionalsRepository {
                 .where(eq(professionals.id, professionalId))
                 .returning({
                     id: professionals.id,
-                    userId: professionals.userId,
-                    isActive: professionals.isActive,
-                    createdAt: professionals.createdAt,
-                    updatedAt: professionals.updatedAt,
                 });
 
             if (!result) {
                 return null;
             }
 
-            return toProfile(result);
+            return this.findById(result.id);
         };
 
         this.delete = async (professionalId) => {
             await db.delete(professionals).where(eq(professionals.id, professionalId));
+        };
+
+        this.listUnitIdsByUserId = async (userId) => {
+            const results = await db
+                .select({ unitId: professionalUnits.unitId })
+                .from(professionals)
+                .innerJoin(professionalUnits, eq(professionals.id, professionalUnits.professionalId))
+                .where(eq(professionals.userId, userId));
+
+            return [...new Set(results.map((row) => row.unitId))];
         };
     }
 }

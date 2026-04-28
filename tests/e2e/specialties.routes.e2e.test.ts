@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { specialtyProfileSchema } from "../../src/modules/specialties/specialties.schemas";
-import { buildE2EApp, TEST_IDS } from "./helpers/context";
+import { buildE2EApp, createSelectedClinicCookie, TEST_IDS } from "./helpers/context";
 import {
     InMemorySpecialtiesRepository,
     InMemoryUsersRepository,
@@ -14,7 +14,7 @@ describe("Specialties routes", () => {
 
     const requestHeaders = {
         "x-user-id": TEST_IDS.user,
-        "x-unit-id": TEST_IDS.unit,
+        Cookie: createSelectedClinicCookie(TEST_IDS.unit),
     };
 
     const createRepository = () =>

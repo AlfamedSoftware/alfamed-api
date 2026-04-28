@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { professionalProfileSchema } from "../../src/modules/professionals/professionals.schemas";
-import { buildE2EApp, TEST_IDS } from "./helpers/context";
+import { buildE2EApp, createSelectedClinicCookie, TEST_IDS } from "./helpers/context";
 import {
     InMemoryPatientsRepository,
     InMemoryProfessionalsRepository,
@@ -14,7 +14,7 @@ describe("Professionals routes", () => {
 
     const requestHeaders = {
         "x-user-id": TEST_IDS.user,
-        "x-unit-id": TEST_IDS.unit,
+        Cookie: createSelectedClinicCookie(TEST_IDS.unit),
     };
 
     it("POST /professionals cria profissional", async () => {
@@ -92,7 +92,11 @@ describe("Professionals routes", () => {
         const response = await app.handle(
             new Request("http://localhost/professionals/link-user", {
                 method: "POST",
-                headers: { "x-user-id": TEST_IDS.user, "Content-Type": "application/json" },
+                headers: {
+                    "x-user-id": TEST_IDS.user,
+                    Cookie: createSelectedClinicCookie(TEST_IDS.unit),
+                    "Content-Type": "application/json",
+                },
                 body: JSON.stringify({ userId: TEST_IDS.otherUser, isActive: true }),
             }),
         );
@@ -119,7 +123,11 @@ describe("Professionals routes", () => {
         const response = await app.handle(
             new Request("http://localhost/professionals/link-user", {
                 method: "POST",
-                headers: { "x-user-id": TEST_IDS.user, "Content-Type": "application/json" },
+                headers: {
+                    "x-user-id": TEST_IDS.user,
+                    Cookie: createSelectedClinicCookie(TEST_IDS.unit),
+                    "Content-Type": "application/json",
+                },
                 body: JSON.stringify({ userId: TEST_IDS.otherUser, isActive: true }),
             }),
         );
@@ -291,7 +299,7 @@ describe("Professionals routes", () => {
         expect(response.status).toBe(403);
     });
 
-    it("retorna 400 quando x-unit-id ausente", async () => {
+    it("retorna 400 quando clínica não está selecionada", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: new InMemoryProfessionalsRepository(),
@@ -307,7 +315,7 @@ describe("Professionals routes", () => {
         expect(response.status).toBe(400);
     });
 
-    it("PATCH /professionals/:id retorna 400 sem x-unit-id", async () => {
+    it("PATCH /professionals/:id retorna 400 sem clínica selecionada", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: new InMemoryProfessionalsRepository(),
@@ -328,7 +336,7 @@ describe("Professionals routes", () => {
         expect(response.status).toBe(400);
     });
 
-    it("DELETE /professionals/:id retorna 400 sem x-unit-id", async () => {
+    it("DELETE /professionals/:id retorna 400 sem clínica selecionada", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
             professionalsRepository: new InMemoryProfessionalsRepository(),

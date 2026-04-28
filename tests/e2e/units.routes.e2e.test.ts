@@ -12,6 +12,13 @@ describe("Units routes", () => {
         [TEST_IDS.unit]: {
             id: TEST_IDS.unit,
             name: "Unidade A",
+            cnpj: null,
+            address: null,
+            city: null,
+            state: null,
+            phone: null,
+            email: null,
+            ownerUserId: null,
             isActive: true,
             createdAt: "2026-02-01T17:27:35.202Z",
             updatedAt: "2026-02-01T17:27:35.202Z",
@@ -153,6 +160,13 @@ describe("Units routes", () => {
             [TEST_IDS.unit]: {
                 id: TEST_IDS.unit,
                 name: "Unidade A",
+                cnpj: null,
+                address: null,
+                city: null,
+                state: null,
+                phone: null,
+                email: null,
+                ownerUserId: null,
                 isActive: false,
                 createdAt: "2026-02-01T17:27:35.202Z",
                 updatedAt: "2026-02-01T17:27:35.202Z",
@@ -266,7 +280,6 @@ describe("Units routes", () => {
             new Request(`http://localhost/units/${TEST_IDS.unit}`, {
                 headers: {
                     "x-user-id": TEST_IDS.user,
-                    "x-unit-id": TEST_IDS.unit,
                 },
             }),
         );

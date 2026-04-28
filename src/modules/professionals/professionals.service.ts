@@ -10,7 +10,7 @@ export class ProfessionalsService {
     constructor(
         private readonly professionalsRepository: ProfessionalsRepository,
         private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
-    ) {}
+    ) { }
 
     async createProfessional(requestUserId: string, unitId: string, data: CreateProfessionalInput) {
         await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);

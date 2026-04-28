@@ -1,11 +1,8 @@
 import { Elysia, t } from "elysia";
 import { isDomainError } from "../../http/plugins/domain-error.js";
 import { isUniqueConstraintError } from "../../http/plugins/db-errors.js";
-import {
-    getAuthenticatedUserId,
-    getRequiredUnitIdFromRequest,
-    invalidOrMissingUnitHeaderMessage,
-} from "../../http/plugins/unit-access.js";
+import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
+import { getClinicIdFromRequest } from "../../http/plugins/clinic-context.js";
 import type { SpecialtiesRepository } from "./specialties.repository.js";
 import { SpecialtiesService } from "./specialties.service.js";
 import {
@@ -14,6 +11,7 @@ import {
     specialtyProfileSchema,
     updateSpecialtySchema,
 } from "./specialties.schemas.js";
+const unitSelectionRequiredMessage = "Selecione uma clínica para continuar";
 
 type SpecialtiesRoutesOptions = {
     specialtiesRepository: SpecialtiesRepository;
@@ -36,12 +34,13 @@ export const specialtiesRoutes = ({
             return { error: "unauthorized" as const };
         }
 
-        try {
-            const unitId = getRequiredUnitIdFromRequest(context.request);
-            return { userId, unitId };
-        } catch {
-            return { error: "invalid_unit" as const };
+        const selectedClinicId = getClinicIdFromRequest(context.request);
+
+        if (selectedClinicId) {
+            return { userId, unitId: selectedClinicId };
         }
+
+        return { error: "invalid_unit" as const };
     };
 
     return new Elysia({ name: "specialties-routes", prefix: "/specialties" })
@@ -55,7 +54,7 @@ export const specialtiesRoutes = ({
                     if (scope.error === "unauthorized") {
                         return status(401, { message: "Unauthorized" });
                     }
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -81,7 +80,7 @@ export const specialtiesRoutes = ({
                 },
                 response: {
                     201: specialtyProfileSchema,
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.Literal("Specialty already exists") }),
@@ -99,7 +98,7 @@ export const specialtiesRoutes = ({
                     if (scope.error === "unauthorized") {
                         return status(401, { message: "Unauthorized" });
                     }
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -121,7 +120,7 @@ export const specialtiesRoutes = ({
                 },
                 response: {
                     200: specialtyProfileSchema.array(),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     500: specialtiesErrorSchema,
@@ -138,7 +137,7 @@ export const specialtiesRoutes = ({
                     if (scope.error === "unauthorized") {
                         return status(401, { message: "Unauthorized" });
                     }
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -170,7 +169,7 @@ export const specialtiesRoutes = ({
                 },
                 response: {
                     200: specialtyProfileSchema,
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.String() }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Specialty not found") }),
@@ -188,7 +187,7 @@ export const specialtiesRoutes = ({
                     if (scope.error === "unauthorized") {
                         return status(401, { message: "Unauthorized" });
                     }
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -223,7 +222,7 @@ export const specialtiesRoutes = ({
                 },
                 response: {
                     200: specialtyProfileSchema,
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.String() }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Specialty not found") }),
@@ -242,7 +241,7 @@ export const specialtiesRoutes = ({
                     if (scope.error === "unauthorized") {
                         return status(401, { message: "Unauthorized" });
                     }
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -268,7 +267,7 @@ export const specialtiesRoutes = ({
                 },
                 response: {
                     200: t.Object({ message: t.Literal("Specialty deleted") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.String() }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Specialty not found") }),
@@ -286,7 +285,7 @@ export const specialtiesRoutes = ({
                     if (scope.error === "unauthorized") {
                         return status(401, { message: "Unauthorized" });
                     }
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -326,7 +325,7 @@ export const specialtiesRoutes = ({
                 },
                 response: {
                     201: t.Object({ message: t.Literal("Specialty linked to professional") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.String() }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Union([
@@ -348,7 +347,7 @@ export const specialtiesRoutes = ({
                     if (scope.error === "unauthorized") {
                         return status(401, { message: "Unauthorized" });
                     }
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -388,7 +387,7 @@ export const specialtiesRoutes = ({
                 },
                 response: {
                     200: t.Object({ message: t.Literal("Specialty unlinked from professional") }),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.String() }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Union([
@@ -410,7 +409,7 @@ export const specialtiesRoutes = ({
                     if (scope.error === "unauthorized") {
                         return status(401, { message: "Unauthorized" });
                     }
-                    return status(400, { message: invalidOrMissingUnitHeaderMessage });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -442,7 +441,7 @@ export const specialtiesRoutes = ({
                 },
                 response: {
                     200: specialtyProfileSchema.array(),
-                    400: t.Object({ message: t.Literal("Invalid or missing unit header") }),
+                    400: t.Object({ message: t.String() }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),

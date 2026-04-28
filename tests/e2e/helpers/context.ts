@@ -25,6 +25,9 @@ export const TEST_IDS = {
     request: "019c1a3e-e425-7000-8bda-cdfec32c8fa2",
 } as const;
 
+export const createSelectedClinicCookie = (clinicId: string) =>
+    `${"selectedClinicId"}=${encodeURIComponent(clinicId)}`;
+
 export const unusedDb = new Proxy(
     {},
     {

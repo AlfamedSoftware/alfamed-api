@@ -17,6 +17,8 @@ export const updateProfessionalSchema = z.object({
 export const professionalProfileSchema = z.object({
     id: z.string().uuid(),
     userId: z.string().uuid(),
+    name: z.string().optional(),
+    email: z.string().email().optional(),
     isActive: z.boolean(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
