@@ -18,6 +18,10 @@ import type { Session } from "better-auth";
 type DatabaseClient = typeof dbType;
 
 export interface SessionWithClinic extends Session {
+    session?: {
+        clinicId?: string;
+    };
+    clinicId?: string;
     data?: {
         clinicId?: string;
     };
@@ -29,6 +33,7 @@ export interface ClinicContext {
 }
 
 export const selectedClinicCookieName = "selectedClinicId";
+export const selectedProfessionalUnitCookieName = "selectedProfessionalUnitId";
 const legacySelectedClinicCookieName = "selectedClinicid";
 
 /**
@@ -87,35 +92,87 @@ export function getClinicIdFromRequest(request: Request): string | null {
     }
 }
 
+export function getProfessionalUnitIdFromRequest(request: Request): string | null {
+    const cookieHeader = request.headers.get("cookie");
+
+    if (!cookieHeader) {
+        return null;
+    }
+
+    const cookies = cookieHeader
+        .split(";")
+        .map((cookie) => cookie.trim())
+        .map((cookie) => {
+            const separatorIndex = cookie.indexOf("=");
+
+            if (separatorIndex <= 0) {
+                return null;
+            }
+
+            const key = cookie.slice(0, separatorIndex).trim();
+            const value = cookie.slice(separatorIndex + 1);
+
+            return { key, value };
+        })
+        .filter((cookie): cookie is { key: string; value: string } => cookie !== null);
+
+    const selectedProfessionalUnitCookie = cookies.find(
+        (cookie) =>
+            cookie.key === selectedProfessionalUnitCookieName ||
+            cookie.key.toLowerCase() === selectedProfessionalUnitCookieName.toLowerCase(),
+    );
+
+    if (!selectedProfessionalUnitCookie?.value) {
+        return null;
+    }
+
+    const encodedValue = selectedProfessionalUnitCookie.value;
+
+    try {
+        return decodeURIComponent(encodedValue);
+    } catch {
+        return encodedValue;
+    }
+}
+
 /**
  * Factory para criar checker de acesso à clínica
  */
 export function createClinicAccessChecker(db: DatabaseClient) {
     return async (userId: string, clinicId: string): Promise<boolean> => {
-        // Valida que o usuário (via seu professional) tem acesso a essa clínica
-        const [professional] = await db
-            .select({ id: professionals.id })
-            .from(professionals)
-            .where(eq(professionals.userId, userId))
-            .limit(1);
+        const professionalUnitId = await findProfessionalUnitIdForUserAndClinic(db, userId, clinicId);
 
-        if (!professional) {
-            return false;
-        }
-
-        const [access] = await db
-            .select({ id: professionalUnits.id })
-            .from(professionalUnits)
-            .where(
-                and(
-                    eq(professionalUnits.professionalId, professional.id),
-                    eq(professionalUnits.unitId, clinicId),
-                ),
-            )
-            .limit(1);
-
-        return !!access;
+        return professionalUnitId !== null;
     };
+}
+
+export async function findProfessionalUnitIdForUserAndClinic(
+    db: DatabaseClient,
+    userId: string,
+    clinicId: string,
+): Promise<string | null> {
+    const [professional] = await db
+        .select({ id: professionals.id })
+        .from(professionals)
+        .where(eq(professionals.userId, userId))
+        .limit(1);
+
+    if (!professional) {
+        return null;
+    }
+
+    const [access] = await db
+        .select({ id: professionalUnits.id })
+        .from(professionalUnits)
+        .where(
+            and(
+                eq(professionalUnits.professionalId, professional.id),
+                eq(professionalUnits.unitId, clinicId),
+            ),
+        )
+        .limit(1);
+
+    return access?.id ?? null;
 }
 
 /**
