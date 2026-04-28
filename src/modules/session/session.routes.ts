@@ -10,7 +10,10 @@ import type { db as dbType } from "../../db/client.js";
 import { auth } from "../../auth.js";
 import {
     getClinicIdFromRequest,
+    getProfessionalUnitIdFromRequest,
+    findProfessionalUnitIdForUserAndClinic,
     selectedClinicCookieName,
+    selectedProfessionalUnitCookieName,
     createClinicAccessChecker,
     listAvailableClinics,
 } from "../../http/plugins/clinic-context.js";
@@ -45,6 +48,7 @@ interface SelectClinicResponse {
 interface AvailableClinicsResponse {
     clinics: ClinicOption[];
     selectedClinicId?: string;
+    selectedProfessionalUnitId?: string;
 }
 
 export const createSessionRoutes = (db: DatabaseClient) => {
@@ -63,6 +67,19 @@ export const createSessionRoutes = (db: DatabaseClient) => {
             ...(context.set.cookie ?? {}),
             [selectedClinicCookieName]: {
                 value: clinicId,
+                ...selectedClinicCookieOptions,
+            },
+        };
+    };
+
+    const setSelectedProfessionalUnitCookie = (
+        context: { set: { cookie?: Record<string, unknown> } },
+        professionalUnitId: string,
+    ) => {
+        context.set.cookie = {
+            ...(context.set.cookie ?? {}),
+            [selectedProfessionalUnitCookieName]: {
+                value: professionalUnitId,
                 ...selectedClinicCookieOptions,
             },
         };
@@ -87,10 +104,12 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                 const userId = session.user.id;
                 const clinics = await listAvailableClinics(db, userId);
                 const currentClinicId = getClinicIdFromRequest(context.request) ?? undefined;
+                const currentProfessionalUnitId = getProfessionalUnitIdFromRequest(context.request) ?? undefined;
 
                 return context.status(200, {
                     clinics,
                     selectedClinicId: currentClinicId,
+                    selectedProfessionalUnitId: currentProfessionalUnitId,
                 } satisfies AvailableClinicsResponse);
             },
             {
@@ -109,6 +128,7 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                             }),
                         ),
                         selectedClinicId: t.Optional(t.String({ format: "uuid" })),
+                        selectedProfessionalUnitId: t.Optional(t.String({ format: "uuid" })),
                     }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                 },
@@ -145,7 +165,14 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                     } satisfies SelectClinicResponse);
                 }
 
+                const professionalUnitId = await findProfessionalUnitIdForUserAndClinic(db, userId, clinicId);
+
+                if (!professionalUnitId) {
+                    throw new Error("Failed to resolve professional unit for selected clinic");
+                }
+
                 setSelectedClinicCookie(context, clinicId);
+                setSelectedProfessionalUnitCookie(context, professionalUnitId);
 
                 /**
                  * Atualiza a sessão com o clinicId
@@ -229,7 +256,14 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                     } satisfies SelectClinicResponse);
                 }
 
+                const professionalUnitId = await findProfessionalUnitIdForUserAndClinic(db, userId, clinicId);
+
+                if (!professionalUnitId) {
+                    throw new Error("Failed to resolve professional unit for selected clinic");
+                }
+
                 setSelectedClinicCookie(context, clinicId);
+                setSelectedProfessionalUnitCookie(context, professionalUnitId);
 
                 return status(200, {
                     success: true,
