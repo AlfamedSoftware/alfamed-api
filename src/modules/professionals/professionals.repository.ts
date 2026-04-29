@@ -184,22 +184,38 @@ export class ProfessionalsRepository {
         };
 
         this.update = async (professionalId, data) => {
-            const [result] = await db
-                .update(professionals)
-                .set({
-                    userId: data.userId,
-                    isActive: data.isActive,
-                })
-                .where(eq(professionals.id, professionalId))
-                .returning({
-                    id: professionals.id,
-                });
+            const updated = await db.transaction(async (tx) => {
+                const [current] = await tx
+                    .select({ userId: professionals.userId })
+                    .from(professionals)
+                    .where(eq(professionals.id, professionalId))
+                    .limit(1);
 
-            if (!result) {
-                return null;
-            }
+                const targetUserId = data.userId ?? current?.userId;
 
-            return this.findById(result.id);
+                if (targetUserId && (data.name !== undefined || data.email !== undefined)) {
+                    const userUpdate: any = {};
+                    if (data.name !== undefined) userUpdate.name = data.name;
+                    if (data.email !== undefined) userUpdate.email = data.email;
+
+                    await tx.update(users).set(userUpdate).where(eq(users.id, targetUserId));
+                }
+
+                const [res] = await tx
+                    .update(professionals)
+                    .set({
+                        userId: data.userId,
+                        isActive: data.isActive,
+                    })
+                    .where(eq(professionals.id, professionalId))
+                    .returning({ id: professionals.id });
+
+                return res;
+            });
+
+            if (!updated) return null;
+
+            return this.findById(updated.id);
         };
 
         this.delete = async (professionalId) => {
