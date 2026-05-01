@@ -33,7 +33,7 @@ import type {
 import { DomainError } from "../../../src/http/plugins/domain-error";
 
 export class InMemoryUsersRepository implements UsersRepository {
-    constructor(private readonly users: Record<string, UserProfile> = {}) {}
+    constructor(private readonly users: Record<string, UserProfile> = {}) { }
 
     async getUserById(userId: string): Promise<UserProfile | null> {
         return this.users[userId] ?? null;
@@ -232,6 +232,25 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
         return (this.professionalsUnits[professionalId] ?? []).includes(unitId)
             ? professional
             : null;
+    }
+
+    async findDetailById(professionalId: string): Promise<any | null> {
+        const professional = this.professionals[professionalId];
+
+        if (!professional) {
+            return null;
+        }
+
+        return {
+            ...professional,
+            users: [
+                {
+                    id: professional.userId,
+                    name: "Mock User",
+                    email: "mock@example.com",
+                },
+            ],
+        };
     }
 
     async list(): Promise<ProfessionalProfile[]> {
