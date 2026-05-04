@@ -25,6 +25,7 @@ export class ProfessionalsRepository {
     readonly create: (data: CreateProfessionalInput) => Promise<ProfessionalProfile>;
     readonly createWithUnit: (data: CreateProfessionalInput, unitId: string) => Promise<ProfessionalProfile>;
     readonly findById: (professionalId: string) => Promise<ProfessionalProfile | null>;
+    readonly findDetailById: (professionalId: string) => Promise<any | null>;
     readonly findByIdAndUnit: (professionalId: string, unitId: string) => Promise<ProfessionalProfile | null>;
     readonly list: () => Promise<ProfessionalProfile[]>;
     readonly listByUnit: (unitId: string) => Promise<ProfessionalProfile[]>;
@@ -43,6 +44,8 @@ export class ProfessionalsRepository {
             userId: string;
             name: string | null;
             email: string | null;
+            crm: string | null;
+            phone: string | null;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
@@ -52,6 +55,8 @@ export class ProfessionalsRepository {
                 userId: result.userId,
                 name: result.name ?? undefined,
                 email: result.email ?? undefined,
+                crm: result.crm ?? undefined,
+                phone: result.phone ?? undefined,
                 isActive: result.isActive,
                 createdAt: result.createdAt.toISOString(),
                 updatedAt: result.updatedAt.toISOString(),
@@ -101,6 +106,8 @@ export class ProfessionalsRepository {
                     userId: professionals.userId,
                     name: users.name,
                     email: users.email,
+                    crm: professionals.crm,
+                    phone: users.phone,
                     isActive: professionals.isActive,
                     createdAt: professionals.createdAt,
                     updatedAt: professionals.updatedAt,
@@ -124,6 +131,8 @@ export class ProfessionalsRepository {
                     userId: professionals.userId,
                     name: users.name,
                     email: users.email,
+                    crm: professionals.crm,
+                    phone: users.phone,
                     isActive: professionals.isActive,
                     createdAt: professionals.createdAt,
                     updatedAt: professionals.updatedAt,
@@ -141,6 +150,8 @@ export class ProfessionalsRepository {
                     userId: professionals.userId,
                     name: users.name,
                     email: users.email,
+                    crm: professionals.crm,
+                    phone: users.phone,
                     isActive: professionals.isActive,
                     createdAt: professionals.createdAt,
                     updatedAt: professionals.updatedAt,
@@ -165,6 +176,8 @@ export class ProfessionalsRepository {
                     userId: professionals.userId,
                     name: users.name,
                     email: users.email,
+                    crm: professionals.crm,
+                    phone: users.phone,
                     isActive: professionals.isActive,
                     createdAt: professionals.createdAt,
                     updatedAt: professionals.updatedAt,
@@ -175,6 +188,60 @@ export class ProfessionalsRepository {
                 .where(eq(professionalUnits.unitId, unitId));
 
             return results.map(toProfile);
+        };
+
+        // Returns professional profile with an array `users` that contains
+        // user objects responsible for the professional. For now we include
+        // the primary linked user as the responsible user to keep the shape
+        // consistent with front-end expectations.
+        this.findDetailById = async (professionalId) => {
+            const base = await this.findById(professionalId);
+
+            if (!base) return null;
+
+            const [userRow] = await db
+                .select({
+                    id: users.id,
+                    name: users.name,
+                    email: users.email,
+                    phone: users.phone,
+                    cpf: users.cpf,
+                    birthdate: users.birthdate,
+                })
+                .from(users)
+                .where(eq(users.id, base.userId))
+                .limit(1);
+
+            const [unitRow] = await db
+                .select({
+                    id: units.id,
+                    name: units.name,
+                })
+                .from(professionalUnits)
+                .innerJoin(units, eq(units.id, professionalUnits.unitId))
+                .where(eq(professionalUnits.professionalId, professionalId))
+                .limit(1);
+
+            const detail = {
+                ...base,
+                cpf: userRow?.cpf ?? undefined,
+                birthdate: userRow?.birthdate ? userRow.birthdate.toISOString() : undefined,
+                unit: unitRow ?? null,
+                users: userRow
+                    ? [
+                        {
+                            id: userRow.id,
+                            name: userRow.name,
+                            email: userRow.email,
+                            phone: userRow.phone ?? undefined,
+                            cpf: userRow.cpf,
+                            birthdate: userRow.birthdate.toISOString(),
+                        },
+                    ]
+                    : [],
+            };
+
+            return detail;
         };
 
         this.createWithUnit = async (data, unitId) => {
@@ -211,22 +278,45 @@ export class ProfessionalsRepository {
         };
 
         this.update = async (professionalId, data) => {
-            const [result] = await db
-                .update(professionals)
-                .set({
-                    userId: data.userId,
-                    isActive: data.isActive,
-                })
-                .where(eq(professionals.id, professionalId))
-                .returning({
-                    id: professionals.id,
-                });
+            const updated = await db.transaction(async (tx) => {
+                const [current] = await tx
+                    .select({ userId: professionals.userId })
+                    .from(professionals)
+                    .where(eq(professionals.id, professionalId))
+                    .limit(1);
 
-            if (!result) {
-                return null;
-            }
+                const targetUserId = data.userId ?? current?.userId;
 
-            return this.findById(result.id);
+                if (
+                    targetUserId &&
+                    (data.name !== undefined || data.email !== undefined || data.phone !== undefined || data.cpf !== undefined || data.birthdate !== undefined)
+                ) {
+                    const userUpdate: any = {};
+                    if (data.name !== undefined) userUpdate.name = data.name;
+                    if (data.email !== undefined) userUpdate.email = data.email;
+                    if (data.phone !== undefined) userUpdate.phone = data.phone;
+                    if (data.cpf !== undefined) userUpdate.cpf = data.cpf;
+                    if (data.birthdate !== undefined) userUpdate.birthdate = new Date(data.birthdate);
+
+                    await tx.update(users).set(userUpdate).where(eq(users.id, targetUserId));
+                }
+
+                const [res] = await tx
+                    .update(professionals)
+                    .set({
+                        userId: data.userId,
+                        isActive: data.isActive,
+                        crm: data.crm,
+                    })
+                    .where(eq(professionals.id, professionalId))
+                    .returning({ id: professionals.id });
+
+                return res;
+            });
+
+            if (!updated) return null;
+
+            return this.findById(updated.id);
         };
 
         this.delete = async (professionalId) => {

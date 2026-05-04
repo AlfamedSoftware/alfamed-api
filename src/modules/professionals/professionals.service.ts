@@ -25,7 +25,13 @@ export class ProfessionalsService {
     async getProfessionalById(requestUserId: string, professionalId: string, unitId: string) {
         await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
-        const professional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
+        const existsInUnit = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
+
+        if (!existsInUnit) {
+            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
+        }
+
+        const professional = await this.professionalsRepository.findDetailById(professionalId);
 
         if (!professional) {
             throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");

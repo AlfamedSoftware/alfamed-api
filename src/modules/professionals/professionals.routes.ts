@@ -11,6 +11,7 @@ import {
     createProfessionalForUserSchema,
     professionalProfileSchema,
     professionalRoleProfileSchema,
+    professionalDetailSchema,
     professionalsErrorSchema,
     updateProfessionalSchema,
 } from "./professionals.schemas.js";
@@ -300,7 +301,7 @@ export const professionalsRoutes = ({
                     tags: ["Professionals"],
                 },
                 response: {
-                    200: professionalProfileSchema,
+                    200: professionalDetailSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
