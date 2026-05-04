@@ -1,17 +1,21 @@
 import { and, eq } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
+import { professionalUnitRoles } from "../../db/schema/professional-unit-roles.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionals } from "../../db/schema/professionals.js";
+import { roles } from "../../db/schema/roles.js";
 import { units } from "../../db/schema/units.js";
 import { users } from "../../db/schema/users.js";
 import {
     createProfessionalSchema,
     professionalProfileSchema,
+    professionalRoleProfileSchema,
     updateProfessionalSchema,
 } from "./professionals.schemas.js";
 
 export type ProfessionalProfile = z.infer<typeof professionalProfileSchema>;
+export type ProfessionalRoleProfile = z.infer<typeof professionalRoleProfileSchema>;
 export type CreateProfessionalInput = z.infer<typeof createProfessionalSchema> & { userId: string };
 export type UpdateProfessionalInput = z.infer<typeof updateProfessionalSchema>;
 
@@ -28,6 +32,11 @@ export class ProfessionalsRepository {
     readonly update: (professionalId: string, data: UpdateProfessionalInput) => Promise<ProfessionalProfile | null>;
     readonly delete: (professionalId: string) => Promise<void>;
     readonly listUnitIdsByUserId: (userId: string) => Promise<string[]>;
+    readonly listActiveRolesByProfessionalUnit: (
+        userId: string,
+        unitId: string,
+        professionalUnitId: string,
+    ) => Promise<ProfessionalRoleProfile[]>;
 
     constructor(db: DatabaseClient) {
         const toProfile = (result: {
@@ -48,6 +57,23 @@ export class ProfessionalsRepository {
                 email: result.email ?? undefined,
                 crm: result.crm ?? undefined,
                 phone: result.phone ?? undefined,
+                isActive: result.isActive,
+                createdAt: result.createdAt.toISOString(),
+                updatedAt: result.updatedAt.toISOString(),
+            });
+
+        const toRoleProfile = (result: {
+            id: string;
+            description: string;
+            key: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+        }) =>
+            professionalRoleProfileSchema.parse({
+                id: result.id,
+                description: result.description,
+                key: result.key,
                 isActive: result.isActive,
                 createdAt: result.createdAt.toISOString(),
                 updatedAt: result.updatedAt.toISOString(),
@@ -305,6 +331,36 @@ export class ProfessionalsRepository {
                 .where(eq(professionals.userId, userId));
 
             return [...new Set(results.map((row) => row.unitId))];
+        };
+
+        this.listActiveRolesByProfessionalUnit = async (userId, unitId, professionalUnitId) => {
+            const rows = await db
+                .select({
+                    id: roles.id,
+                    description: roles.description,
+                    key: roles.key,
+                    isActive: roles.isActive,
+                    createdAt: roles.createdAt,
+                    updatedAt: roles.updatedAt,
+                })
+                .from(professionalUnitRoles)
+                .innerJoin(roles, eq(professionalUnitRoles.roleId, roles.id))
+                .innerJoin(professionalUnits, eq(professionalUnitRoles.professionalUnitId, professionalUnits.id))
+                .innerJoin(professionals, eq(professionalUnits.professionalId, professionals.id))
+                .innerJoin(units, eq(professionalUnits.unitId, units.id))
+                .where(
+                    and(
+                        eq(professionals.userId, userId),
+                        eq(professionalUnits.unitId, unitId),
+                        eq(professionalUnits.id, professionalUnitId),
+                        eq(professionals.isActive, true),
+                        eq(units.isActive, true),
+                        eq(professionalUnitRoles.isActive, true),
+                        eq(roles.isActive, true),
+                    ),
+                );
+
+            return rows.map(toRoleProfile);
         };
     }
 }

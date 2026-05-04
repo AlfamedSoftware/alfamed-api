@@ -7,7 +7,7 @@ const timeSchema = z
 
 export const scheduleProfileSchema = z.object({
     id: z.string().uuid(),
-    professionalSpecialtyId: z.string().uuid(),
+    professionalUnitSpecialtyId: z.string().uuid(),
     professionalUnitId: z.string().uuid(),
     unitId: z.string().uuid(),
     professionalId: z.string().uuid(),
@@ -22,7 +22,7 @@ export const scheduleProfileSchema = z.object({
 
 export const createScheduleSchema = z
     .object({
-        professionalSpecialtyId: z.string().uuid(),
+        professionalUnitSpecialtyId: z.string().uuid(),
         professionalUnitId: z.string().uuid(),
         date: dateSchema,
         time: timeSchema,
@@ -33,7 +33,7 @@ export const createScheduleSchema = z
 
 export const updateScheduleSchema = z
     .object({
-        professionalSpecialtyId: z.string().uuid().optional(),
+        professionalUnitSpecialtyId: z.string().uuid().optional(),
         professionalUnitId: z.string().uuid().optional(),
         date: dateSchema.optional(),
         time: timeSchema.optional(),
@@ -45,7 +45,7 @@ export const updateScheduleSchema = z
 export const availabilityQuerySchema = z.object({
     unitId: z.string().uuid(),
     date: dateSchema.optional(),
-    professionalSpecialtyId: z.string().uuid().optional(),
+    professionalUnitSpecialtyId: z.string().uuid().optional(),
 });
 
 export const appointmentRequestProfileSchema = z.object({

@@ -1,13 +1,13 @@
 import { pgTable, text, integer, date, time, boolean, timestamp } from "drizzle-orm/pg-core";
 import { randomUUID } from "node:crypto";
-import { professionalSpecialties } from "./professional-specialties.js";
+import { professionalUnitSpecialties } from "./professional-unit-specialties.js";
 import { professionalUnits } from "./professional-units.js";
 
 export const schedules = pgTable("schedules", {
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),
-    professionalSpecialtyId: text("professional_specialty_id")
+    professionalUnitSpecialtyId: text("professional_unit_specialty_id")
         .notNull()
-        .references(() => professionalSpecialties.id, { onDelete: "cascade" }),
+        .references(() => professionalUnitSpecialties.id, { onDelete: "cascade" }),
     professionalUnitId: text("professional_unit_id")
         .notNull()
         .references(() => professionalUnits.id, { onDelete: "cascade" }),

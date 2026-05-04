@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
-import { professionalSpecialties } from "../../db/schema/professional-specialties.js";
+import { professionalUnitSpecialties } from "../../db/schema/professional-unit-specialties.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionals } from "../../db/schema/professionals.js";
 import { specialties } from "../../db/schema/specialties.js";
@@ -24,8 +24,8 @@ export class SpecialtiesRepository {
     readonly update: (specialtyId: string, data: UpdateSpecialtyInput) => Promise<SpecialtyProfile | null>;
     readonly delete: (specialtyId: string) => Promise<void>;
     readonly findProfessionalByIdAndUnit: (professionalId: string, unitId: string) => Promise<{ id: string } | null>;
-    readonly linkProfessionalSpecialty: (professionalId: string, specialtyId: string) => Promise<void>;
-    readonly unlinkProfessionalSpecialty: (professionalId: string, specialtyId: string) => Promise<boolean>;
+    readonly linkProfessionalSpecialty: (professionalId: string, unitId: string, specialtyId: string) => Promise<void>;
+    readonly unlinkProfessionalSpecialty: (professionalId: string, unitId: string, specialtyId: string) => Promise<boolean>;
     readonly listByProfessionalAndUnit: (professionalId: string, unitId: string) => Promise<SpecialtyProfile[]>;
 
     constructor(db: DatabaseClient) {
@@ -126,23 +126,43 @@ export class SpecialtiesRepository {
             return row ?? null;
         };
 
-        this.linkProfessionalSpecialty = async (professionalId, specialtyId) => {
-            await db.insert(professionalSpecialties).values({
-                professionalId,
+        this.linkProfessionalSpecialty = async (professionalId, unitId, specialtyId) => {
+            const [professionalUnit] = await db
+                .select({ id: professionalUnits.id })
+                .from(professionalUnits)
+                .where(and(eq(professionalUnits.professionalId, professionalId), eq(professionalUnits.unitId, unitId)))
+                .limit(1);
+
+            if (!professionalUnit) {
+                throw new Error("Professional unit not found");
+            }
+
+            await db.insert(professionalUnitSpecialties).values({
+                professionalUnitId: professionalUnit.id,
                 specialtyId,
             });
         };
 
-        this.unlinkProfessionalSpecialty = async (professionalId, specialtyId) => {
+        this.unlinkProfessionalSpecialty = async (professionalId, unitId, specialtyId) => {
+            const [professionalUnit] = await db
+                .select({ id: professionalUnits.id })
+                .from(professionalUnits)
+                .where(and(eq(professionalUnits.professionalId, professionalId), eq(professionalUnits.unitId, unitId)))
+                .limit(1);
+
+            if (!professionalUnit) {
+                return false;
+            }
+
             const deleted = await db
-                .delete(professionalSpecialties)
+                .delete(professionalUnitSpecialties)
                 .where(
                     and(
-                        eq(professionalSpecialties.professionalId, professionalId),
-                        eq(professionalSpecialties.specialtyId, specialtyId),
+                        eq(professionalUnitSpecialties.professionalUnitId, professionalUnit.id),
+                        eq(professionalUnitSpecialties.specialtyId, specialtyId),
                     ),
                 )
-                .returning({ id: professionalSpecialties.id });
+                .returning({ id: professionalUnitSpecialties.id });
 
             return deleted.length > 0;
         };
@@ -157,10 +177,9 @@ export class SpecialtiesRepository {
                     updatedAt: specialties.updatedAt,
                 })
                 .from(specialties)
-                .innerJoin(professionalSpecialties, eq(specialties.id, professionalSpecialties.specialtyId))
-                .innerJoin(professionals, eq(professionalSpecialties.professionalId, professionals.id))
-                .innerJoin(professionalUnits, eq(professionals.id, professionalUnits.professionalId))
-                .where(and(eq(professionals.id, professionalId), eq(professionalUnits.unitId, unitId)));
+                .innerJoin(professionalUnitSpecialties, eq(specialties.id, professionalUnitSpecialties.specialtyId))
+                .innerJoin(professionalUnits, eq(professionalUnitSpecialties.professionalUnitId, professionalUnits.id))
+                .where(and(eq(professionalUnits.professionalId, professionalId), eq(professionalUnits.unitId, unitId)));
 
             return rows.map(toProfile);
         };

@@ -2,7 +2,7 @@ import { hash } from "bcryptjs";
 import { and, eq } from "drizzle-orm";
 import type { db as dbType } from "../../db/client.js";
 import { accounts } from "../../db/schema/accounts.js";
-import { professionalSpecialties } from "../../db/schema/professional-specialties.js";
+import { professionalUnitSpecialties } from "../../db/schema/professional-unit-specialties.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionals } from "../../db/schema/professionals.js";
 import { units } from "../../db/schema/units.js";
@@ -326,6 +326,9 @@ export class AdminUnitsRepository {
     private async listUnitProfessionalsWithExecutor(unitId: string, executor: DatabaseClient | TransactionClient = this.db) {
         const rows = await executor
             .select({
+                professionalUnit: {
+                    id: professionalUnits.id,
+                },
                 professional: {
                     id: professionals.id,
                     userId: professionals.userId,
@@ -350,9 +353,9 @@ export class AdminUnitsRepository {
         const mapped = await Promise.all(
             rows.map(async (row) => {
                 const specialtiesRows = await executor
-                    .select({ specialtyId: professionalSpecialties.specialtyId })
-                    .from(professionalSpecialties)
-                    .where(eq(professionalSpecialties.professionalId, row.professional.id));
+                    .select({ specialtyId: professionalUnitSpecialties.specialtyId })
+                    .from(professionalUnitSpecialties)
+                    .where(eq(professionalUnitSpecialties.professionalUnitId, row.professionalUnit.id));
 
                 return {
                     id: row.professional.id,
@@ -392,15 +395,22 @@ export class AdminUnitsRepository {
                 })
                 .returning({ id: professionals.id });
 
-            await tx.insert(professionalUnits).values({
-                professionalId: createdProfessional.id,
-                unitId,
-            });
+            const [createdProfessionalUnit] = await tx
+                .insert(professionalUnits)
+                .values({
+                    professionalId: createdProfessional.id,
+                    unitId,
+                })
+                .returning({ id: professionalUnits.id });
+
+            if (!createdProfessionalUnit) {
+                throw new Error("Unable to create professional unit");
+            }
 
             if (data.specialtyIds?.length) {
-                await tx.insert(professionalSpecialties).values(
+                await tx.insert(professionalUnitSpecialties).values(
                     data.specialtyIds.map((specialtyId) => ({
-                        professionalId: createdProfessional.id,
+                        professionalUnitId: createdProfessionalUnit.id,
                         specialtyId,
                     })),
                 );

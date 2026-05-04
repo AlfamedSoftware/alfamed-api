@@ -113,6 +113,41 @@
       "when": 1776820206930,
       "tag": "0015_perfect_kitty_pryde",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1777415669598,
+      "tag": "0016_low_fantastic_four",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1777416427236,
+      "tag": "0017_watery_dark_phoenix",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1777418650260,
+      "tag": "0018_messy_wendell_vaughn",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1777588363726,
+      "tag": "0019_dizzy_genesis",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1777588623542,
+      "tag": "0020_deep_mentor",
+      "breakpoints": true
     }
   ]
 }

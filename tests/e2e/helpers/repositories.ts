@@ -368,7 +368,7 @@ export class InMemoryAppointmentsRepository implements AppointmentsRepository {
 
         const schedule: ScheduleProfile = {
             id,
-            professionalSpecialtyId: data.professionalSpecialtyId,
+            professionalUnitSpecialtyId: data.professionalUnitSpecialtyId,
             professionalUnitId: data.professionalUnitId,
             unitId: professionalUnit.unitId,
             professionalId: professionalUnit.professionalId,
@@ -402,7 +402,7 @@ export class InMemoryAppointmentsRepository implements AppointmentsRepository {
 
         const updated: ScheduleProfile = {
             ...current,
-            professionalSpecialtyId: data.professionalSpecialtyId ?? current.professionalSpecialtyId,
+            professionalUnitSpecialtyId: data.professionalUnitSpecialtyId ?? current.professionalUnitSpecialtyId,
             professionalUnitId: data.professionalUnitId ?? current.professionalUnitId,
             unitId: professionalUnit.unitId,
             professionalId: professionalUnit.professionalId,
@@ -423,8 +423,8 @@ export class InMemoryAppointmentsRepository implements AppointmentsRepository {
             .filter((schedule) => !query.date || schedule.date === query.date)
             .filter(
                 (schedule) =>
-                    !query.professionalSpecialtyId
-                    || schedule.professionalSpecialtyId === query.professionalSpecialtyId,
+                    !query.professionalUnitSpecialtyId
+                    || schedule.professionalUnitSpecialtyId === query.professionalUnitSpecialtyId,
             )
             .filter((schedule) => schedule.isActive && schedule.slotsUsed < schedule.slots);
     }
