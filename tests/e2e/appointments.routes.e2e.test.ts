@@ -12,7 +12,7 @@ describe("Appointments routes", () => {
     const baseSchedules = {
         [TEST_IDS.schedule]: {
             id: TEST_IDS.schedule,
-            professionalSpecialtyId: "019c1a3e-e425-7000-8bda-cdfec32c8fa3",
+            professionalUnitSpecialtyId: "019c1a3e-e425-7000-8bda-cdfec32c8fa3",
             professionalUnitId: TEST_IDS.professionalUnit,
             unitId: TEST_IDS.unit,
             professionalId: TEST_IDS.professional,
@@ -26,7 +26,7 @@ describe("Appointments routes", () => {
         },
         [TEST_IDS.schedule2]: {
             id: TEST_IDS.schedule2,
-            professionalSpecialtyId: "019c1a3e-e425-7000-8bda-cdfec32c8fa3",
+            professionalUnitSpecialtyId: "019c1a3e-e425-7000-8bda-cdfec32c8fa3",
             professionalUnitId: TEST_IDS.professionalUnit,
             unitId: TEST_IDS.unit,
             professionalId: TEST_IDS.professional,
@@ -76,7 +76,7 @@ describe("Appointments routes", () => {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    professionalSpecialtyId: "019c1a3e-e425-7000-8bda-cdfec32c8fa3",
+                    professionalUnitSpecialtyId: "019c1a3e-e425-7000-8bda-cdfec32c8fa3",
                     professionalUnitId: TEST_IDS.professionalUnit,
                     date: "2026-03-11",
                     time: "14:00",

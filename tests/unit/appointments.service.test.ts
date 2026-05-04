@@ -76,7 +76,7 @@ describe("AppointmentsService", () => {
             {
                 "schedule-1": {
                     id: "schedule-1",
-                    professionalSpecialtyId: "specialty-1",
+                    professionalUnitSpecialtyId: "specialty-1",
                     professionalUnitId: "professional-unit-1",
                     unitId: "unit-1",
                     professionalId: "professional-1",

@@ -77,7 +77,7 @@ export class SpecialtiesService {
             throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
         }
 
-        await this.specialtiesRepository.linkProfessionalSpecialty(professionalId, specialtyId);
+        await this.specialtiesRepository.linkProfessionalSpecialty(professionalId, unitId, specialtyId);
     }
 
     async removeSpecialtyFromProfessional(
@@ -98,7 +98,7 @@ export class SpecialtiesService {
             throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
         }
 
-        const unlinked = await this.specialtiesRepository.unlinkProfessionalSpecialty(professionalId, specialtyId);
+        const unlinked = await this.specialtiesRepository.unlinkProfessionalSpecialty(professionalId, unitId, specialtyId);
         if (!unlinked) {
             throw new DomainError("SPECIALTY_LINK_NOT_FOUND", "Specialty link not found");
         }

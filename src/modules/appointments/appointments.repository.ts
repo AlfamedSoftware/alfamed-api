@@ -95,7 +95,7 @@ export class AppointmentsRepository {
     constructor(db: DatabaseClient) {
         const toScheduleProfile = (row: {
             id: string;
-            professionalSpecialtyId: string;
+            professionalUnitSpecialtyId: string;
             professionalUnitId: string;
             unitId: string;
             professionalId: string;
@@ -215,7 +215,7 @@ export class AppointmentsRepository {
             const [row] = await db
                 .insert(schedules)
                 .values({
-                    professionalSpecialtyId: data.professionalSpecialtyId,
+                    professionalUnitSpecialtyId: data.professionalUnitSpecialtyId,
                     professionalUnitId: data.professionalUnitId,
                     date: data.date,
                     time: data.time,
@@ -224,7 +224,7 @@ export class AppointmentsRepository {
                 })
                 .returning({
                     id: schedules.id,
-                    professionalSpecialtyId: schedules.professionalSpecialtyId,
+                    professionalUnitSpecialtyId: schedules.professionalUnitSpecialtyId,
                     professionalUnitId: schedules.professionalUnitId,
                     date: schedules.date,
                     time: schedules.time,
@@ -251,7 +251,7 @@ export class AppointmentsRepository {
             const [row] = await db
                 .update(schedules)
                 .set({
-                    professionalSpecialtyId: data.professionalSpecialtyId,
+                    professionalUnitSpecialtyId: data.professionalUnitSpecialtyId,
                     professionalUnitId: data.professionalUnitId,
                     date: data.date,
                     time: data.time,
@@ -261,7 +261,7 @@ export class AppointmentsRepository {
                 .where(eq(schedules.id, scheduleId))
                 .returning({
                     id: schedules.id,
-                    professionalSpecialtyId: schedules.professionalSpecialtyId,
+                    professionalUnitSpecialtyId: schedules.professionalUnitSpecialtyId,
                     professionalUnitId: schedules.professionalUnitId,
                     date: schedules.date,
                     time: schedules.time,
@@ -292,7 +292,7 @@ export class AppointmentsRepository {
             const rows = await db
                 .select({
                     id: schedules.id,
-                    professionalSpecialtyId: schedules.professionalSpecialtyId,
+                    professionalUnitSpecialtyId: schedules.professionalUnitSpecialtyId,
                     professionalUnitId: schedules.professionalUnitId,
                     unitId: professionalUnits.unitId,
                     professionalId: professionalUnits.professionalId,
@@ -312,8 +312,8 @@ export class AppointmentsRepository {
                 .filter((row) => row.isActive && row.slotsUsed < row.slots)
                 .filter((row) => (query.date ? row.date === query.date : true))
                 .filter((row) =>
-                    query.professionalSpecialtyId
-                        ? row.professionalSpecialtyId === query.professionalSpecialtyId
+                    query.professionalUnitSpecialtyId
+                        ? row.professionalUnitSpecialtyId === query.professionalUnitSpecialtyId
                         : true,
                 )
                 .map(toScheduleProfile);

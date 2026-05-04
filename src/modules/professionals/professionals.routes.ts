@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { z } from "zod";
 import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
-import { getClinicIdFromRequest } from "../../http/plugins/clinic-context.js";
+import { getClinicIdFromRequest, getProfessionalUnitIdFromRequest } from "../../http/plugins/clinic-context.js";
 import { isDomainError } from "../../http/plugins/domain-error.js";
 import { isUniqueConstraintError } from "../../http/plugins/db-errors.js";
 import type { ProfessionalsRepository } from "./professionals.repository.js";
@@ -10,9 +10,13 @@ import {
     createProfessionalSchema,
     createProfessionalForUserSchema,
     professionalProfileSchema,
+    professionalRoleProfileSchema,
     professionalsErrorSchema,
     updateProfessionalSchema,
 } from "./professionals.schemas.js";
+
+const unitSelectionRequiredMessage = "Selecione uma clínica para continuar";
+const professionalUnitSelectionRequiredMessage = "Selecione um vínculo profissional para continuar";
 
 type ProfessionalsRoutesOptions = {
     professionalsRepository: ProfessionalsRepository;
@@ -55,7 +59,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: "Selecione uma clínica para continuar" });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -99,6 +103,62 @@ export const professionalsRoutes = ({
                 },
             },
         )
+        .get(
+            "/professional-unit/roles",
+            async (context) => {
+                const { status } = context;
+                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
+
+                if ("error" in scope) {
+                    if (scope.error === "unauthorized") {
+                        return status(401, { message: "Unauthorized" });
+                    }
+
+                    return status(400, { message: unitSelectionRequiredMessage });
+                }
+
+                const professionalUnitId = getProfessionalUnitIdFromRequest(context.request);
+
+                if (!professionalUnitId) {
+                    return status(400, { message: professionalUnitSelectionRequiredMessage });
+                }
+
+                try {
+                    const roles = await professionalsService.listCurrentProfessionalUnitRoles(
+                        scope.userId,
+                        scope.unitId,
+                        professionalUnitId,
+                    );
+
+                    return status(200, roles);
+                } catch (error) {
+                    if (isDomainError(error, "FORBIDDEN")) {
+                        return status(403, { message: "Forbidden" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                detail: {
+                    summary: "List current professional unit roles",
+                    description:
+                        "Returns active roles linked to the currently selected professional unit, respecting active status across related tables.",
+                    tags: ["Professionals"],
+                },
+                response: {
+                    200: z.array(professionalRoleProfileSchema),
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    400: t.Union([
+                        t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                        t.Object({ message: t.Literal("Selecione um vínculo profissional para continuar") }),
+                    ]),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
+                    500: professionalsErrorSchema,
+                },
+            },
+        )
         .post(
             "/link-user",
             async (context) => {
@@ -110,7 +170,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: "Selecione uma clínica para continuar" });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -165,7 +225,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: "Selecione uma clínica para continuar" });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -207,7 +267,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: "Selecione uma clínica para continuar" });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -260,7 +320,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: "Selecione uma clínica para continuar" });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
@@ -319,7 +379,7 @@ export const professionalsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: "Selecione uma clínica para continuar" });
+                    return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {

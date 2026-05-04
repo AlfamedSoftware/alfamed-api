@@ -24,6 +24,15 @@ export const professionalProfileSchema = z.object({
     updatedAt: z.string().datetime(),
 });
 
+export const professionalRoleProfileSchema = z.object({
+    id: z.string().uuid(),
+    description: z.string(),
+    key: z.string(),
+    isActive: z.boolean(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+});
+
 export const professionalsErrorSchema = z.object({
     message: z.string(),
 });

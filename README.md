@@ -52,7 +52,7 @@ Observações:
 Valores recomendados para `BETTER_AUTH_BASE_URL` por modo de execucao:
 
 - `bun run dev` -> `http://localhost:3333`
-- `npx vercel dev` -> `http://localhost:3000`
+- `bunx vercel dev` -> `http://localhost:3000`
 - Deploy na Vercel -> `https://seu-dominio-da-api`
 
 ## Origens confiáveis (CORS e Better Auth)
@@ -97,10 +97,12 @@ Isso inicia o servidor em modo watch usando `src/server.ts`.
 ### Com Vercel local
 
 ```bash
-npx vercel dev
+bunx vercel dev
 ```
 
 Use essa opção se quiser testar o mesmo fluxo do deploy localmente, incluindo a função serverless em `api/index.ts`.
+
+Observação: neste ambiente, `npx vercel dev` pode falhar durante a instalação do CLI com `ETARGET`; `bunx vercel dev` está funcionando normalmente.
 
 Observação: para esse modo, garanta que o arquivo `.env` tenha pelo menos `DATABASE_URL`, `BETTER_AUTH_SECRET` e `BETTER_AUTH_BASE_URL=http://localhost:3000`.
 

@@ -40,6 +40,20 @@ export class ProfessionalsService {
         return this.professionalsRepository.listByUnit(unitId);
     }
 
+    async listCurrentProfessionalUnitRoles(
+        requestUserId: string,
+        unitId: string,
+        professionalUnitId: string,
+    ) {
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
+
+        return this.professionalsRepository.listActiveRolesByProfessionalUnit(
+            requestUserId,
+            unitId,
+            professionalUnitId,
+        );
+    }
+
     async updateProfessional(
         requestUserId: string,
         professionalId: string,
