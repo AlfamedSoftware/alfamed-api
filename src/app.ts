@@ -18,6 +18,7 @@ import type { AppointmentsRepository } from "./modules/appointments/appointments
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
 import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
+import { adminUpmRoutes } from "./modules/admin/admin-upm.routes.js";
 import { createSessionRoutes } from "./modules/session/session.routes.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
@@ -142,6 +143,10 @@ export async function buildApp({
 
     const configuredAppWithAdmin = configuredAppWithUnits.use(
         adminUnitsRoutes({
+            db,
+        }),
+    ).use(
+        adminUpmRoutes({
             db,
         }),
     );
