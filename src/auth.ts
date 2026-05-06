@@ -89,8 +89,6 @@ export const auth = betterAuth({
             secure: true,
             sameSite: "none",
             httpOnly: true,
-            domain: ".vercel.app",
-            path: "/",
         }
     },
 });
