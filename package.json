@@ -8,6 +8,7 @@
     "test:e2e": "vitest run tests/e2e",
     "test:watch": "vitest",
     "dev": "bun run --watch src/server.ts",
+    "db:seed": "bun --env-file .env --bun src/scripts/seed-initial-admin.ts",
     "db:generate": "bun --env-file .env --bun drizzle-kit generate",
     "db:migrate": "bun --env-file .env --bun drizzle-kit migrate"
   },

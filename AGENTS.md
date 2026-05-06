@@ -543,3 +543,40 @@ Preferred mappings:
 - Forbidden -> 403
 - NotFound -> 404
 - Conflict -> 409
+
+---
+
+# RECENT PROJECT UPDATES (MAY/2026)
+
+The following project updates are now part of the current baseline and must be respected by AI agents:
+
+1. Initial admin bootstrap seed was added at:
+
+`src/scripts/seed-initial-admin.ts`
+
+Current seed behavior:
+- creates first admin user in `users`
+- creates credential account in `accounts` with bcrypt hash
+- creates linked professional in `professionals`
+- validates `INITIAL_ADMIN_*` inputs via Zod
+- enforces admin email domain `@alfamed.com`
+
+2. New script was added in `package.json`:
+
+`db:seed` -> `bun --env-file .env --bun src/scripts/seed-initial-admin.ts`
+
+3. README was updated with bootstrap instructions for first admin creation using:
+
+`bun run db:seed`
+
+4. Environment file conventions were updated:
+- `.env.example` now keeps only generic placeholders for the 3 core keys:
+	- `BETTER_AUTH_SECRET`
+	- `BETTER_AUTH_BASE_URL`
+	- `DATABASE_URL`
+- Initial admin variables (`INITIAL_ADMIN_*`) are expected in local/private env files (`.env` / `.env.local`) when running seed.
+
+5. Repository ignore rules were updated:
+- `.env.local` is now ignored in `.gitignore`.
+
+Agents must preserve this bootstrap flow and avoid reintroducing sensitive real credentials into `.env.example`.
