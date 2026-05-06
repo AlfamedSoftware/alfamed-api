@@ -8,7 +8,7 @@ CREATE TABLE "patients" (
 );
 --> statement-breakpoint
 ALTER TABLE "professionals" DROP CONSTRAINT "professionals_cpf_unique";--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "cpf" text;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "cpf" text;--> statement-breakpoint
 ALTER TABLE "patients" ADD CONSTRAINT "patients_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "professionals" DROP COLUMN "cpf";--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_cpf_unique" UNIQUE("cpf");

@@ -1,1 +1,1 @@
-ALTER TABLE "users" DROP COLUMN "social_name";
+ALTER TABLE "users" DROP COLUMN IF EXISTS "social_name";

@@ -26,28 +26,33 @@ const initialAdmin = seedAdminSchema.parse({
     birthdate: process.env.INITIAL_ADMIN_BIRTHDATE,
 });
 
+const normalizedInitialAdmin = {
+    ...initialAdmin,
+    email: initialAdmin.email.toLowerCase(),
+};
+
 const toDate = (value: string) => new Date(`${value}T00:00:00.000Z`);
 
 async function main() {
     const [existingUser] = await db
         .select({ id: users.id })
         .from(users)
-        .where(eq(users.email, initialAdmin.email))
+        .where(eq(users.email, normalizedInitialAdmin.email))
         .limit(1);
 
     if (existingUser) {
-        console.log(`Usuário admin já existe: ${initialAdmin.email}`);
+        console.log(`Usuário admin já existe: ${normalizedInitialAdmin.email}`);
         return;
     }
 
     const [createdUser] = await db
         .insert(users)
         .values({
-            name: initialAdmin.name,
-            email: initialAdmin.email,
-            cpf: initialAdmin.cpf,
-            phone: initialAdmin.phone,
-            birthdate: toDate(initialAdmin.birthdate),
+            name: normalizedInitialAdmin.name,
+            email: normalizedInitialAdmin.email,
+            cpf: normalizedInitialAdmin.cpf,
+            phone: normalizedInitialAdmin.phone,
+            birthdate: toDate(normalizedInitialAdmin.birthdate),
             emailVerified: true,
             isActive: true,
         })
@@ -59,7 +64,7 @@ async function main() {
         userId: createdUser.id,
         accountId: createdUser.id,
         providerId: "credential",
-        password: await hash(initialAdmin.password, 12),
+        password: await hash(normalizedInitialAdmin.password, 12),
         updatedAt: new Date(),
     });
 
@@ -68,7 +73,7 @@ async function main() {
         isActive: true,
     });
 
-    console.log(`Usuário admin criado com sucesso: ${initialAdmin.email}`);
+    console.log(`Usuário admin criado com sucesso: ${normalizedInitialAdmin.email}`);
 }
 
 main().catch((error) => {
