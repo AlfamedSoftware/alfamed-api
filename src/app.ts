@@ -105,6 +105,7 @@ export async function buildApp({
     }
 
     const configuredApp = app
+        .use(authPlugin)
         .use(
             cors({
                 origin: trustedOrigins,
@@ -113,7 +114,6 @@ export async function buildApp({
                 allowedHeaders: ["Content-Type", "Authorization"],
             }),
         )
-        .use(authPlugin)
         .use(createSessionRoutes(db))
         .use(systemRoutes())
         .use(usersRoutes({ usersRepository }))
