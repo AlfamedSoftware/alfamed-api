@@ -54,10 +54,12 @@ interface AvailableClinicsResponse {
 export const createSessionRoutes = (db: DatabaseClient) => {
     const accessChecker = createClinicAccessChecker(db);
     const isProduction = process.env.NODE_ENV === "production";
+    const betterAuthBaseUrl = process.env.BETTER_AUTH_BASE_URL ?? (process.env.NODE_ENV === "test" ? "http://localhost:3333" : undefined);
+    const useSecureCookies = Boolean(betterAuthBaseUrl && new URL(betterAuthBaseUrl).protocol === "https:");
     const selectedClinicCookieOptions = {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
+        secure: useSecureCookies,
+        sameSite: "lax" as const,
         path: "/",
         maxAge: 60 * 60 * 24,
     };

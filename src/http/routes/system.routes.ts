@@ -13,6 +13,17 @@ const healthResponse = () => ({
 export const systemRoutes = () => {
     return new Elysia({ name: "system-routes" })
         .get(
+            "/favicon.ico",
+            () => new Response(null, { status: 204 }),
+            {
+                detail: {
+                    summary: "Favicon placeholder",
+                    description: "Returns no content to avoid browser 404 logs for favicon requests.",
+                    tags: ["System"],
+                },
+            },
+        )
+        .get(
             "/",
             () => healthResponse(),
             {

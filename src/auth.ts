@@ -12,6 +12,7 @@ const isTestEnv =
 
 const betterAuthSecret = process.env.BETTER_AUTH_SECRET ?? (isTestEnv ? "test-secret" : undefined);
 const betterAuthBaseUrl = process.env.BETTER_AUTH_BASE_URL ?? (isTestEnv ? "http://localhost:3333" : undefined);
+const betterAuthCookieDomain = process.env.BETTER_AUTH_COOKIE_DOMAIN?.trim();
 
 if (!betterAuthSecret) {
     throw new Error("BETTER_AUTH_SECRET is required. Set it in the environment variables for Vercel and local development.");
@@ -20,6 +21,8 @@ if (!betterAuthSecret) {
 if (!betterAuthBaseUrl) {
     throw new Error("BETTER_AUTH_BASE_URL is required. Set it in the environment variables for Vercel and local development.");
 }
+
+const useSecureCookies = new URL(betterAuthBaseUrl).protocol === "https:";
 
 export const auth = betterAuth({
     basePath: "/auth",
@@ -75,6 +78,15 @@ export const auth = betterAuth({
         },
     },
     advanced: {
+        useSecureCookies,
+        ...(betterAuthCookieDomain
+            ? {
+                crossSubDomainCookies: {
+                    enabled: true,
+                    domain: betterAuthCookieDomain,
+                },
+            }
+            : {}),
         database: {
             generateId: false,
         },
@@ -86,9 +98,10 @@ export const auth = betterAuth({
             }
         },
         defaultCookieAttributes: {
-            secure: true,
-            sameSite: "none",
+            secure: useSecureCookies,
+            sameSite: "lax",
             httpOnly: true,
+            path: "/",
         }
     },
 });
