@@ -35,8 +35,6 @@ Crie as variáveis abaixo no ambiente local. Na Vercel, configure os mesmos valo
 DATABASE_URL=postgresql://usuario:senha@localhost:5432/alfamed
 BETTER_AUTH_SECRET=sua_chave_secreta_forte
 BETTER_AUTH_BASE_URL=http://localhost:3333
-# Opcional, apenas se frontend e API estiverem em subdomínios do mesmo domínio raiz
-BETTER_AUTH_COOKIE_DOMAIN=exemplo.com
 ```
 
 Exemplo para produção (Vercel):
@@ -74,15 +72,7 @@ URLs atuais permitidas:
 
 - `https://dev-alfamed.vercel.app`
 - `https://web-alfamed.vercel.app`
-- `http://localhost:3000`
-- `http://localhost:5173`
-- `http://localhost:53441`
-
-Observação importante para Safari/WebKit:
-
-- Se frontend e API estiverem em domínios raiz diferentes, cookies de sessão baseados em navegador podem ser bloqueados com mais frequência no Safari.
-- Nesse cenário, `SameSite=None; Secure` não resolve de forma confiável. A solução mais robusta é manter frontend e auth/API no mesmo domínio raiz ou usar um BFF/proxy no mesmo site do app.
-- Se usar subdomínios do mesmo domínio raiz, configure `BETTER_AUTH_COOKIE_DOMAIN` com o domínio raiz para permitir compartilhamento de cookie entre subdomínios quando aplicável.
+- `http://localhost:5137`
 
 Para adicionar ou remover dominios, altere apenas essa constante.
 
