@@ -14,6 +14,17 @@ const userCreateSchema = z
     })
     .strict();
 
+const userUpdateSchema = z
+    .object({
+        name: z.string().min(1),
+        email: z.email(),
+        cpf: z.string().regex(/^\d{11}$/, "CPF deve conter 11 dígitos"),
+        birthdate: dateStringSchema,
+        phone: z.string().regex(/^\d{10,11}$/, "Telefone deve conter 10 ou 11 dígitos"),
+        status: z.boolean(),
+    })
+    .strict();
+
 export const adminUpmUserSchema = z.object({
     professionalId: z.string().uuid(),
     userId: z.string().uuid(),
@@ -39,8 +50,15 @@ export const createAdminUpmUserSchema = z
     })
     .strict();
 
+export const updateAdminUpmUserSchema = z
+    .object({
+        user: userUpdateSchema,
+    })
+    .strict();
+
 export const adminUpmErrorSchema = z.object({
     message: z.string(),
 });
 
 export type CreateAdminUpmUserInput = z.infer<typeof createAdminUpmUserSchema>;
+export type UpdateAdminUpmUserInput = z.infer<typeof updateAdminUpmUserSchema>;
