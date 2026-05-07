@@ -3,7 +3,11 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI, twoFactor } from "better-auth/plugins";
 import { compare, hash } from "bcryptjs";
 import { db } from "./db/client.js";
+import { users } from "./db/schema/users.js";
 import { trustedOrigins } from "./http/plugins/unit-access.js";
+import { eq } from "drizzle-orm";
+import { professionals } from "./db/schema/professionals.js";
+import { APIError } from "better-call";
 
 const isTestEnv =
     process.env.NODE_ENV === "test" ||
@@ -73,6 +77,43 @@ export const auth = betterAuth({
             hash: (password: string) => hash(password, 12),
             verify: ({ password, hash: hashedPassword }) => compare(password, hashedPassword),
         },
+    },
+    hooks: {
+        async before(context) {
+            const ctxAny = context as any;
+
+            const path = typeof ctxAny.path === "string" ? ctxAny.path : (typeof ctxAny.request?.url === "string" ? ctxAny.request.url : undefined);
+            if (path && path.includes("sign-in")) {
+                try {
+                    const payload = ctxAny.body ?? (ctxAny.request && typeof ctxAny.request.json === "function" ? await ctxAny.request.json().catch(() => null) : null);
+                    const email = payload?.email ?? payload?.identifier ?? null;
+                    if (email && typeof email === "string") {
+                        const found = await db.select().from(users).where(eq(users.email, email)).limit(1);
+                        if (found.length > 0) {
+                            const user = found[0];
+                            if (!user.isActive) {
+                                throw new APIError("UNAUTHORIZED", { message: "User account is inactive" });
+                            }
+
+                            const professional = await db
+                                .select()
+                                .from(professionals)
+                                .where(eq(professionals.userId, user.id))
+                                .limit(1);
+
+                            if (professional.length > 0 && !professional[0].isActive) {
+                                throw new APIError("UNAUTHORIZED", { message: "Professional account is inactive" });
+                            }
+                        }
+                    }
+                } catch (e) {
+                    if (e instanceof APIError) throw e;
+                }
+            }
+
+            return context;
+        },
+        // No after-hook: keep validation only in before-hook (login)
     },
     advanced: {
         database: {

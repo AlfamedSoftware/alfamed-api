@@ -8,7 +8,7 @@ import { professionals } from "../../db/schema/professionals.js";
 import { roles } from "../../db/schema/roles.js";
 import { units } from "../../db/schema/units.js";
 import { users } from "../../db/schema/users.js";
-import type { CreateAdminUpmUserInput } from "./admin-upm.schemas.js";
+import type { CreateAdminUpmUserInput, UpdateAdminUpmUserInput } from "./admin-upm.schemas.js";
 
 type DatabaseClient = typeof dbType;
 type TransactionClient = Parameters<Parameters<DatabaseClient["transaction"]>[0]>[0];
@@ -32,7 +32,7 @@ export type AdminUpmUser = {
 };
 
 export class AdminUpmRepository {
-    constructor(private readonly db: DatabaseClient) {}
+    constructor(private readonly db: DatabaseClient) { }
 
     private toDate(value: string) {
         return new Date(`${value}T00:00:00.000Z`);
@@ -255,6 +255,97 @@ export class AdminUpmRepository {
                 roleDescription: created.role.description,
                 createdAt: createdProfessional.createdAt.toISOString(),
                 updatedAt: createdProfessional.updatedAt.toISOString(),
+            };
+        });
+    }
+
+    async updateUserByProfessionalUnitId(
+        roleKey: string,
+        professionalUnitId: string,
+        data: UpdateAdminUpmUserInput["user"],
+    ): Promise<AdminUpmUser | null> {
+        return this.db.transaction(async (tx) => {
+            const [current] = await tx
+                .select({
+                    professional: {
+                        id: professionals.id,
+                        isActive: professionals.isActive,
+                        createdAt: professionals.createdAt,
+                        updatedAt: professionals.updatedAt,
+                    },
+                    professionalUnit: {
+                        id: professionalUnits.id,
+                        unitId: professionalUnits.unitId,
+                    },
+                    role: {
+                        key: roles.key,
+                        description: roles.description,
+                    },
+                    unit: {
+                        name: units.name,
+                    },
+                    user: {
+                        id: users.id,
+                    },
+                })
+                .from(professionalUnitRoles)
+                .innerJoin(roles, eq(professionalUnitRoles.roleId, roles.id))
+                .innerJoin(professionalUnits, eq(professionalUnitRoles.professionalUnitId, professionalUnits.id))
+                .innerJoin(units, eq(professionalUnits.unitId, units.id))
+                .innerJoin(professionals, eq(professionalUnits.professionalId, professionals.id))
+                .innerJoin(users, eq(professionals.userId, users.id))
+                .where(
+                    and(
+                        eq(professionalUnitRoles.professionalUnitId, professionalUnitId),
+                        eq(roles.key, roleKey),
+                    ),
+                )
+                .limit(1);
+
+            if (!current) {
+                return null;
+            }
+
+            await tx
+                .update(users)
+                .set({
+                    name: data.name,
+                    email: data.email,
+                    cpf: data.cpf,
+                    birthdate: this.toDate(data.birthdate),
+                    phone: data.phone,
+                })
+                .where(eq(users.id, current.user.id));
+
+            const [updatedProfessional] = await tx
+                .update(professionals)
+                .set({
+                    isActive: data.status,
+                })
+                .where(eq(professionals.id, current.professional.id))
+                .returning({
+                    id: professionals.id,
+                    isActive: professionals.isActive,
+                    createdAt: professionals.createdAt,
+                    updatedAt: professionals.updatedAt,
+                });
+
+            return {
+                professionalId: current.professional.id,
+                userId: current.user.id,
+                professionalUnitId,
+                unitId: current.professionalUnit.unitId,
+                unitName: current.unit.name,
+                name: data.name,
+                email: data.email,
+                cpf: data.cpf,
+                birthdate: this.toDate(data.birthdate).toISOString(),
+                phone: data.phone,
+                status: updatedProfessional?.isActive ?? data.status,
+                roleKey: current.role.key,
+                roleDescription: current.role.description,
+                createdAt: current.professional.createdAt.toISOString(),
+                updatedAt: (updatedProfessional?.updatedAt ?? current.professional.updatedAt).toISOString(),
             };
         });
     }

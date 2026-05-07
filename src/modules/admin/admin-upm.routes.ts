@@ -8,6 +8,7 @@ import {
     adminUpmErrorSchema,
     adminUpmUserSchema,
     createAdminUpmUserSchema,
+    updateAdminUpmUserSchema,
 } from "./admin-upm.schemas.js";
 import { AdminUpmService } from "./admin-upm.service.js";
 import type { db as dbType } from "../../db/client.js";
@@ -21,12 +22,12 @@ type AdminUpmRoutesOptions = {
 export const adminUpmRoutes = ({ db }: AdminUpmRoutesOptions) => {
     const adminUpmRepository = new AdminUpmRepository(db);
     const adminUpmService = new AdminUpmService(adminUpmRepository);
-    const resolveAdminAccess = (context: { user?: { email?: string }; status: (code: number, body: { message: string }) => unknown }) => {
+
+    const resolveAdminAccess = (context: any) => {
         try {
             assertInternalAdminAccess(context as { user?: { email?: string } });
             return true;
         } catch {
-            context.status(403, { message: "Forbidden" });
             return false;
         }
     };
@@ -37,12 +38,11 @@ export const adminUpmRoutes = ({ db }: AdminUpmRoutesOptions) => {
             async (context) => {
                 const { status } = context;
                 if (!resolveAdminAccess(context)) {
-                    return;
+                    return status(403, { message: "Forbidden" });
                 }
 
                 try {
                     const users = await adminUpmService.listInternalAlfamedUsers();
-
                     return status(200, users);
                 } catch (error) {
                     console.error("[admin][upm][users][list]", error);
@@ -69,15 +69,15 @@ export const adminUpmRoutes = ({ db }: AdminUpmRoutesOptions) => {
             async (context) => {
                 const { body, status } = context;
                 if (!resolveAdminAccess(context)) {
-                    return;
+                    return status(403, { message: "Forbidden" });
                 }
 
                 try {
                     const created = await adminUpmService.createInternalAlfamedUser(body);
-
                     return status(201, created);
                 } catch (error) {
                     console.error("[admin][upm][users][create]", error);
+
                     if (isDomainError(error, "UNIT_NOT_FOUND")) {
                         return status(404, { message: "Unit not found" });
                     }
@@ -112,6 +112,62 @@ export const adminUpmRoutes = ({ db }: AdminUpmRoutesOptions) => {
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Unit not found") }),
+                    409: t.Object({ message: t.String() }),
+                    500: adminUpmErrorSchema,
+                },
+            },
+        )
+        .patch(
+            "/users/:professionalUnitId",
+            async (context) => {
+                const { params, body, status } = context;
+                if (!resolveAdminAccess(context)) {
+                    return status(403, { message: "Forbidden" });
+                }
+
+                try {
+                    const updated = await adminUpmService.updateInternalAlfamedUser(params.professionalUnitId, body as any);
+                    return status(200, updated);
+                } catch (error) {
+                    console.error("[admin][upm][users][update]", error);
+
+                    if (isDomainError(error, "UPM_USER_NOT_FOUND")) {
+                        return status(404, { message: "User not found" });
+                    }
+
+                    if (isUniqueConstraintError(error)) {
+                        const duplicateField = getUniqueConstraintField(error);
+
+                        if (duplicateField === "email") {
+                            return status(409, { message: "User e-mail already exists" });
+                        }
+
+                        if (duplicateField === "cpf") {
+                            return status(409, { message: "User CPF already exists" });
+                        }
+
+                        return status(409, { message: "Duplicate user or professional data" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                params: t.Object({
+                    professionalUnitId: t.String({ format: "uuid" }),
+                }),
+                body: updateAdminUpmUserSchema,
+                detail: {
+                    summary: "Update internal Alfamed user",
+                    description: "Updates user data and active status for an internal Alfamed professional unit.",
+                    tags: ["Admin"],
+                },
+                response: {
+                    200: adminUpmUserSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
+                    404: t.Object({ message: t.Literal("User not found") }),
                     409: t.Object({ message: t.String() }),
                     500: adminUpmErrorSchema,
                 },

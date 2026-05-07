@@ -13,7 +13,8 @@ export type DomainErrorCode =
     | "INVALID_STATUS_TRANSITION"
     | "INVALID_COUNTER_PROPOSAL"
     | "STATUS_NOT_FOUND"
-    | "UNIT_HAS_LINKED_PROFESSIONALS";
+    | "UNIT_HAS_LINKED_PROFESSIONALS"
+    | "UPM_USER_NOT_FOUND";
 
 export class DomainError extends Error {
     constructor(
