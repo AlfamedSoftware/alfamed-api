@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { getUniqueConstraintField, isUniqueConstraintError } from "../../http/plugins/db-errors.js";
 import { isDomainError } from "../../http/plugins/domain-error.js";
 import { AdminUnitsRepository } from "./admin-units.repository.js";
@@ -13,6 +14,10 @@ import {
 } from "./admin-units.schemas.js";
 import { AdminUnitsService } from "./admin-units.service.js";
 import type { db as dbType } from "../../db/client.js";
+import { professionals } from "../../db/schema/professionals.js";
+import { professionalUnits } from "../../db/schema/professional-units.js";
+import { professionalUnitRoles } from "../../db/schema/professional-unit-roles.js";
+import { roles } from "../../db/schema/roles.js";
 
 type DatabaseClient = typeof dbType;
 
@@ -23,6 +28,50 @@ type AdminUnitsRoutesOptions = {
 export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
     const adminUnitsRepository = new AdminUnitsRepository(db);
     const adminUnitsService = new AdminUnitsService(adminUnitsRepository);
+
+    const resolveAdminAccess = async (context: any) => {
+        const { status, user } = context;
+
+        if (!user?.id) {
+            return status(403, { message: "Forbidden" });
+        }
+
+        try {
+            const [professional] = await db
+                .select()
+                .from(professionals)
+                .where(eq(professionals.userId, user.id))
+                .limit(1);
+
+            if (!professional) {
+                return status(403, { message: "Forbidden" });
+            }
+
+            const rows = await db
+                .select()
+                .from(professionalUnitRoles)
+                .innerJoin(professionalUnits, eq(professionalUnitRoles.professionalUnitId, professionalUnits.id))
+                .innerJoin(roles, eq(professionalUnitRoles.roleId, roles.id))
+                .where(eq(professionalUnits.professionalId, professional.id));
+
+            const hasInternalAlfamed = rows.some((r: any) => {
+                try {
+                    return r?.roles?.key === "internal_alfamed";
+                } catch {
+                    return false;
+                }
+            });
+
+            if (!hasInternalAlfamed) {
+                return status(403, { message: "Forbidden" });
+            }
+
+            return true;
+        } catch (error) {
+            console.error("[admin][access][resolve]", error);
+            return status(403, { message: "Forbidden" });
+        }
+    };
 
     return new Elysia({ name: "admin-units-routes", prefix: "/admin/units" })
         .get(
@@ -106,7 +155,7 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
             "/:id",
             async (context) => {
                 const { params, status } = context;
-                if (!resolveAdminAccess(context)) {
+                if (!(await resolveAdminAccess(context))) {
                     return;
                 }
                 try {
@@ -145,7 +194,7 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
             "/:id",
             async (context) => {
                 const { params, body, status } = context;
-                if (!resolveAdminAccess(context)) {
+                if (!(await resolveAdminAccess(context))) {
                     return;
                 }
                 try {
@@ -190,7 +239,7 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
             "/:id",
             async (context) => {
                 const { params, status } = context;
-                if (!resolveAdminAccess(context)) {
+                if (!(await resolveAdminAccess(context))) {
                     return;
                 }
                 try {
@@ -234,7 +283,7 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
             "/:id/professionals",
             async (context) => {
                 const { params, status } = context;
-                if (!resolveAdminAccess(context)) {
+                if (!(await resolveAdminAccess(context))) {
                     return;
                 }
                 try {
@@ -273,7 +322,7 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
             "/:id/professionals",
             async (context) => {
                 const { params, body, status } = context;
-                if (!resolveAdminAccess(context)) {
+                if (!(await resolveAdminAccess(context))) {
                     return;
                 }
                 try {
