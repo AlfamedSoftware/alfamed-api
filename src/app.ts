@@ -20,6 +20,7 @@ import type { db as dbType } from "./db/client.js";
 import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
 import { adminUpmRoutes } from "./modules/admin/admin-upm.routes.js";
 import { createSessionRoutes } from "./modules/session/session.routes.js";
+import { authPasswordResetRoutes } from "./modules/auth/auth-password-reset.routes.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -106,6 +107,7 @@ export async function buildApp({
 
     const configuredApp = app
         .use(authPlugin)
+        .use(authPasswordResetRoutes({ db }))
         .use(
             cors({
                 origin: trustedOrigins,

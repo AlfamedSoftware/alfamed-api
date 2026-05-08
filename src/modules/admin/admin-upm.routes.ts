@@ -2,7 +2,6 @@ import { Elysia, t } from "elysia";
 import { z } from "zod";
 import { getUniqueConstraintField, isUniqueConstraintError } from "../../http/plugins/db-errors.js";
 import { isDomainError } from "../../http/plugins/domain-error.js";
-import { assertInternalAdminAccess } from "../../http/plugins/admin-access.js";
 import { AdminUpmRepository } from "./admin-upm.repository.js";
 import {
     adminUpmErrorSchema,
@@ -23,24 +22,11 @@ export const adminUpmRoutes = ({ db }: AdminUpmRoutesOptions) => {
     const adminUpmRepository = new AdminUpmRepository(db);
     const adminUpmService = new AdminUpmService(adminUpmRepository);
 
-    const resolveAdminAccess = (context: any) => {
-        try {
-            assertInternalAdminAccess(context as { user?: { email?: string } });
-            return true;
-        } catch {
-            return false;
-        }
-    };
-
     return new Elysia({ name: "admin-upm-routes", prefix: "/admin/upm" })
         .get(
             "/users",
             async (context) => {
                 const { status } = context;
-                if (!resolveAdminAccess(context)) {
-                    return status(403, { message: "Forbidden" });
-                }
-
                 try {
                     const users = await adminUpmService.listInternalAlfamedUsers();
                     return status(200, users);
@@ -68,10 +54,6 @@ export const adminUpmRoutes = ({ db }: AdminUpmRoutesOptions) => {
             "/users",
             async (context) => {
                 const { body, status } = context;
-                if (!resolveAdminAccess(context)) {
-                    return status(403, { message: "Forbidden" });
-                }
-
                 try {
                     const created = await adminUpmService.createInternalAlfamedUser(body);
                     return status(201, created);
@@ -121,10 +103,6 @@ export const adminUpmRoutes = ({ db }: AdminUpmRoutesOptions) => {
             "/users/:professionalUnitId",
             async (context) => {
                 const { params, body, status } = context;
-                if (!resolveAdminAccess(context)) {
-                    return status(403, { message: "Forbidden" });
-                }
-
                 try {
                     const updated = await adminUpmService.updateInternalAlfamedUser(params.professionalUnitId, body as any);
                     return status(200, updated);
