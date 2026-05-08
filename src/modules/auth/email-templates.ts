@@ -23,8 +23,8 @@ export function getPasswordResetEmailHTML(userName: string, resetLink: string): 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
-            background-color: #f5f5f5;
+            color: #1f2937;
+            background-color: #eef2ff;
         }
         
         .container {
@@ -35,26 +35,30 @@ export function getPasswordResetEmailHTML(userName: string, resetLink: string): 
         
         .email-wrapper {
             background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 14px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
             overflow: hidden;
+            border: 1px solid #e5e7eb;
         }
         
         .header {
-            background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+            background: #4338ca;
+            background-image: linear-gradient(135deg, #4338ca 0%, #2563eb 100%);
             color: white;
-            padding: 30px 20px;
+            padding: 34px 20px;
             text-align: center;
         }
         
         .header h1 {
-            font-size: 24px;
+            font-size: 26px;
             margin-bottom: 5px;
+            color: #ffffff;
         }
         
         .header p {
             font-size: 14px;
-            opacity: 0.9;
+            opacity: 0.95;
+            color: #e0e7ff;
         }
         
         .content {
@@ -64,47 +68,50 @@ export function getPasswordResetEmailHTML(userName: string, resetLink: string): 
         .greeting {
             font-size: 16px;
             margin-bottom: 20px;
-            color: #333;
+            color: #111827;
         }
         
         .greeting strong {
-            color: #4f46e5;
+            color: #4338ca;
         }
         
         .message {
             font-size: 14px;
-            color: #666;
+            color: #374151;
             margin-bottom: 30px;
             line-height: 1.8;
         }
         
         .cta-button {
             display: inline-block;
-            background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+            background: #2563eb;
+            background-image: linear-gradient(135deg, #4338ca 0%, #2563eb 100%);
             color: white;
             padding: 14px 40px;
-            border-radius: 6px;
+            border-radius: 10px;
             text-decoration: none;
             font-weight: 600;
             font-size: 16px;
             margin-bottom: 30px;
             transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28);
+            color: #ffffff !important;
+            text-decoration: none !important;
         }
         
         .cta-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+            box-shadow: 0 12px 26px rgba(37, 99, 235, 0.34);
         }
         
         .warning-box {
-            background-color: #fef3c7;
+            background-color: #fff7ed;
             border-left: 4px solid #f59e0b;
             padding: 15px;
             margin-bottom: 30px;
-            border-radius: 4px;
+            border-radius: 10px;
             font-size: 13px;
-            color: #92400e;
+            color: #9a3412;
         }
         
         .warning-box strong {
@@ -113,12 +120,12 @@ export function getPasswordResetEmailHTML(userName: string, resetLink: string): 
         }
         
         .security-box {
-            background-color: #ecfdf5;
-            border: 1px solid #d1fae5;
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
             padding: 15px;
-            border-radius: 4px;
+            border-radius: 10px;
             font-size: 13px;
-            color: #065f46;
+            color: #166534;
             margin-bottom: 30px;
         }
         
@@ -128,32 +135,33 @@ export function getPasswordResetEmailHTML(userName: string, resetLink: string): 
         }
         
         .link-section {
-            background-color: #f9fafb;
+            background-color: #f8fafc;
             padding: 20px;
-            border-radius: 4px;
+            border-radius: 10px;
             margin-bottom: 30px;
             word-break: break-all;
+            border: 1px solid #e2e8f0;
         }
         
         .link-section p {
             font-size: 12px;
-            color: #9ca3af;
+            color: #64748b;
             margin-bottom: 10px;
         }
         
         .link-section a {
-            color: #4f46e5;
+            color: #1d4ed8;
             text-decoration: none;
             font-size: 13px;
             word-break: break-all;
         }
         
         .footer {
-            background-color: #f9fafb;
+            background-color: #f8fafc;
             padding: 20px;
             text-align: center;
             font-size: 12px;
-            color: #9ca3af;
+            color: #64748b;
             border-top: 1px solid #e5e7eb;
         }
         
@@ -166,7 +174,7 @@ export function getPasswordResetEmailHTML(userName: string, resetLink: string): 
         }
         
         .social-links a {
-            color: #9ca3af;
+            color: #64748b;
             text-decoration: none;
             margin: 0 10px;
         }
@@ -213,7 +221,7 @@ export function getPasswordResetEmailHTML(userName: string, resetLink: string): 
                 
                 <!-- CTA Button -->
                 <div style="text-align: center;">
-                    <a href="${resetLink}" class="cta-button">
+                    <a href="${resetLink}" class="cta-button" style="color:#ffffff !important; text-decoration:none !important;">
                         Redefinir Minha Senha
                     </a>
                 </div>
@@ -290,8 +298,8 @@ export function getPasswordChangedEmailHTML(userName: string): string {
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
-            background-color: #f5f5f5;
+            color: #1f2937;
+            background-color: #eef2ff;
         }
         
         .container {
@@ -302,21 +310,24 @@ export function getPasswordChangedEmailHTML(userName: string): string {
         
         .email-wrapper {
             background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 14px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
             overflow: hidden;
+            border: 1px solid #e5e7eb;
         }
         
         .header {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            background: #047857;
+            background-image: linear-gradient(135deg, #047857 0%, #059669 100%);
             color: white;
-            padding: 30px 20px;
+            padding: 34px 20px;
             text-align: center;
         }
         
         .header h1 {
-            font-size: 24px;
+            font-size: 26px;
             margin-bottom: 5px;
+            color: #ffffff;
         }
         
         .content {
@@ -332,24 +343,38 @@ export function getPasswordChangedEmailHTML(userName: string): string {
         .greeting {
             font-size: 16px;
             margin-bottom: 20px;
-            color: #333;
+            color: #111827;
             text-align: center;
+        }
+
+        .greeting strong {
+            color: #047857;
         }
         
         .message {
             font-size: 14px;
-            color: #666;
+            color: #374151;
             margin-bottom: 20px;
             line-height: 1.8;
             text-align: center;
         }
+
+        .alert-box {
+            background-color: #ecfdf5;
+            border: 1px solid #bbf7d0;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            border-radius: 10px;
+            color: #166534;
+            margin-top: 20px;
+        }
         
         .footer {
-            background-color: #f9fafb;
+            background-color: #f8fafc;
             padding: 20px;
             text-align: center;
             font-size: 12px;
-            color: #9ca3af;
+            color: #64748b;
             border-top: 1px solid #e5e7eb;
         }
     </style>
@@ -372,7 +397,7 @@ export function getPasswordChangedEmailHTML(userName: string): string {
                     Sua senha foi redefinida com sucesso. Você já pode fazer login com sua nova senha.
                 </div>
                 
-                <div class="message" style="background-color: #ecfdf5; padding: 15px; border-radius: 4px; border-left: 4px solid #10b981; color: #065f46;">
+                <div class="alert-box">
                     Se não foi você quem fez essa alteração, entre em contato conosco imediatamente através do suporte.
                 </div>
             </div>
