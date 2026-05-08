@@ -7,6 +7,9 @@ import { users } from "./db/schema/users.js";
 import { trustedOrigins } from "./http/plugins/unit-access.js";
 import { eq } from "drizzle-orm";
 import { professionals } from "./db/schema/professionals.js";
+import { professionalUnits } from "./db/schema/professional-units.js";
+import { professionalUnitRoles } from "./db/schema/professional-unit-roles.js";
+import { roles } from "./db/schema/roles.js";
 import { APIError } from "better-call";
 
 const isTestEnv =
@@ -87,6 +90,9 @@ export const auth = betterAuth({
                 try {
                     const payload = ctxAny.body ?? (ctxAny.request && typeof ctxAny.request.json === "function" ? await ctxAny.request.json().catch(() => null) : null);
                     const email = payload?.email ?? payload?.identifier ?? null;
+                    const callbackURL = typeof payload?.callbackURL === "string" ? payload.callbackURL : "";
+                    const isServiceDeskLogin = callbackURL.includes("/admin/") || path.includes("/admin/");
+
                     if (email && typeof email === "string") {
                         const found = await db.select().from(users).where(eq(users.email, email)).limit(1);
                         if (found.length > 0) {
@@ -103,6 +109,30 @@ export const auth = betterAuth({
 
                             if (professional.length > 0 && !professional[0].isActive) {
                                 throw new APIError("UNAUTHORIZED", { message: "Professional account is inactive" });
+                            }
+
+                            if (isServiceDeskLogin && professional.length > 0) {
+                                const prof = professional[0];
+
+                                const rows = await db
+                                    .select()
+                                    .from(professionalUnitRoles)
+                                    .innerJoin(professionalUnits, eq(professionalUnitRoles.professionalUnitId, professionalUnits.id))
+                                    .innerJoin(roles, eq(professionalUnitRoles.roleId, roles.id))
+                                    .where(eq(professionalUnits.professionalId, prof.id))
+                                    .limit(1);
+
+                                const hasInternalAlfamed = rows.some((r: any) => {
+                                    try {
+                                        return r?.roles?.key === "internal_alfamed";
+                                    } catch {
+                                        return false;
+                                    }
+                                });
+
+                                if (!hasInternalAlfamed) {
+                                    throw new APIError("UNAUTHORIZED", { message: "User lacks internal Alfamed role" });
+                                }
                             }
                         }
                     }

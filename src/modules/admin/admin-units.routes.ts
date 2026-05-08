@@ -2,7 +2,6 @@ import { Elysia, t } from "elysia";
 import { z } from "zod";
 import { getUniqueConstraintField, isUniqueConstraintError } from "../../http/plugins/db-errors.js";
 import { isDomainError } from "../../http/plugins/domain-error.js";
-import { assertInternalAdminAccess } from "../../http/plugins/admin-access.js";
 import { AdminUnitsRepository } from "./admin-units.repository.js";
 import {
     adminErrorSchema,
@@ -24,24 +23,12 @@ type AdminUnitsRoutesOptions = {
 export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
     const adminUnitsRepository = new AdminUnitsRepository(db);
     const adminUnitsService = new AdminUnitsService(adminUnitsRepository);
-    const resolveAdminAccess = (context: { user?: { email?: string }; status: (code: number, body: { message: string }) => unknown }) => {
-        try {
-            assertInternalAdminAccess(context as { user?: { email?: string } });
-            return true;
-        } catch {
-            context.status(403, { message: "Forbidden" });
-            return false;
-        }
-    };
 
     return new Elysia({ name: "admin-units-routes", prefix: "/admin/units" })
         .get(
             "/",
             async (context) => {
                 const { status } = context;
-                if (!resolveAdminAccess(context)) {
-                    return;
-                }
                 try {
                     const units = await adminUnitsService.listUnits();
 
@@ -70,9 +57,6 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
             "/",
             async (context) => {
                 const { body, status } = context;
-                if (!resolveAdminAccess(context)) {
-                    return;
-                }
                 try {
                     const unit = await adminUnitsService.createUnit(body);
 
