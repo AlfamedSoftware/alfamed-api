@@ -4,9 +4,8 @@ import type { db as dbType } from "../../../src/db/client";
 import type { UsersRepository } from "../../../src/modules/users/users.repository";
 import type { ProfessionalsRepository } from "../../../src/modules/professionals/professionals.repository";
 import type { PatientsRepository } from "../../../src/modules/patients/patients.repository";
-import type { SpecialtiesRepository } from "../../../src/modules/specialties/specialties.repository";
 import type { UnitsRepository } from "../../../src/modules/units/units.repository";
-import type { AppointmentsRepository } from "../../../src/modules/appointments/appointments.repository";
+// Specialties and Appointments modules removed; not required for e2e context
 import { InMemoryPatientsRepository } from "./repositories";
 
 export const TEST_IDS = {
@@ -69,9 +68,7 @@ type BuildE2EAppOptions = {
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
     patientsRepository?: PatientsRepository;
-    specialtiesRepository?: SpecialtiesRepository;
     unitsRepository?: UnitsRepository;
-    appointmentsRepository?: AppointmentsRepository;
     accessMap?: AllowedUnitsByUser;
     authPlugin?: any;
 };
@@ -80,9 +77,7 @@ export const buildE2EApp = async ({
     usersRepository,
     professionalsRepository,
     patientsRepository = new InMemoryPatientsRepository(),
-    specialtiesRepository,
     unitsRepository,
-    appointmentsRepository,
     accessMap = {},
     authPlugin = fakeAuthPlugin,
 }: BuildE2EAppOptions) =>
@@ -93,8 +88,6 @@ export const buildE2EApp = async ({
         usersRepository,
         professionalsRepository,
         patientsRepository,
-        specialtiesRepository,
         unitsRepository,
-        appointmentsRepository,
         hasUserAccessToUnitChecker: createHasUserAccessToUnitChecker(accessMap),
-    });
+        });

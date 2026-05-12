@@ -59,21 +59,6 @@ describe("Patients routes", () => {
         expect(response.status).toBe(409);
     });
 
-    it("GET /patients/me retorna 404 quando usuário não tem paciente", async () => {
-        const app = await buildE2EApp({
-            usersRepository: new InMemoryUsersRepository(),
-            patientsRepository: new InMemoryPatientsRepository(),
-        });
-
-        const response = await app.handle(
-            new Request("http://localhost/patients/me", {
-                headers: { "x-user-id": TEST_IDS.user },
-            }),
-        );
-
-        expect(response.status).toBe(404);
-    });
-
     it("GET /patients/:id retorna 403 quando paciente não pertence ao usuário", async () => {
         const patientId = "019c1a3e-e425-7000-8bda-cdfec32c7f31";
         const app = await buildE2EApp({

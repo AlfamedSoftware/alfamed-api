@@ -231,50 +231,6 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
                 },
             },
         )
-        .delete(
-            "/:id",
-            async (context) => {
-                const { params, status } = context;
-                if (!(await resolveAdminAccess(context))) {
-                    return status(403, { message: "Forbidden" });
-                }
-                try {
-                    await adminUnitsService.deleteUnit(params.id);
-
-                    return status(200, { message: "Unit deleted" });
-                } catch (error) {
-                    console.error("[admin][units][delete]", error);
-                    if (isDomainError(error, "UNIT_NOT_FOUND")) {
-                        return status(404, { message: "Unit not found" });
-                    }
-
-                    if (isDomainError(error, "UNIT_HAS_LINKED_PROFESSIONALS")) {
-                        return status(409, { message: "Unit has linked professionals" });
-                    }
-
-                    return status(500, { message: "Internal server error" });
-                }
-            },
-            {
-                auth: true,
-                params: t.Object({
-                    id: t.String({ format: "uuid" }),
-                }),
-                detail: {
-                    summary: "Delete internal unit",
-                    description: "Deletes an internal unit when there are no linked professionals.",
-                    tags: ["Units"],
-                },
-                response: {
-                    200: t.Object({ message: t.Literal("Unit deleted") }),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    403: t.Object({ message: t.Literal("Forbidden") }),
-                    404: t.Object({ message: t.Literal("Unit not found") }),
-                    409: t.Object({ message: t.Literal("Unit has linked professionals") }),
-                    500: adminErrorSchema,
-                },
-            },
-        )
         .get(
             "/:id/professionals",
             async (context) => {

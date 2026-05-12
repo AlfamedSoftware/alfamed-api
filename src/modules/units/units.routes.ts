@@ -183,50 +183,5 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                     500: unitsErrorSchema,
                 },
             },
-        )
-        .delete(
-            "/:id",
-            async (context) => {
-                const { params, status } = context;
-                const userId = resolveAuthenticatedUser(context as { user?: { id?: string } });
-
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
-
-                try {
-                    await unitsService.deleteUnit(userId, params.id);
-
-                    return status(200, { message: "Unit deleted" });
-                } catch (error) {
-                    if (isDomainError(error, "FORBIDDEN")) {
-                        return status(403, { message: "Forbidden" });
-                    }
-                    if (isDomainError(error, "UNIT_NOT_FOUND")) {
-                        return status(404, { message: "Unit not found" });
-                    }
-
-                    return status(500, { message: "Internal server error" });
-                }
-            },
-            {
-                auth: true,
-                params: t.Object({
-                    id: t.String({ format: "uuid" }),
-                }),
-                detail: {
-                    summary: "Delete unit",
-                    description:
-                        "Deletes the unit selected by route id if the authenticated user has access to that unit.",
-                    tags: ["Units"],
-                },
-                response: {
-                    200: t.Object({ message: t.Literal("Unit deleted") }),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    403: t.Object({ message: t.Literal("Forbidden") }),
-                    404: t.Object({ message: t.Literal("Unit not found") }),
-                    500: unitsErrorSchema,
-                },
-            },
         );
-};
+    };

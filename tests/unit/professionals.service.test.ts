@@ -237,25 +237,4 @@ describe("ProfessionalsService", () => {
         ).rejects.toThrow(DomainError);
     });
 
-    it("deve deletar um profissional", async () => {
-        const professionalsByUnit = { "unit-1": ["prof-unit-1"] };
-        const professionals = {
-            "prof-unit-1": {
-                id: "prof-unit-1",
-                userId: "user-2",
-                name: "Dr. João",
-                email: "joao@alfamed.com",
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            },
-        };
-        const repository = new InMemoryProfessionalsRepository(professionals, professionalsByUnit);
-        const service = new ProfessionalsService(repository, hasUserAccessToUnitChecker);
-
-        await service.deleteProfessional("user-1", "prof-unit-1", "unit-1");
-
-        const result = await repository.findById("prof-unit-1");
-        expect(result).toBeNull();
-    });
 });

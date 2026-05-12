@@ -368,54 +368,5 @@ export const professionalsRoutes = ({
                     500: professionalsErrorSchema,
                 },
             },
-        )
-        .delete(
-            "/:id",
-            async (context) => {
-                const { params, status } = context;
-                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
-
-                if ("error" in scope) {
-                    if (scope.error === "unauthorized") {
-                        return status(401, { message: "Unauthorized" });
-                    }
-
-                    return status(400, { message: unitSelectionRequiredMessage });
-                }
-
-                try {
-                    await professionalsService.deleteProfessional(scope.userId, params.id, scope.unitId);
-
-                    return status(200, { message: "Professional deleted" });
-                } catch (error) {
-                    if (isDomainError(error, "FORBIDDEN")) {
-                        return status(403, { message: "Forbidden" });
-                    }
-                    if (isDomainError(error, "PROFESSIONAL_NOT_FOUND")) {
-                        return status(404, { message: "Professional not found" });
-                    }
-
-                    return status(500, { message: "Internal server error" });
-                }
-            },
-            {
-                auth: true,
-                params: t.Object({
-                    id: t.String({ format: "uuid" }),
-                }),
-                detail: {
-                    summary: "Delete professional",
-                    description: "Deletes a professional by id.",
-                    tags: ["Professionals"],
-                },
-                response: {
-                    200: t.Object({ message: t.Literal("Professional deleted") }),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
-                    403: t.Object({ message: t.Literal("Forbidden") }),
-                    404: t.Object({ message: t.Literal("Professional not found") }),
-                    500: professionalsErrorSchema,
-                },
-            },
         );
-};
+    };

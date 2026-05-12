@@ -254,37 +254,6 @@ describe("Professionals routes", () => {
         expect(response.status).toBe(409);
     });
 
-    it("DELETE /professionals/:id remove", async () => {
-        const repository = new InMemoryProfessionalsRepository(
-            {
-                [TEST_IDS.professional]: {
-                    id: TEST_IDS.professional,
-                    userId: TEST_IDS.user,
-                    isActive: true,
-                    createdAt: "2026-02-01T17:27:35.202Z",
-                    updatedAt: "2026-02-01T17:27:35.202Z",
-                },
-            },
-            {
-                [TEST_IDS.professional]: [TEST_IDS.unit],
-            },
-        );
-        const app = await buildE2EApp({
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: repository as any,
-            accessMap,
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/professionals/${TEST_IDS.professional}`, {
-                method: "DELETE",
-                headers: requestHeaders,
-            }),
-        );
-
-        expect(response.status).toBe(200);
-    });
-
     it("retorna 403 quando usuário não tem acesso à unidade", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
@@ -336,22 +305,4 @@ describe("Professionals routes", () => {
         expect(response.status).toBe(400);
     });
 
-    it("DELETE /professionals/:id retorna 400 sem clínica selecionada", async () => {
-        const app = await buildE2EApp({
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository() as any,
-            accessMap,
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/professionals/${TEST_IDS.professional}`, {
-                method: "DELETE",
-                headers: {
-                    "x-user-id": TEST_IDS.user,
-                },
-            }),
-        );
-
-        expect(response.status).toBe(400);
-    });
 });
