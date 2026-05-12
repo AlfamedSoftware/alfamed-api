@@ -5,13 +5,6 @@ import { professionals } from "../../db/schema/professionals.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { DomainError } from "./domain-error.js";
 
-export const trustedOrigins = [
-    "https://dev-alfamed.vercel.app",
-    "https://web-alfamed.vercel.app",
-    "http://localhost:5173",
-    "http://localhost:53441",
-];
-
 export function getAuthenticatedUserId(context: { user?: { id?: string } }) {
     return context.user?.id ?? null;
 }

@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { isDomainError } from "../../http/plugins/domain-error.js";
 import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
-import { getClinicIdFromRequest } from "../../http/plugins/clinic-context.js";
+import { getUnitIdFromRequest } from "../../http/plugins/unit-context.js";
 import type { AppointmentsRepository } from "./appointments.repository.js";
 import { AppointmentsService, isConflictDomainError } from "./appointments.service.js";
 import {
@@ -38,10 +38,10 @@ export const appointmentsRoutes = ({
             return { error: "unauthorized" as const };
         }
 
-        const selectedClinicId = getClinicIdFromRequest(context.request);
+        const selectedUnitId = getUnitIdFromRequest(context.request);
 
-        if (selectedClinicId) {
-            return { userId, unitId: selectedClinicId };
+        if (selectedUnitId) {
+            return { userId, unitId: selectedUnitId };
         }
 
         return { error: "invalid_unit" as const };
@@ -59,7 +59,7 @@ export const appointmentsRoutes = ({
                         return status(401, { message: "Unauthorized" });
                     }
 
-                    return status(400, { message: "Selecione uma clínica para continuar" });
+                    return status(400, { message: "Selecione uma unidade para continuar" });
                 }
 
                 try {
@@ -83,7 +83,7 @@ export const appointmentsRoutes = ({
                 response: {
                     201: scheduleProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     500: appointmentsErrorSchema,
                 },

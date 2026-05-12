@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { isDomainError } from "../../http/plugins/domain-error.js";
 import { isUniqueConstraintError } from "../../http/plugins/db-errors.js";
 import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
-import { getClinicIdFromRequest } from "../../http/plugins/clinic-context.js";
+import { getUnitIdFromRequest } from "../../http/plugins/unit-context.js";
 import type { SpecialtiesRepository } from "./specialties.repository.js";
 import { SpecialtiesService } from "./specialties.service.js";
 import {
@@ -11,7 +11,7 @@ import {
     specialtyProfileSchema,
     updateSpecialtySchema,
 } from "./specialties.schemas.js";
-const unitSelectionRequiredMessage = "Selecione uma clínica para continuar";
+const unitSelectionRequiredMessage = "Selecione uma unidade para continuar";
 
 type SpecialtiesRoutesOptions = {
     specialtiesRepository: SpecialtiesRepository;
@@ -34,10 +34,10 @@ export const specialtiesRoutes = ({
             return { error: "unauthorized" as const };
         }
 
-        const selectedClinicId = getClinicIdFromRequest(context.request);
+        const selectedUnitId = getUnitIdFromRequest(context.request);
 
-        if (selectedClinicId) {
-            return { userId, unitId: selectedClinicId };
+        if (selectedUnitId) {
+            return { userId, unitId: selectedUnitId };
         }
 
         return { error: "invalid_unit" as const };
@@ -80,7 +80,7 @@ export const specialtiesRoutes = ({
                 },
                 response: {
                     201: specialtyProfileSchema,
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.Literal("Specialty already exists") }),
@@ -120,7 +120,7 @@ export const specialtiesRoutes = ({
                 },
                 response: {
                     200: specialtyProfileSchema.array(),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     500: specialtiesErrorSchema,

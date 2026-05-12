@@ -2,7 +2,7 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { systemRoutes } from "./http/routes/system.routes.js";
-import { trustedOrigins } from "./http/plugins/unit-access.js";
+import { TRUSTED_ORIGINS } from "./config/session.js";
 import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
@@ -110,7 +110,7 @@ export async function buildApp({
         .use(authPasswordResetRoutes({ db }))
         .use(
             cors({
-                origin: trustedOrigins,
+                origin: TRUSTED_ORIGINS,
                 methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 credentials: true,
                 allowedHeaders: ["Content-Type", "Authorization"],
@@ -129,7 +129,6 @@ export async function buildApp({
             specialtiesRoutes({
                 specialtiesRepository,
                 hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-                getUserUnitIdsByUserId: professionalsRepository?.listUnitIdsByUserId,
             }),
         )
         : configuredApp;
@@ -159,7 +158,6 @@ export async function buildApp({
                 appointmentsRoutes({
                     appointmentsRepository,
                     hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-                    getUserUnitIdsByUserId: professionalsRepository?.listUnitIdsByUserId,
                 }),
             )
             : configuredAppWithAdmin;

@@ -30,10 +30,10 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
     const adminUnitsService = new AdminUnitsService(adminUnitsRepository);
 
     const resolveAdminAccess = async (context: any) => {
-        const { status, user } = context;
+        const { user } = context;
 
         if (!user?.id) {
-            return status(403, { message: "Forbidden" });
+            return false;
         }
 
         try {
@@ -44,7 +44,7 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
                 .limit(1);
 
             if (!professional) {
-                return status(403, { message: "Forbidden" });
+                return false;
             }
 
             const rows = await db
@@ -62,14 +62,10 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
                 }
             });
 
-            if (!hasInternalAlfamed) {
-                return status(403, { message: "Forbidden" });
-            }
-
-            return true;
+            return hasInternalAlfamed;
         } catch (error) {
             console.error("[admin][access][resolve]", error);
-            return status(403, { message: "Forbidden" });
+            return false;
         }
     };
 
@@ -156,7 +152,7 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
             async (context) => {
                 const { params, status } = context;
                 if (!(await resolveAdminAccess(context))) {
-                    return;
+                    return status(403, { message: "Forbidden" });
                 }
                 try {
                     const unit = await adminUnitsService.getUnitById(params.id);
@@ -195,7 +191,7 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
             async (context) => {
                 const { params, body, status } = context;
                 if (!(await resolveAdminAccess(context))) {
-                    return;
+                    return status(403, { message: "Forbidden" });
                 }
                 try {
                     const unit = await adminUnitsService.updateUnit(params.id, body);
@@ -240,7 +236,7 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
             async (context) => {
                 const { params, status } = context;
                 if (!(await resolveAdminAccess(context))) {
-                    return;
+                    return status(403, { message: "Forbidden" });
                 }
                 try {
                     await adminUnitsService.deleteUnit(params.id);
@@ -284,7 +280,7 @@ export const adminUnitsRoutes = ({ db }: AdminUnitsRoutesOptions) => {
             async (context) => {
                 const { params, status } = context;
                 if (!(await resolveAdminAccess(context))) {
-                    return;
+                    return status(403, { message: "Forbidden" });
                 }
                 try {
                     const professionals = await adminUnitsService.listUnitProfessionals(params.id);

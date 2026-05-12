@@ -57,6 +57,23 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
         return unitsProfs.includes(professionalId) ? professional : null;
     }
 
+    async findDetailById(professionalId: string): Promise<any | null> {
+        const professional = this.professionals[professionalId];
+
+        if (!professional) return null;
+
+        return {
+            ...professional,
+            users: [
+                {
+                    id: professional.userId,
+                    name: professional.name ?? "Mock User",
+                    email: professional.email ?? "mock@example.com",
+                },
+            ],
+        };
+    }
+
     async list(): Promise<ProfessionalProfile[]> {
         return Object.values(this.professionals);
     }

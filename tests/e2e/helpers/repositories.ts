@@ -284,6 +284,22 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
     async delete(professionalId: string): Promise<void> {
         delete this.professionals[professionalId];
     }
+
+    async listUnitIdsByUserId(userId: string): Promise<string[]> {
+        const profIds = Object.keys(this.professionals).filter((id) => this.professionals[id].userId === userId);
+        const unitIds = new Set<string>();
+
+        for (const profId of profIds) {
+            const units = this.professionalsUnits[profId] ?? [];
+            units.forEach((u) => unitIds.add(u));
+        }
+
+        return Array.from(unitIds);
+    }
+
+    async listActiveRolesByProfessionalUnit(userId: string, unitId: string, professionalUnitId: string): Promise<any[]> {
+        return [];
+    }
 }
 
 type InMemoryRequestContext = {

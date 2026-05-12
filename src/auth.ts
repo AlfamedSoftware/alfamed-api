@@ -1,10 +1,10 @@
 import { betterAuth } from "better-auth";
+import { SESSION_EXPIRY_SECONDS, TRUSTED_ORIGINS } from "./config/session.js";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI, twoFactor } from "better-auth/plugins";
 import { compare, hash } from "bcryptjs";
 import { db } from "./db/client.js";
 import { users } from "./db/schema/users.js";
-import { trustedOrigins } from "./http/plugins/unit-access.js";
 import { eq } from "drizzle-orm";
 import { professionals } from "./db/schema/professionals.js";
 import { professionalUnits } from "./db/schema/professional-units.js";
@@ -32,7 +32,7 @@ export const auth = betterAuth({
     basePath: "/auth",
     baseURL: betterAuthBaseUrl,
     secret: betterAuthSecret,
-    trustedOrigins,
+    trustedOrigins: TRUSTED_ORIGINS,
     user: {
         additionalFields: {
             cpf: {
@@ -69,6 +69,14 @@ export const auth = betterAuth({
         openAPI(),
         twoFactor()
     ],
+    session: {
+        expiresIn: SESSION_EXPIRY_SECONDS,
+        updateAge: 0,
+        cookieCache: {
+            enabled: true,
+            maxAge: SESSION_EXPIRY_SECONDS,
+        },
+    },
     database: drizzleAdapter(db, {
         provider: "pg",
         usePlural: true,
@@ -148,13 +156,6 @@ export const auth = betterAuth({
     advanced: {
         database: {
             generateId: false,
-        },
-        session: {
-            expiresIn: 60 * 60 * 24,
-            cookieCache: {
-                enabled: true,
-                maxAge: 60 * 5,
-            }
         },
         defaultCookieAttributes: {
             secure: true,

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { AppointmentsService } from "../../src/modules/appointments/appointments.service";
-import type { AppointmentsRepository, ScheduleProfile } from "../../src/modules/appointments/appointments.repository";
+import type {
+    AppointmentsRepository,
+    ScheduleProfile,
+    CreateScheduleInput,
+    UpdateScheduleInput,
+} from "../../src/modules/appointments/appointments.repository";
 import { DomainError } from "../../src/http/plugins/domain-error";
 
 class InMemoryAppointmentsRepository implements AppointmentsRepository {
@@ -36,11 +41,45 @@ class InMemoryAppointmentsRepository implements AppointmentsRepository {
         };
     }
 
-    async createSchedule() {
-        throw new Error("not implemented");
+    async createSchedule(data: CreateScheduleInput): Promise<ScheduleProfile> {
+        const id = `schedule-${Object.keys(this.schedules).length + 1}`;
+        const now = new Date().toISOString();
+        const schedule: ScheduleProfile = {
+            id,
+            professionalUnitSpecialtyId: data.professionalUnitSpecialtyId,
+            professionalUnitId: data.professionalUnitId,
+            unitId: "unit-1",
+            professionalId: "professional-1",
+            date: data.date,
+            time: data.time,
+            slots: data.slots,
+            slotsUsed: 0,
+            isActive: data.isActive ?? true,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        this.schedules[id] = schedule;
+        return schedule;
     }
-    async updateSchedule() {
-        throw new Error("not implemented");
+
+    async updateSchedule(scheduleId: string, data: UpdateScheduleInput): Promise<ScheduleProfile | null> {
+        const current = this.schedules[scheduleId];
+        if (!current) return null;
+
+        const updated: ScheduleProfile = {
+            ...current,
+            professionalUnitSpecialtyId: data.professionalUnitSpecialtyId ?? current.professionalUnitSpecialtyId,
+            professionalUnitId: data.professionalUnitId ?? current.professionalUnitId,
+            date: data.date ?? current.date,
+            time: data.time ?? current.time,
+            slots: data.slots ?? current.slots,
+            isActive: data.isActive ?? current.isActive,
+            updatedAt: new Date().toISOString(),
+        };
+
+        this.schedules[scheduleId] = updated;
+        return updated;
     }
     async listAvailability() {
         return [];

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { appointmentRequestProfileSchema, scheduleProfileSchema } from "../../src/modules/appointments/appointments.schemas";
 import { DomainError } from "../../src/http/plugins/domain-error";
-import { buildE2EApp, createSelectedClinicCookie, TEST_IDS } from "./helpers/context";
+import { buildE2EApp, createSelectedUnitCookie, TEST_IDS } from "./helpers/context";
 import { InMemoryAppointmentsRepository, InMemoryUsersRepository } from "./helpers/repositories";
 
 describe("Appointments routes", () => {
@@ -72,7 +72,7 @@ describe("Appointments routes", () => {
                 method: "POST",
                 headers: {
                     "x-user-id": TEST_IDS.user,
-                    Cookie: createSelectedClinicCookie(TEST_IDS.unit),
+                    Cookie: createSelectedUnitCookie(TEST_IDS.unit),
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
