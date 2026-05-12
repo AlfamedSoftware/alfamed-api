@@ -3,14 +3,24 @@ import { auth } from "../../auth.js";
 import {
     selectedProfessionalUnitCookieName,
     selectedUnitCookieName,
+    getUnitIdFromRequest,
+    getProfessionalUnitIdFromRequest,
 } from "./unit-context.js";
-import { IS_PRODUCTION, TRUSTED_ORIGINS } from "../../config/session.js";
+import { IS_PRODUCTION, TRUSTED_ORIGINS, SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS } from "../../config/session.js";
 
 const getExpiredCookieHeader = (name: string) => {
     const secure = IS_PRODUCTION ? "; Secure" : "";
     const sameSite = IS_PRODUCTION ? "; SameSite=None" : "; SameSite=Lax";
 
     return `${name}=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/${secure}${sameSite}; HttpOnly`;
+};
+
+const createCookieHeader = (name: string, value: string, maxAge: number) => {
+    const secure = IS_PRODUCTION ? "; Secure" : "";
+    const sameSite = IS_PRODUCTION ? "; SameSite=None" : "; SameSite=Lax";
+    const encodedValue = encodeURIComponent(value);
+    
+    return `${name}=${encodedValue}; Max-Age=${maxAge}; Path=/; HttpOnly${secure}${sameSite}`;
 };
 
 const appendCorsHeaders = (headers: Headers, origin: string | null) => {

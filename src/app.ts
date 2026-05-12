@@ -21,6 +21,7 @@ import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
 import { adminUpmRoutes } from "./modules/admin/admin-upm.routes.js";
 import { createSessionRoutes } from "./modules/session/session.routes.js";
 import { authPasswordResetRoutes } from "./modules/auth/auth-password-reset.routes.js";
+import { renewSessionCookies } from "./http/plugins/session-helpers.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -107,6 +108,13 @@ export async function buildApp({
 
     const configuredApp = app
         .use(authPlugin)
+        .onBeforeHandle(async ({ request, set }) => {
+            const { pathname } = new URL(request.url);
+            // Skip auth and system endpoints
+            if (!pathname.startsWith("/auth/") && !pathname.startsWith("/system/")) {
+                await renewSessionCookies(request, set);
+            }
+        })
         .use(authPasswordResetRoutes({ db }))
         .use(
             cors({
