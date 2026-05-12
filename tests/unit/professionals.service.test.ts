@@ -12,7 +12,7 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
     constructor(
         private readonly professionals: Record<string, ProfessionalProfile> = {},
         private readonly professionalsByUnit: Record<string, string[]> = {},
-    ) {}
+    ) { }
 
     async create(data: CreateProfessionalInput): Promise<ProfessionalProfile> {
         const professional: ProfessionalProfile = {
@@ -48,6 +48,28 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
 
     async findById(professionalId: string): Promise<ProfessionalProfile | null> {
         return this.professionals[professionalId] ?? null;
+    }
+
+    async findDetailById(professionalId: string): Promise<any | null> {
+        const professional = this.professionals[professionalId];
+        if (!professional) return null;
+
+        return {
+            ...professional,
+            cpf: undefined,
+            birthdate: undefined,
+            unit: null,
+            users: [
+                {
+                    id: professional.userId,
+                    name: professional.name,
+                    email: professional.email,
+                    phone: undefined,
+                    cpf: undefined,
+                    birthdate: undefined,
+                },
+            ],
+        };
     }
 
     async findByIdAndUnit(professionalId: string, unitId: string): Promise<ProfessionalProfile | null> {
