@@ -1,43 +1,47 @@
 /**
- * Clinic Context Middleware
+ * Unit Context Middleware
  * 
  * Middleware que:
- * 1. Extrai clinicId da sessão autenticada
+ * 1. Extrai unitId da sessão autenticada
  * 2. Injeta no contexto da request para uso em handlers
- * 3. Bloqueia requests que exigem clinicId mas não possuem
+ * 3. Bloqueia requests que exigem unitId mas não possuem
  * 
  * Uso em rotas:
  * ```
- * .guard(clinicContextMiddleware(db))
- * .get("/patients", ({ clinicId }) => ...)
+ * .guard(unitContextMiddleware(db))
+ * .get("/patients", ({ unitId }) => ...)
  * ```
  */
 
 import Elysia from "elysia";
 import type { db as dbType } from "../../db/client.js";
 import { auth } from "../../auth.js";
-import { getClinicIdFromSession } from "./clinic-context.js";
+import { getUnitIdFromSession } from "./unit-context.js";
 
 type DatabaseClient = typeof dbType;
 
-export interface ClinicContextState {
-    clinicId?: string;
+export interface UnitContextState {
+    unitId?: string;
 }
 
 /**
- * Middleware que injeta clinicId no contexto
+ * Middleware que injeta unitId no contexto
  * 
- * Adiciona clinicId ao store da request se disponível na sessão
+ * Adiciona unitId ao store da request se disponível na sessão
  */
-export function createClinicContextMiddleware(db: DatabaseClient) {
-    return new Elysia({ name: "clinic-context-middleware" }).derive(
+export function createUnitContextMiddleware(db: DatabaseClient) {
+    return new Elysia({ name: "unit-context-middleware" }).derive(
         async ({ request, store }) => {
-            const session = await auth.api.getSession({ headers: request.headers });
-            const clinicId = getClinicIdFromSession(session);
+            const session = await auth.api.getSession({
+                headers: request.headers,
+                query: {
+                    disableCookieCache: true,
+                },
+            });
+            const unitId = getUnitIdFromSession(session);
 
             return {
-                clinicId,
-                // Adicionar user para facilitar acesso
+                unitId,
                 user: session?.user ?? null,
             };
         },
@@ -45,8 +49,8 @@ export function createClinicContextMiddleware(db: DatabaseClient) {
 }
 
 /**
- * Guard que bloqueia requests sem clinicId definido
- * Use em rotas que EXIGEM clinicId
+ * Guard que bloqueia requests sem unitId definido
+ * Use em rotas que EXIGEM unitId
  * 
  * Exemplo:
  * ```
@@ -54,21 +58,21 @@ export function createClinicContextMiddleware(db: DatabaseClient) {
  *   {
  *     response: t.Object({ message: t.String() }),
  *   },
- *   ({ clinicId, status }) => {
- *     if (!clinicId) {
- *       return status(403, { message: "Clinic not selected" });
+ *   ({ unitId, status }) => {
+ *     if (!unitId) {
+ *       return status(403, { message: "Unit not selected" });
  *     }
  *   }
  * )
  * .get("/protected-route", ...)
  * ```
  */
-export function requireClinicId() {
-    return ({ clinicId, status }: any) => {
-        if (!clinicId) {
+export function requireUnitId() {
+    return ({ unitId, status }: any) => {
+        if (!unitId) {
             return status(403, {
                 message:
-                    "Clinic ID not found in session. Please select a clinic first using POST /session/select-clinic",
+                    "Unit ID not found in session. Please select a unit first using POST /session/select-unit",
             });
         }
     };

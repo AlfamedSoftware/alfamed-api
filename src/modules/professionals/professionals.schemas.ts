@@ -5,6 +5,8 @@ const phonePattern = /^\(\d{2}\) \d{4,5}-\d{4}$/;
 const crmPattern = /^[A-Z]{2}\d{4,6}$/;
 
 export const createProfessionalSchema = z.object({
+    name: z.string().optional(),
+    email: z.string().email().optional(),
     isActive: z.boolean().optional(),
 }).strict();
 
@@ -40,9 +42,6 @@ export const professionalRoleProfileSchema = z.object({
     id: z.string().uuid(),
     description: z.string(),
     key: z.string(),
-    isActive: z.boolean(),
-    createdAt: z.string().datetime(),
-    updatedAt: z.string().datetime(),
 });
 
 export const professionalsErrorSchema = z.object({

@@ -6,13 +6,11 @@ This repository contains the backend API for **Alfamed**, a SaaS platform for **
 
 Alfamed allows clinics and hospitals to manage:
 
-* patients
-* healthcare professionals
-* appointments
-* specialties
-* units (clinics/hospital branches)
+- patients
+- healthcare professionals
+- units (clinics/hospital branches)
 
-The core functionality of the platform is **managing patient appointments with healthcare professionals inside specific clinic units**.
+The core functionality of the platform is **managing clinical entities and relationships between patients and healthcare professionals inside specific clinic units**.
 
 The backend is built with:
 
@@ -82,11 +80,10 @@ This means:
 
 Examples of domain entities that must respect this rule:
 
-* professionals
-* patients
-* appointments
-* schedules
-* medical records
+- professionals
+- patients
+- schedules
+- medical records
 
 If an entity belongs to a unit, all database queries must enforce that constraint.
 
@@ -118,7 +115,7 @@ User from Unit A lists professionals → professionals from Unit B are returned.
 
 # DATABASE ACCESS RULE FOR UNIT-SCOPED ENTITIES
 
-When accessing entities related to units (professionals, appointments, etc.), the repository must always:
+When accessing entities related to units (professionals, patients, etc.), the repository must always:
 
 * filter by unit
 * validate unit ownership
@@ -134,11 +131,7 @@ professional_units
 
 Queries must ensure that the professional belongs to the requesting unit.
 
-This pattern must be reused for other modules like:
-
-* appointments
-* schedules
-* patient assignments
+This pattern must be reused for other modules like schedules and patient assignments.
 
 ---
 
@@ -416,12 +409,12 @@ When creating a new module:
 
 Example module:
 
-modules/appointments
+modules/<entity>
 
-appointments.repository.ts
-appointments.service.ts
-appointments.routes.ts
-appointments.schemas.ts
+<entity>.repository.ts
+<entity>.service.ts
+<entity>.routes.ts
+<entity>.schemas.ts
 
 ---
 
@@ -514,7 +507,7 @@ If creating a new helper, explain in the PR/commit why existing helpers were ins
 
 # UNIT SCOPE REUSE RULE
 
-For any unit-scoped domain (professionals, appointments, schedules, patients, etc.):
+For any unit-scoped domain (professionals, schedules, patients, etc.):
 
 - Always validate x-unit-id using shared helper functions.
 - Always validate user-to-unit ownership using shared helper functions.

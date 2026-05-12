@@ -2,25 +2,24 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { systemRoutes } from "./http/routes/system.routes.js";
-import { trustedOrigins } from "./http/plugins/unit-access.js";
+import { TRUSTED_ORIGINS } from "./config/session.js";
 import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
 import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
 import type { PatientsRepository } from "./modules/patients/patients.repository.js";
-import { specialtiesRoutes } from "./modules/specialties/specialties.routes.js";
-import type { SpecialtiesRepository } from "./modules/specialties/specialties.repository.js";
+// specialties routes removed
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
-import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
-import type { AppointmentsRepository } from "./modules/appointments/appointments.repository.js";
+// appointments routes removed
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
 import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
 import { adminUpmRoutes } from "./modules/admin/admin-upm.routes.js";
 import { createSessionRoutes } from "./modules/session/session.routes.js";
 import { authPasswordResetRoutes } from "./modules/auth/auth-password-reset.routes.js";
+import { renewSessionCookies } from "./http/plugins/session-helpers.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -31,9 +30,7 @@ type BuildAppOptions = {
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
     patientsRepository: PatientsRepository;
-    specialtiesRepository?: SpecialtiesRepository;
     unitsRepository?: UnitsRepository;
-    appointmentsRepository?: AppointmentsRepository;
     hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
     authPlugin: ElysiaPlugin;
     withDocs?: boolean;
@@ -44,9 +41,7 @@ export async function buildApp({
     usersRepository,
     patientsRepository,
     professionalsRepository,
-    specialtiesRepository,
     unitsRepository,
-    appointmentsRepository,
     hasUserAccessToUnitChecker,
     authPlugin,
     withDocs = true,
@@ -82,17 +77,10 @@ export async function buildApp({
                             description: "Operations about patients",
                         },
                         {
-                            name: "Specialties",
-                            description: "Operations about specialties",
-                        },
-                        {
                             name: "Better Auth",
                             description: "Authentication and session operations",
                         },
-                        {
-                            name: "Appointments",
-                            description: "Scheduling and booking request operations",
-                        },
+                        // Removed specialties and appointments tags (modules no longer present)
                         {
                             name: "Admin",
                             description: "Internal administration operations",
@@ -107,10 +95,17 @@ export async function buildApp({
 
     const configuredApp = app
         .use(authPlugin)
+        .onBeforeHandle(async ({ request, set }) => {
+            const { pathname } = new URL(request.url);
+            // Skip auth and system endpoints
+            if (!pathname.startsWith("/auth/") && !pathname.startsWith("/system/")) {
+                await renewSessionCookies(request, set);
+            }
+        })
         .use(authPasswordResetRoutes({ db }))
         .use(
             cors({
-                origin: trustedOrigins,
+                origin: TRUSTED_ORIGINS,
                 methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 credentials: true,
                 allowedHeaders: ["Content-Type", "Authorization"],
@@ -124,24 +119,16 @@ export async function buildApp({
     const resolvedHasUserAccessToUnitChecker =
         hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
 
-    const configuredAppWithSpecialties = specialtiesRepository
-        ? configuredApp.use(
-            specialtiesRoutes({
-                specialtiesRepository,
-                hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-                getUserUnitIdsByUserId: professionalsRepository?.listUnitIdsByUserId,
-            }),
-        )
-        : configuredApp;
+    const configuredAppBase = configuredApp;
 
     const configuredAppWithUnits = unitsRepository
-        ? configuredAppWithSpecialties.use(
+        ? configuredAppBase.use(
             unitsRoutes({
                 unitsRepository,
                 hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
             }),
         )
-        : configuredAppWithSpecialties;
+        : configuredAppBase;
 
     const configuredAppWithAdmin = configuredAppWithUnits.use(
         adminUnitsRoutes({
@@ -154,15 +141,7 @@ export async function buildApp({
     );
 
     if (!professionalsRepository) {
-        return appointmentsRepository
-            ? configuredAppWithAdmin.use(
-                appointmentsRoutes({
-                    appointmentsRepository,
-                    hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-                    getUserUnitIdsByUserId: professionalsRepository?.listUnitIdsByUserId,
-                }),
-            )
-            : configuredAppWithAdmin;
+        return configuredAppWithAdmin;
     }
 
     const configuredAppWithProfessionals = configuredAppWithAdmin.use(
@@ -172,15 +151,5 @@ export async function buildApp({
         }),
     );
 
-    if (!appointmentsRepository) {
-        return configuredAppWithProfessionals;
-    }
-
-    return configuredAppWithProfessionals.use(
-        appointmentsRoutes({
-            appointmentsRepository,
-            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
-            getUserUnitIdsByUserId: professionalsRepository.listUnitIdsByUserId,
-        }),
-    );
+    return configuredAppWithProfessionals;
 }

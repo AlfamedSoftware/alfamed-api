@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { z } from "zod";
 import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
-import { getClinicIdFromRequest, getProfessionalUnitIdFromRequest } from "../../http/plugins/clinic-context.js";
+import { getUnitIdFromRequest, getProfessionalUnitIdFromRequest } from "../../http/plugins/unit-context.js";
 import { isDomainError } from "../../http/plugins/domain-error.js";
 import { isUniqueConstraintError } from "../../http/plugins/db-errors.js";
 import type { ProfessionalsRepository } from "./professionals.repository.js";
@@ -16,7 +16,7 @@ import {
     updateProfessionalSchema,
 } from "./professionals.schemas.js";
 
-const unitSelectionRequiredMessage = "Selecione uma clínica para continuar";
+const unitSelectionRequiredMessage = "Selecione uma unidade para continuar";
 const professionalUnitSelectionRequiredMessage = "Selecione um vínculo profissional para continuar";
 
 type ProfessionalsRoutesOptions = {
@@ -39,10 +39,10 @@ export const professionalsRoutes = ({
             return { error: "unauthorized" as const };
         }
 
-        const selectedClinicId = getClinicIdFromRequest(context.request);
+        const selectedUnitId = getUnitIdFromRequest(context.request);
 
-        if (selectedClinicId) {
-            return { userId, unitId: selectedClinicId };
+        if (selectedUnitId) {
+            return { userId, unitId: selectedUnitId };
         }
 
         return { error: "invalid_unit" as const };
@@ -97,7 +97,7 @@ export const professionalsRoutes = ({
                 response: {
                     201: professionalProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.Literal("Professional already exists for this user") }),
                     500: professionalsErrorSchema,
@@ -152,7 +152,7 @@ export const professionalsRoutes = ({
                     200: z.array(professionalRoleProfileSchema),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     400: t.Union([
-                        t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                        t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                         t.Object({ message: t.Literal("Selecione um vínculo profissional para continuar") }),
                     ]),
                     403: t.Object({ message: t.Literal("Forbidden") }),
@@ -202,13 +202,13 @@ export const professionalsRoutes = ({
                 body: createProfessionalForUserSchema,
                 detail: {
                     summary: "Create professional for user",
-                    description: "Creates a professional linked to the userId provided in the request body and to the selected clinic.",
+                    description: "Creates a professional linked to the userId provided in the request body and to the selected unit.",
                     tags: ["Professionals"],
                 },
                 response: {
                     201: professionalProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.String() }),
                     500: professionalsErrorSchema,
@@ -245,13 +245,13 @@ export const professionalsRoutes = ({
                 auth: true,
                 detail: {
                     summary: "List professionals",
-                    description: "Returns professionals for the selected clinic.",
+                    description: "Returns professionals for the selected unit.",
                     tags: ["Professionals"],
                 },
                 response: {
                     200: z.array(professionalProfileSchema),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     500: professionalsErrorSchema,
                 },
@@ -303,7 +303,7 @@ export const professionalsRoutes = ({
                 response: {
                     200: professionalDetailSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
                     500: professionalsErrorSchema,
@@ -361,61 +361,12 @@ export const professionalsRoutes = ({
                 response: {
                     200: professionalProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
                     409: t.Object({ message: t.Literal("Professional already exists for this user") }),
                     500: professionalsErrorSchema,
                 },
             },
-        )
-        .delete(
-            "/:id",
-            async (context) => {
-                const { params, status } = context;
-                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
-
-                if ("error" in scope) {
-                    if (scope.error === "unauthorized") {
-                        return status(401, { message: "Unauthorized" });
-                    }
-
-                    return status(400, { message: unitSelectionRequiredMessage });
-                }
-
-                try {
-                    await professionalsService.deleteProfessional(scope.userId, params.id, scope.unitId);
-
-                    return status(200, { message: "Professional deleted" });
-                } catch (error) {
-                    if (isDomainError(error, "FORBIDDEN")) {
-                        return status(403, { message: "Forbidden" });
-                    }
-                    if (isDomainError(error, "PROFESSIONAL_NOT_FOUND")) {
-                        return status(404, { message: "Professional not found" });
-                    }
-
-                    return status(500, { message: "Internal server error" });
-                }
-            },
-            {
-                auth: true,
-                params: t.Object({
-                    id: t.String({ format: "uuid" }),
-                }),
-                detail: {
-                    summary: "Delete professional",
-                    description: "Deletes a professional by id.",
-                    tags: ["Professionals"],
-                },
-                response: {
-                    200: t.Object({ message: t.Literal("Professional deleted") }),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
-                    403: t.Object({ message: t.Literal("Forbidden") }),
-                    404: t.Object({ message: t.Literal("Professional not found") }),
-                    500: professionalsErrorSchema,
-                },
-            },
         );
-};
+    };

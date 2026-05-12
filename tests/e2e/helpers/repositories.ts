@@ -12,24 +12,11 @@ import type {
     UpdateUnitInput,
 } from "../../../src/modules/units/units.repository";
 import type {
-    AppointmentRequestProfile,
-    AppointmentsRepository,
-    AvailabilityQuery,
-    CreateScheduleInput,
-    ScheduleProfile,
-    UpdateScheduleInput,
-} from "../../../src/modules/appointments/appointments.repository";
-import type {
     CreatePatientInput,
     Patient,
     PatientsRepository,
 } from "../../../src/modules/patients/patients.repository";
-import type {
-    CreateSpecialtyInput,
-    SpecialtiesRepository,
-    SpecialtyProfile,
-    UpdateSpecialtyInput,
-} from "../../../src/modules/specialties/specialties.repository";
+// Appointments and Specialties modules removed from project; related in-memory helpers removed.
 import { DomainError } from "../../../src/http/plugins/domain-error";
 
 export class InMemoryUsersRepository implements UsersRepository {
@@ -284,6 +271,22 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
     async delete(professionalId: string): Promise<void> {
         delete this.professionals[professionalId];
     }
+
+    async listUnitIdsByUserId(userId: string): Promise<string[]> {
+        const profIds = Object.keys(this.professionals).filter((id) => this.professionals[id].userId === userId);
+        const unitIds = new Set<string>();
+
+        for (const profId of profIds) {
+            const units = this.professionalsUnits[profId] ?? [];
+            units.forEach((u) => unitIds.add(u));
+        }
+
+        return Array.from(unitIds);
+    }
+
+    async listActiveRolesByProfessionalUnit(userId: string, unitId: string, professionalUnitId: string): Promise<any[]> {
+        return [];
+    }
 }
 
 type InMemoryRequestContext = {
@@ -297,267 +300,7 @@ type InMemoryRequestContext = {
     scheduleId: string;
 };
 
-export class InMemoryAppointmentsRepository implements AppointmentsRepository {
-    private readonly professionalsByUserId: Record<string, string>;
-    private readonly patientsByUserId: Record<string, string>;
-    private readonly professionalUnits: Record<string, { professionalId: string; unitId: string }>;
-    private readonly schedules: Record<string, ScheduleProfile>;
-    private readonly requests: Record<string, AppointmentRequestProfile>;
-    private readonly requestContexts: Record<string, InMemoryRequestContext>;
-    private readonly appointmentStatuses: Record<string, string>;
-    private readonly appointmentSchedules: Record<string, string>;
-    private sequence = 1;
 
-    constructor(args?: {
-        professionalsByUserId?: Record<string, string>;
-        patientsByUserId?: Record<string, string>;
-        professionalUnits?: Record<string, { professionalId: string; unitId: string }>;
-        schedules?: Record<string, ScheduleProfile>;
-        requests?: Record<string, AppointmentRequestProfile>;
-        requestContexts?: Record<string, InMemoryRequestContext>;
-        appointmentStatuses?: Record<string, string>;
-        appointmentSchedules?: Record<string, string>;
-    }) {
-        this.professionalsByUserId = { ...(args?.professionalsByUserId ?? {}) };
-        this.patientsByUserId = { ...(args?.patientsByUserId ?? {}) };
-        this.professionalUnits = { ...(args?.professionalUnits ?? {}) };
-        this.schedules = { ...(args?.schedules ?? {}) };
-        this.requests = { ...(args?.requests ?? {}) };
-        this.requestContexts = { ...(args?.requestContexts ?? {}) };
-        this.appointmentStatuses = { ...(args?.appointmentStatuses ?? {}) };
-        this.appointmentSchedules = { ...(args?.appointmentSchedules ?? {}) };
-    }
-
-    async findProfessionalIdByUserId(userId: string): Promise<string | null> {
-        return this.professionalsByUserId[userId] ?? null;
-    }
-
-    async findPatientIdByUserId(userId: string): Promise<string | null> {
-        return this.patientsByUserId[userId] ?? null;
-    }
-
-    async findProfessionalUnit(professionalUnitId: string) {
-        return this.professionalUnits[professionalUnitId] ?? null;
-    }
-
-    async findScheduleContextById(scheduleId: string) {
-        const schedule = this.schedules[scheduleId];
-        if (!schedule) {
-            return null;
-        }
-        return {
-            id: schedule.id,
-            professionalUnitId: schedule.professionalUnitId,
-            unitId: schedule.unitId,
-            professionalId: schedule.professionalId,
-            slots: schedule.slots,
-            slotsUsed: schedule.slotsUsed,
-            isActive: schedule.isActive,
-        };
-    }
-
-    async createSchedule(data: CreateScheduleInput): Promise<ScheduleProfile> {
-        const professionalUnit = this.professionalUnits[data.professionalUnitId];
-        if (!professionalUnit) {
-            throw new DomainError("FORBIDDEN", "Forbidden");
-        }
-
-        const id = `019c1a3e-e425-7000-8bda-cdfec32d0f${String(this.sequence).padStart(2, "0")}`;
-        this.sequence += 1;
-        const now = new Date().toISOString();
-
-        const schedule: ScheduleProfile = {
-            id,
-            professionalUnitSpecialtyId: data.professionalUnitSpecialtyId,
-            professionalUnitId: data.professionalUnitId,
-            unitId: professionalUnit.unitId,
-            professionalId: professionalUnit.professionalId,
-            date: data.date,
-            time: data.time,
-            slots: data.slots,
-            slotsUsed: 0,
-            isActive: data.isActive ?? true,
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        this.schedules[id] = schedule;
-        return schedule;
-    }
-
-    async updateSchedule(scheduleId: string, data: UpdateScheduleInput): Promise<ScheduleProfile | null> {
-        const current = this.schedules[scheduleId];
-        if (!current) {
-            return null;
-        }
-
-        let professionalUnit = this.professionalUnits[current.professionalUnitId];
-        if (data.professionalUnitId) {
-            professionalUnit = this.professionalUnits[data.professionalUnitId];
-        }
-
-        if (!professionalUnit) {
-            throw new DomainError("FORBIDDEN", "Forbidden");
-        }
-
-        const updated: ScheduleProfile = {
-            ...current,
-            professionalUnitSpecialtyId: data.professionalUnitSpecialtyId ?? current.professionalUnitSpecialtyId,
-            professionalUnitId: data.professionalUnitId ?? current.professionalUnitId,
-            unitId: professionalUnit.unitId,
-            professionalId: professionalUnit.professionalId,
-            date: data.date ?? current.date,
-            time: data.time ?? current.time,
-            slots: data.slots ?? current.slots,
-            isActive: data.isActive ?? current.isActive,
-            updatedAt: new Date().toISOString(),
-        };
-
-        this.schedules[scheduleId] = updated;
-        return updated;
-    }
-
-    async listAvailability(query: AvailabilityQuery): Promise<ScheduleProfile[]> {
-        return Object.values(this.schedules)
-            .filter((schedule) => schedule.unitId === query.unitId)
-            .filter((schedule) => !query.date || schedule.date === query.date)
-            .filter(
-                (schedule) =>
-                    !query.professionalUnitSpecialtyId
-                    || schedule.professionalUnitSpecialtyId === query.professionalUnitSpecialtyId,
-            )
-            .filter((schedule) => schedule.isActive && schedule.slotsUsed < schedule.slots);
-    }
-
-    async createAppointmentRequest(args: {
-        patientId: string;
-        scheduleId: string;
-        type: string;
-        requestStatus: string;
-        appointmentStatus: string;
-    }): Promise<AppointmentRequestProfile> {
-        const schedule = this.schedules[args.scheduleId];
-        if (!schedule) {
-            throw new DomainError("SCHEDULE_NOT_FOUND", "Schedule not found");
-        }
-        if (!schedule.isActive || schedule.slotsUsed >= schedule.slots) {
-            throw new DomainError("NO_SLOTS_AVAILABLE", "No slots available");
-        }
-
-        const requestId = `019c1a3e-e425-7000-8bda-cdfec32d1f${String(this.sequence).padStart(2, "0")}`;
-        const appointmentId = `019c1a3e-e425-7000-8bda-cdfec32d2f${String(this.sequence).padStart(2, "0")}`;
-        this.sequence += 1;
-        schedule.slotsUsed += 1;
-
-        const now = new Date().toISOString();
-        const profile: AppointmentRequestProfile = {
-            id: requestId,
-            appointmentId,
-            scheduleId: schedule.id,
-            patientId: args.patientId,
-            unitId: schedule.unitId,
-            professionalId: schedule.professionalId,
-            type: args.type,
-            status: args.requestStatus,
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        const patientUserId = Object.entries(this.patientsByUserId).find(([, id]) => id === args.patientId)?.[0];
-        if (!patientUserId) {
-            throw new DomainError("FORBIDDEN", "Forbidden");
-        }
-
-        this.requests[requestId] = profile;
-        this.requestContexts[requestId] = {
-            id: requestId,
-            appointmentId,
-            status: args.requestStatus,
-            type: args.type,
-            patientUserId,
-            unitId: schedule.unitId,
-            professionalId: schedule.professionalId,
-            scheduleId: schedule.id,
-        };
-        this.appointmentStatuses[appointmentId] = args.appointmentStatus;
-        this.appointmentSchedules[appointmentId] = schedule.id;
-
-        return profile;
-    }
-
-    async findRequestById(requestId: string) {
-        return this.requestContexts[requestId] ?? null;
-    }
-
-    async updateRequestStatus(args: {
-        requestId: string;
-        newStatus: string;
-        changedBy: string;
-        observation?: string;
-    }): Promise<void> {
-        const context = this.requestContexts[args.requestId];
-        const request = this.requests[args.requestId];
-        if (!context || !request) {
-            throw new DomainError("REQUEST_NOT_FOUND", "Request not found");
-        }
-
-        context.status = args.newStatus;
-        request.status = args.newStatus;
-        request.updatedAt = new Date().toISOString();
-    }
-
-    async setCounterProposal(args: {
-        requestId: string;
-        newStatus: string;
-        proposedScheduleId: string;
-        changedBy: string;
-        observation?: string;
-    }): Promise<void> {
-        const context = this.requestContexts[args.requestId];
-        const request = this.requests[args.requestId];
-        if (!context || !request) {
-            throw new DomainError("REQUEST_NOT_FOUND", "Request not found");
-        }
-
-        const type = `counter_proposal:${args.proposedScheduleId}`;
-        context.status = args.newStatus;
-        request.status = args.newStatus;
-        context.type = type;
-        request.type = type;
-        request.updatedAt = new Date().toISOString();
-    }
-
-    async updateAppointmentStatus(args: {
-        appointmentId: string;
-        newStatusId: string;
-        changedBy: string;
-        observation?: string;
-    }): Promise<void> {
-        if (!this.appointmentStatuses[args.appointmentId]) {
-            throw new DomainError("REQUEST_NOT_FOUND", "Request not found");
-        }
-        this.appointmentStatuses[args.appointmentId] = args.newStatusId;
-    }
-
-    async moveAppointmentToSchedule(args: {
-        appointmentId: string;
-        fromScheduleId: string;
-        toScheduleId: string;
-    }): Promise<void> {
-        const fromSchedule = this.schedules[args.fromScheduleId];
-        const toSchedule = this.schedules[args.toScheduleId];
-        if (!fromSchedule || !toSchedule) {
-            throw new DomainError("SCHEDULE_NOT_FOUND", "Schedule not found");
-        }
-        if (!toSchedule.isActive || toSchedule.slotsUsed >= toSchedule.slots) {
-            throw new DomainError("NO_SLOTS_AVAILABLE", "No slots available");
-        }
-
-        fromSchedule.slotsUsed = Math.max(0, fromSchedule.slotsUsed - 1);
-        toSchedule.slotsUsed += 1;
-        this.appointmentSchedules[args.appointmentId] = args.toScheduleId;
-    }
-}
 
 export class InMemorySpecialtiesRepository implements SpecialtiesRepository {
     private readonly specialties: Record<string, SpecialtyProfile>;
