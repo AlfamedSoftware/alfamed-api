@@ -3,6 +3,7 @@ import { buildApp } from "../../../src/app";
 import type { db as dbType } from "../../../src/db/client";
 import type { UsersRepository } from "../../../src/modules/users/users.repository";
 import type { ProfessionalsRepository } from "../../../src/modules/professionals/professionals.repository";
+import type { ProfessionalUnitsRepository } from "../../../src/modules/professional-units/professional-units.repository";
 import type { PatientsRepository } from "../../../src/modules/patients/patients.repository";
 import type { UnitsRepository } from "../../../src/modules/units/units.repository";
 // Specialties and Appointments modules removed; not required for e2e context
@@ -67,6 +68,7 @@ export const createHasUserAccessToUnitChecker =
 type BuildE2EAppOptions = {
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
+    professionalUnitsRepository?: ProfessionalUnitsRepository;
     patientsRepository?: PatientsRepository;
     unitsRepository?: UnitsRepository;
     accessMap?: AllowedUnitsByUser;
@@ -76,6 +78,7 @@ type BuildE2EAppOptions = {
 export const buildE2EApp = async ({
     usersRepository,
     professionalsRepository,
+    professionalUnitsRepository,
     patientsRepository = new InMemoryPatientsRepository(),
     unitsRepository,
     accessMap = {},
@@ -87,6 +90,7 @@ export const buildE2EApp = async ({
         withDocs: false,
         usersRepository,
         professionalsRepository,
+        professionalUnitsRepository,
         patientsRepository,
         unitsRepository,
         hasUserAccessToUnitChecker: createHasUserAccessToUnitChecker(accessMap),

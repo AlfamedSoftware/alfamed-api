@@ -191,6 +191,7 @@ export class UnitsRepository {
                         eq(users.id, userId),
                         eq(users.isActive, true),
                         eq(professionals.isActive, true),
+                        eq(professionalUnits.isActive, true),
                         eq(units.isActive, true),
                     ),
                 );

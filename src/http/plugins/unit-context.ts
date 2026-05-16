@@ -175,6 +175,7 @@ export async function findProfessionalUnitIdForUserAndUnit(
             and(
                     eq(professionalUnits.professionalId, professional.id),
                     eq(professionalUnits.unitId, unitId),
+                    eq(professionalUnits.isActive, true),
                 ),
         )
         .limit(1);
@@ -210,6 +211,7 @@ export async function listAvailableUnits(
             and(
                 eq(professionalUnits.unitId, units.id),
                 eq(professionalUnits.professionalId, professional.id),
+                eq(professionalUnits.isActive, true),
             ),
         );
 

@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { professionals } from "./professionals.js";
 import { units } from "./units.js";
 import { randomUUID } from "node:crypto";
@@ -14,6 +14,7 @@ export const professionalUnits = pgTable(
         unitId: text("unit_id")
             .notNull()
             .references(() => units.id, { onDelete: "cascade" }),
+        isActive: boolean("is_active").default(true).notNull(),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at")
             .defaultNow()

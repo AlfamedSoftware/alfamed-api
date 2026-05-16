@@ -1,8 +1,11 @@
 import type { UserProfile, UsersRepository } from "../../../src/modules/users/users.repository";
 import type {
     CreateProfessionalInput,
+    LinkProfessionalUnitRoleInput,
     ProfessionalProfile,
+    ProfessionalUnitRoleProfile,
     ProfessionalsRepository,
+    UpdateProfessionalUnitRoleInput,
     UpdateProfessionalInput,
 } from "../../../src/modules/professionals/professionals.repository";
 import type {
@@ -16,6 +19,13 @@ import type {
     Patient,
     PatientsRepository,
 } from "../../../src/modules/patients/patients.repository";
+import type {
+    CreateProfessionalUnitInput as CreateProfessionalUnitLinkInput,
+    ProfessionalUnitFullData,
+    ProfessionalUnitFullDataByUnit,
+    ProfessionalUnitProfile as ProfessionalUnitLinkProfile,
+    ProfessionalUnitsRepository,
+} from "../../../src/modules/professional-units/professional-units.repository";
 // Appointments and Specialties modules removed from project; related in-memory helpers removed.
 import { DomainError } from "../../../src/http/plugins/domain-error";
 
@@ -65,6 +75,119 @@ export class InMemoryPatientsRepository implements PatientsRepository {
 
     async getPatientById(patientId: string): Promise<Patient | null> {
         return this.patients[patientId] ?? null;
+    }
+}
+
+export class InMemoryProfessionalUnitsRepository implements ProfessionalUnitsRepository {
+    private readonly professionalUnits: Record<string, ProfessionalUnitLinkProfile>;
+    private readonly fullDataByProfessionalUnitId: Record<string, ProfessionalUnitFullData>;
+    private readonly professionals: Set<string>;
+    private sequence = 1;
+
+    constructor(args?: {
+        professionalUnits?: Record<string, ProfessionalUnitLinkProfile>;
+        fullDataByProfessionalUnitId?: Record<string, ProfessionalUnitFullData>;
+        professionalIds?: string[];
+    }) {
+        this.professionalUnits = { ...(args?.professionalUnits ?? {}) };
+        this.fullDataByProfessionalUnitId = { ...(args?.fullDataByProfessionalUnitId ?? {}) };
+        this.professionals = new Set(args?.professionalIds ?? []);
+    }
+
+    async create(data: CreateProfessionalUnitLinkInput): Promise<ProfessionalUnitLinkProfile> {
+        const now = new Date().toISOString();
+        const id = `019c1a3e-e425-7000-8bda-cdfec32d2f${String(this.sequence).padStart(2, "0")}`;
+        this.sequence += 1;
+
+        const professionalUnit: ProfessionalUnitLinkProfile = {
+            id,
+            professionalId: data.professionalId,
+            unitId: data.unitId,
+            isActive: data.isActive ?? true,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        this.professionalUnits[id] = professionalUnit;
+        this.professionals.add(data.professionalId);
+
+        return professionalUnit;
+    }
+
+    async findFullDataByIdAndUnit(
+        professionalUnitId: string,
+        unitId: string,
+    ): Promise<ProfessionalUnitFullData | null> {
+        const professionalUnit = this.professionalUnits[professionalUnitId];
+
+        if (!professionalUnit || professionalUnit.unitId !== unitId) {
+            return null;
+        }
+
+        const fullData = this.fullDataByProfessionalUnitId[professionalUnitId] ?? {
+            id: professionalUnit.id,
+            isActive: professionalUnit.isActive,
+            professionals: {
+                id: professionalUnit.professionalId,
+                isActive: true,
+            },
+        };
+
+        return fullData;
+    }
+
+    async listFullDataByUnit(unitId: string): Promise<ProfessionalUnitFullDataByUnit[]> {
+        return Object.values(this.professionalUnits)
+            .filter((professionalUnit) => professionalUnit.unitId === unitId)
+            .map((professionalUnit) => {
+                const fullData = this.fullDataByProfessionalUnitId[professionalUnit.id] ?? {
+                    id: professionalUnit.id,
+                    isActive: professionalUnit.isActive,
+                    professionals: {
+                        id: professionalUnit.professionalId,
+                        isActive: true,
+                        crm: "",
+                    },
+                };
+
+                return {
+                    id: fullData.id,
+                    isActive: fullData.isActive,
+                    users: fullData.users,
+                    professionals: fullData.professionals,
+                    roles: fullData.roles,
+                };
+            });
+    }
+
+    async findByIdAndUnit(
+        professionalUnitId: string,
+        unitId: string,
+    ): Promise<ProfessionalUnitLinkProfile | null> {
+        const professionalUnit = this.professionalUnits[professionalUnitId];
+
+        if (!professionalUnit || professionalUnit.unitId !== unitId) {
+            return null;
+        }
+
+        return professionalUnit;
+    }
+
+    async findByProfessionalIdAndUnitId(
+        professionalId: string,
+        unitId: string,
+    ): Promise<ProfessionalUnitLinkProfile | null> {
+        return (
+            Object.values(this.professionalUnits).find(
+                (professionalUnit) =>
+                    professionalUnit.professionalId === professionalId &&
+                    professionalUnit.unitId === unitId,
+            ) ?? null
+        );
+    }
+
+    async professionalExists(professionalId: string): Promise<boolean> {
+        return this.professionals.has(professionalId);
     }
 }
 
@@ -172,14 +295,26 @@ export class InMemoryUnitsRepository implements UnitsRepository {
 export class InMemoryProfessionalsRepository implements ProfessionalsRepository {
     private readonly professionals: Record<string, ProfessionalProfile>;
     private readonly professionalsUnits: Record<string, string[]>;
+    private readonly professionalUnitsById: Record<string, { id: string; professionalId: string; unitId: string }>;
+    private readonly roles: Record<string, { id: string; description: string; key: string; isActive: boolean }>;
+    private readonly professionalUnitRoles: Record<string, ProfessionalUnitRoleProfile>;
     private sequence = 1;
+    private roleSequence = 1;
 
     constructor(
         initialProfessionals: Record<string, ProfessionalProfile> = {},
         initialProfessionalsUnits: Record<string, string[]> = {},
+        args?: {
+            professionalUnitsById?: Record<string, { id: string; professionalId: string; unitId: string }>;
+            roles?: Record<string, { id: string; description: string; key: string; isActive: boolean }>;
+            professionalUnitRoles?: Record<string, ProfessionalUnitRoleProfile>;
+        },
     ) {
         this.professionals = { ...initialProfessionals };
         this.professionalsUnits = { ...initialProfessionalsUnits };
+        this.professionalUnitsById = { ...(args?.professionalUnitsById ?? {}) };
+        this.roles = { ...(args?.roles ?? {}) };
+        this.professionalUnitRoles = { ...(args?.professionalUnitRoles ?? {}) };
     }
 
     async create(data: CreateProfessionalInput): Promise<ProfessionalProfile> {
@@ -199,10 +334,22 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
         return professional;
     }
 
-    async createWithUnit(data: CreateProfessionalInput, unitId: string): Promise<ProfessionalProfile> {
+    async createWithUnit(
+        data: CreateProfessionalInput,
+        unitId: string,
+    ): Promise<{ professional: ProfessionalProfile; professionalUnitId: string }> {
         const professional = await this.create(data);
+        const professionalUnitId = `019c1a3e-e425-7000-8bda-cdfec32d0f${String(this.roleSequence).padStart(2, "0")}`;
+        this.roleSequence += 1;
+
+        this.professionalUnitsById[professionalUnitId] = {
+            id: professionalUnitId,
+            professionalId: professional.id,
+            unitId,
+        };
         this.professionalsUnits[professional.id] = [...(this.professionalsUnits[professional.id] ?? []), unitId];
-        return professional;
+
+        return { professional, professionalUnitId };
     }
 
     async findById(professionalId: string): Promise<ProfessionalProfile | null> {
@@ -286,6 +433,112 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
 
     async listActiveRolesByProfessionalUnit(userId: string, unitId: string, professionalUnitId: string): Promise<any[]> {
         return [];
+    }
+
+    async findProfessionalUnitByIdAndUnit(
+        professionalUnitId: string,
+        unitId: string,
+    ): Promise<{ id: string } | null> {
+        const professionalUnit = this.professionalUnitsById[professionalUnitId];
+
+        if (!professionalUnit || professionalUnit.unitId !== unitId) {
+            return null;
+        }
+
+        return { id: professionalUnit.id };
+    }
+
+    async hasActiveRole(roleId: string): Promise<boolean> {
+        return this.roles[roleId]?.isActive === true;
+    }
+
+    async findProfessionalUnitRoleByIdAndUnit(
+        professionalUnitRoleId: string,
+        unitId: string,
+    ): Promise<ProfessionalUnitRoleProfile | null> {
+        const link = this.professionalUnitRoles[professionalUnitRoleId];
+        const professionalUnit = link ? this.professionalUnitsById[link.professionalUnitId] : undefined;
+
+        if (!link || professionalUnit?.unitId !== unitId) {
+            return null;
+        }
+
+        return link;
+    }
+
+    async linkProfessionalUnitRole(data: LinkProfessionalUnitRoleInput): Promise<ProfessionalUnitRoleProfile> {
+        const existingLink = Object.values(this.professionalUnitRoles).find(
+            (link) => link.professionalUnitId === data.professionalUnitId && link.roleId === data.roleId,
+        );
+        const role = this.roles[data.roleId];
+
+        if (!role) {
+            throw new DomainError("ROLE_NOT_FOUND", "Role not found");
+        }
+
+        const now = new Date().toISOString();
+
+        if (existingLink) {
+            const updated = {
+                ...existingLink,
+                isActive: data.isActive ?? true,
+                updatedAt: now,
+            };
+            this.professionalUnitRoles[updated.id] = updated;
+            return updated;
+        }
+
+        const id = `019c1a3e-e425-7000-8bda-cdfec32d1f${String(this.roleSequence).padStart(2, "0")}`;
+        this.roleSequence += 1;
+
+        const link: ProfessionalUnitRoleProfile = {
+            id,
+            professionalUnitId: data.professionalUnitId,
+            roleId: data.roleId,
+            isActive: data.isActive ?? true,
+            role: {
+                id: role.id,
+                description: role.description,
+                key: role.key,
+            },
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        this.professionalUnitRoles[id] = link;
+        return link;
+    }
+
+    async updateProfessionalUnitRole(
+        professionalUnitRoleId: string,
+        data: Omit<UpdateProfessionalUnitRoleInput, "professionalUnitRoleId">,
+    ): Promise<ProfessionalUnitRoleProfile | null> {
+        const current = this.professionalUnitRoles[professionalUnitRoleId];
+
+        if (!current) {
+            return null;
+        }
+
+        const role = data.roleId ? this.roles[data.roleId] : current.role;
+
+        if (!role) {
+            throw new DomainError("ROLE_NOT_FOUND", "Role not found");
+        }
+
+        const updated: ProfessionalUnitRoleProfile = {
+            ...current,
+            roleId: role.id,
+            isActive: data.isActive ?? current.isActive,
+            role: {
+                id: role.id,
+                description: role.description,
+                key: role.key,
+            },
+            updatedAt: new Date().toISOString(),
+        };
+
+        this.professionalUnitRoles[professionalUnitRoleId] = updated;
+        return updated;
     }
 }
 
