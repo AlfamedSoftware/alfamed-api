@@ -1,7 +1,62 @@
 import Elysia, { t } from "elysia";
 import { auth } from "../../auth.js";
+import {
+    selectedProfessionalUnitCookieName,
+    selectedUnitCookieName,
+    getUnitIdFromRequest,
+    getProfessionalUnitIdFromRequest,
+} from "./unit-context.js";
+import { IS_PRODUCTION, TRUSTED_ORIGINS, SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS } from "../../config/session.js";
+
+const getExpiredCookieHeader = (name: string) => {
+    const secure = IS_PRODUCTION ? "; Secure" : "";
+    const sameSite = IS_PRODUCTION ? "; SameSite=None" : "; SameSite=Lax";
+
+    return `${name}=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/${secure}${sameSite}; HttpOnly`;
+};
+
+const createCookieHeader = (name: string, value: string, maxAge: number) => {
+    const secure = IS_PRODUCTION ? "; Secure" : "";
+    const sameSite = IS_PRODUCTION ? "; SameSite=None" : "; SameSite=Lax";
+    const encodedValue = encodeURIComponent(value);
+    
+    return `${name}=${encodedValue}; Max-Age=${maxAge}; Path=/; HttpOnly${secure}${sameSite}`;
+};
+
+const appendCorsHeaders = (headers: Headers, origin: string | null) => {
+    if (!origin || !TRUSTED_ORIGINS.includes(origin)) {
+        return;
+    }
+
+    headers.set("Access-Control-Allow-Origin", origin);
+    headers.set("Access-Control-Allow-Credentials", "true");
+    headers.set("Vary", "Origin");
+};
+
+// keep original behavior: use auth.api.getSession within macro or routes
 
 export const betterAuthPlugin = new Elysia({ name: "better-auth" })
+    .onRequest(async ({ request }) => {
+        const { pathname } = new URL(request.url);
+
+        if (request.method !== "POST" || !pathname.endsWith("/auth/sign-out")) {
+            return;
+        }
+
+        const response = await auth.handler(request);
+        const headers = new Headers(response.headers);
+        const origin = request.headers.get("origin");
+
+        headers.append("Set-Cookie", getExpiredCookieHeader(selectedUnitCookieName));
+        headers.append("Set-Cookie", getExpiredCookieHeader(selectedProfessionalUnitCookieName));
+        appendCorsHeaders(headers, origin);
+
+        return new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers,
+        });
+    })
     .mount(auth.handler)
     .post(
         "/auth/register",
@@ -40,7 +95,12 @@ export const betterAuthPlugin = new Elysia({ name: "better-auth" })
     .macro({
         auth: {
             async resolve({ status, request: { headers } }) {
-                const session = await auth.api.getSession({ headers })
+                const session = await auth.api.getSession({
+                    headers,
+                    query: {
+                        disableCookieCache: true,
+                    },
+                })
 
                 if (!session) {
                     return status(401, { message: "Unauthorized" })

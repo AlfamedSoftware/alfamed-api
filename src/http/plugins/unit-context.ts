@@ -1,11 +1,11 @@
 /**
- * Clinic Context Plugin
+ * Unit Context Plugin
  * 
- * Gerencia a seleção de clínica a partir da sessão do Better Auth.
- * - Extrai clinicId da sessão autenticada
- * - Injeta clinicId no contexto de cada request
- * - Bloqueia requests sem clinicId definido (após autenticação)
- * - Fornece helpers para validar acesso à clínica
+ * Gerencia a seleção de unidade a partir da sessão do Better Auth.
+ * - Extrai unitId da sessão autenticada
+ * - Injeta unitId no contexto de cada request
+ * - Bloqueia requests sem unitId definido (após autenticação)
+ * - Fornece helpers para validar acesso à unidade
  */
 
 import type { db as dbType } from "../../db/client.js";
@@ -17,38 +17,46 @@ import type { Session } from "better-auth";
 
 type DatabaseClient = typeof dbType;
 
-export interface SessionWithClinic extends Session {
+export interface SessionWithUnit extends Session {
     session?: {
-        clinicId?: string;
+        unitId?: string;
     };
-    clinicId?: string;
+    unitId?: string;
     data?: {
-        clinicId?: string;
+        unitId?: string;
     };
 }
 
-export interface ClinicContext {
-    clinicId: string;
+export interface UnitContext {
+    unitId: string;
     userId: string;
 }
 
-export const selectedClinicCookieName = "selectedClinicId";
+export const selectedUnitCookieName = "selectedUnitId";
 export const selectedProfessionalUnitCookieName = "selectedProfessionalUnitId";
-const legacySelectedClinicCookieName = "selectedClinicid";
 
 /**
- * Extrai o clinicId da sessão
+ * Extrai o unitId da sessão
  */
-export function getClinicIdFromSession(session: Session | null): string | null {
-    if (!session) return null;
+type BetterAuthSessionResult = {
+    session: Session;
+    user: unknown;
+};
 
-    // Better Auth serializa campos adicionais diretamente na sessão
-    const clinicId = (session as SessionWithClinic).session?.clinicId ?? (session as SessionWithClinic).clinicId;
+export function getUnitIdFromSession(sessionResult: Session | BetterAuthSessionResult | null): string | null {
+    if (!sessionResult) return null;
 
-    return clinicId ?? null;
+    if ("session" in sessionResult && sessionResult.session) {
+        const sessionData = sessionResult.session as SessionWithUnit;
+        return sessionData.data?.unitId ?? sessionData.unitId ?? sessionData.session?.unitId ?? null;
+    }
+
+    const sessionData = sessionResult as SessionWithUnit;
+
+    return sessionData.data?.unitId ?? sessionData.unitId ?? sessionData.session?.unitId ?? null;
 }
 
-export function getClinicIdFromRequest(request: Request): string | null {
+export function getUnitIdFromRequest(request: Request): string | null {
     const cookieHeader = request.headers.get("cookie");
 
     if (!cookieHeader) {
@@ -72,18 +80,17 @@ export function getClinicIdFromRequest(request: Request): string | null {
         })
         .filter((cookie): cookie is { key: string; value: string } => cookie !== null);
 
-    const selectedClinicCookie = cookies.find(
+    const selectedUnitCookie = cookies.find(
         (cookie) =>
-            cookie.key === selectedClinicCookieName ||
-            cookie.key.toLowerCase() === selectedClinicCookieName.toLowerCase() ||
-            cookie.key === legacySelectedClinicCookieName,
+            cookie.key === selectedUnitCookieName ||
+            cookie.key.toLowerCase() === selectedUnitCookieName.toLowerCase(),
     );
 
-    if (!selectedClinicCookie?.value) {
+    if (!selectedUnitCookie?.value) {
         return null;
     }
 
-    const encodedValue = selectedClinicCookie.value;
+    const encodedValue = selectedUnitCookie.value;
 
     try {
         return decodeURIComponent(encodedValue);
@@ -138,18 +145,18 @@ export function getProfessionalUnitIdFromRequest(request: Request): string | nul
 /**
  * Factory para criar checker de acesso à clínica
  */
-export function createClinicAccessChecker(db: DatabaseClient) {
-    return async (userId: string, clinicId: string): Promise<boolean> => {
-        const professionalUnitId = await findProfessionalUnitIdForUserAndClinic(db, userId, clinicId);
+export function createUnitAccessChecker(db: DatabaseClient) {
+    return async (userId: string, unitId: string): Promise<boolean> => {
+        const professionalUnitId = await findProfessionalUnitIdForUserAndUnit(db, userId, unitId);
 
         return professionalUnitId !== null;
     };
 }
 
-export async function findProfessionalUnitIdForUserAndClinic(
+export async function findProfessionalUnitIdForUserAndUnit(
     db: DatabaseClient,
     userId: string,
-    clinicId: string,
+    unitId: string,
 ): Promise<string | null> {
     const [professional] = await db
         .select({ id: professionals.id })
@@ -166,9 +173,9 @@ export async function findProfessionalUnitIdForUserAndClinic(
         .from(professionalUnits)
         .where(
             and(
-                eq(professionalUnits.professionalId, professional.id),
-                eq(professionalUnits.unitId, clinicId),
-            ),
+                    eq(professionalUnits.professionalId, professional.id),
+                    eq(professionalUnits.unitId, unitId),
+                ),
         )
         .limit(1);
 
@@ -178,7 +185,7 @@ export async function findProfessionalUnitIdForUserAndClinic(
 /**
  * Listar clínicas disponíveis para o usuário
  */
-export async function listAvailableClinics(
+export async function listAvailableUnits(
     db: DatabaseClient,
     userId: string,
 ): Promise<Array<{ id: string; name: string }>> {
@@ -192,7 +199,7 @@ export async function listAvailableClinics(
         return [];
     }
 
-    const clinics = await db
+    const unitsList = await db
         .select({
             id: units.id,
             name: units.name,
@@ -206,26 +213,26 @@ export async function listAvailableClinics(
             ),
         );
 
-    return clinics;
+    return unitsList;
 }
 
 /**
  * Validar e criar contexto de clínica
  * Checa se o usuário tem acesso à clínica antes de criar o contexto
  */
-export async function createClinicContext(
+export async function createUnitContext(
     db: DatabaseClient,
     userId: string,
-    clinicId: string,
-): Promise<ClinicContext | null> {
-    const hasAccess = await createClinicAccessChecker(db)(userId, clinicId);
+    unitId: string,
+): Promise<UnitContext | null> {
+    const hasAccess = await createUnitAccessChecker(db)(userId, unitId);
 
     if (!hasAccess) {
         return null;
     }
 
     return {
-        clinicId,
+        unitId,
         userId,
     };
 }

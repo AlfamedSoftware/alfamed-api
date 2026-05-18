@@ -9,14 +9,16 @@ O projeto implementa autenticação, gestão de usuários e perfis clínicos, es
 ## Escopo atual
 
 - Autenticação com Better Auth
-- Gestão de sessão e seleção de clínica ativa
+ - Gestão de sessão e seleção de unidade ativa
 - Usuários
 - Profissionais
 - Pacientes
 - Unidades
-- Especialidades
-- Agendamentos e solicitações
-- Administração interna
+ - Usuários
+ - Profissionais
+ - Pacientes
+ - Unidades
+ - Administração interna
 
 ## Stack
 
@@ -210,11 +212,24 @@ auth.signIn.email({
 
 **API** — no mesmo hook `before` do sign-in:
 
-- Se `callbackURL` contém `/admin/` **ou** o path da requisição contém `/admin/`:
-  - o profissional do usuário deve possuir role `internal_alfamed` em `professional_unit_roles`;
-  - caso contrário: `401` com mensagem *User lacks internal Alfamed role*.
 
-**Frontend adicional:** `InternalProtectedRoute` exige e-mail terminando em `@alfamed.com`.
+Sessão e renovação de cookies (atualização recente)
+
+- A aplicação renova automaticamente a sessão e os cookies relacionados em cada request autenticada. Isso previne que usuários ativos sejam desconectados por inatividade curta.
+- Cookies renovados:
+  - `better-auth.session_token` (cookie do Better Auth)
+  - `better-auth.session_data` (cookie do Better Auth)
+  - `selectedUnitId` (unidade selecionada)
+  - `selectedProfessionalUnitId` (vínculo profissional selecionado)
+- Configurações e pontos de controle:
+  - Constantes centrais em `src/config/session.ts`:
+    - `SESSION_EXPIRY_SECONDS` — tempo de expiração da sessão (padrão: 1 hora)
+    - `SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS` — usado para cookies de unidade/profissional (igual a `SESSION_EXPIRY_SECONDS` por padrão)
+    - `TRUSTED_ORIGINS` — origens confiáveis usadas por CORS/Better Auth
+  - Renovação implementada via helper `src/http/plugins/session-helpers.ts` e invocação global em `src/app.ts` (`onBeforeHandle`).
+  - Para desativar esse comportamento remova a chamada a `renewSessionCookies` em `src/app.ts`.
+
+- Observação: o logout (POST `/auth/sign-out`) já expira explicitamente os cookies de seleção de unidade/vínculo no plugin `src/http/plugins/better-auth.ts`.
 
 Service Desk **não** passa por seleção de clínica; rotas `/admin/*` não dependem de `selectedClinicId`.
 
@@ -278,9 +293,7 @@ Tags atuais:
 - Units
 - Professionals
 - Patients
-- Specialties
 - Better Auth
-- Appointments
 - Admin
 
 ## Rotas por módulo (resumo)
@@ -298,7 +311,6 @@ Patients:
 
 - POST /patients/link-user
 - GET /patients/:patientId
-- GET /patients/me
 
 Professionals:
 
@@ -308,7 +320,6 @@ Professionals:
 - GET /professionals
 - GET /professionals/:id
 - PATCH /professionals/:id
-- DELETE /professionals/:id
 
 Units:
 
@@ -316,31 +327,8 @@ Units:
 - GET /units/by-user
 - GET /units/:id
 - PATCH /units/:id
-- DELETE /units/:id
 
-Specialties:
-
-- POST /specialties
-- GET /specialties
-- GET /specialties/:id
-- PATCH /specialties/:id
-- DELETE /specialties/:id
-- POST /specialties/:id/professionals/:professionalId
-- DELETE /specialties/:id/professionals/:professionalId
-- GET /specialties/professionals/:professionalId
-
-Appointments:
-
-- POST /appointments/schedules
-- PATCH /appointments/schedules/:id
-- GET /appointments/availability
-- POST /appointments/requests
-- GET /appointments/requests/:id
-- PATCH /appointments/requests/:id/confirm
-- PATCH /appointments/requests/:id/reject
-- PATCH /appointments/requests/:id/counter-propose
-- PATCH /appointments/requests/:id/patient-accept
-- PATCH /appointments/requests/:id/patient-reject
+<!-- Specialties and Appointments modules removed from this project -->
 
 Admin / Service Desk (login com `callbackURL` `/admin/` + role `internal_alfamed`; detalhe por id exige `resolveAdminAccess`):
 
@@ -348,7 +336,6 @@ Admin / Service Desk (login com `callbackURL` `/admin/` + role `internal_alfamed
 - POST /admin/units
 - GET /admin/units/:id
 - PATCH /admin/units/:id
-- DELETE /admin/units/:id
 - GET /admin/units/:id/professionals
 - POST /admin/units/:id/professionals
 - GET /admin/upm/users

@@ -98,38 +98,5 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     500: patientsErrorSchema,
                 },
             },
-        )
-        .get(
-            "/me",
-            async (context) => {
-                const { status } = context;
-                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
-
-                const patient = await patientsService.getPatientByUserId(userId);
-
-                if (!patient) {
-                    return status(404, { message: "Patient not found" });
-                }
-
-                return status(200, patient);
-            },
-            {
-                auth: true,
-                detail: {
-                    summary: "Get current user patient profile",
-                    description: "Returns the patient profile for the authenticated user.",
-                    tags: ["Patients"],
-                },
-                response: {
-                    200: patientProfileSchema,
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    404: t.Object({ message: t.Literal("Patient not found") }),
-                    500: patientsErrorSchema,
-                },
-            },
         );
-};
+    };

@@ -9,14 +9,15 @@ import Elysia, { t } from "elysia";
 import type { db as dbType } from "../../db/client.js";
 import { auth } from "../../auth.js";
 import {
-    getClinicIdFromRequest,
+    getUnitIdFromRequest,
     getProfessionalUnitIdFromRequest,
-    findProfessionalUnitIdForUserAndClinic,
-    selectedClinicCookieName,
+    findProfessionalUnitIdForUserAndUnit,
+    selectedUnitCookieName,
     selectedProfessionalUnitCookieName,
-    createClinicAccessChecker,
-    listAvailableClinics,
-} from "../../http/plugins/clinic-context.js";
+    createUnitAccessChecker,
+    listAvailableUnits,
+} from "../../http/plugins/unit-context.js";
+import { SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS, IS_PRODUCTION } from "../../config/session.js";
 
 type DatabaseClient = typeof dbType;
 
@@ -26,48 +27,47 @@ interface SessionResponse {
     expiresAt: Date;
     token?: string;
     data?: {
-        clinicId?: string;
+        unitId?: string;
     };
 }
 
-interface ClinicOption {
+interface UnitOption {
     id: string;
     name: string;
 }
 
-interface SelectClinicRequest {
-    clinicId: string;
+interface SelectUnitRequest {
+    unitId: string;
 }
 
-interface SelectClinicResponse {
+interface SelectUnitResponse {
     success: boolean;
     message: string;
     session?: SessionResponse;
 }
 
-interface AvailableClinicsResponse {
-    clinics: ClinicOption[];
-    selectedClinicId?: string;
+interface AvailableUnitsResponse {
+    units: UnitOption[];
+    selectedUnitId?: string;
     selectedProfessionalUnitId?: string;
 }
 
 export const createSessionRoutes = (db: DatabaseClient) => {
-    const accessChecker = createClinicAccessChecker(db);
-    const isProduction = process.env.NODE_ENV === "production";
-    const selectedClinicCookieOptions = {
+    const accessChecker = createUnitAccessChecker(db);
+    const selectedUnitCookieOptions = {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
+        secure: IS_PRODUCTION,
+        sameSite: (IS_PRODUCTION ? "none" : "lax") as "none" | "lax",
         path: "/",
-        maxAge: 60 * 60 * 24,
+        maxAge: SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS,
     };
 
-    const setSelectedClinicCookie = (context: { set: { cookie?: Record<string, unknown> } }, clinicId: string) => {
+    const setSelectedUnitCookie = (context: { set: { cookie?: Record<string, unknown> } }, unitId: string) => {
         context.set.cookie = {
             ...(context.set.cookie ?? {}),
-            [selectedClinicCookieName]: {
-                value: clinicId,
-                ...selectedClinicCookieOptions,
+            [selectedUnitCookieName]: {
+                value: unitId,
+                ...selectedUnitCookieOptions,
             },
         };
     };
@@ -80,54 +80,84 @@ export const createSessionRoutes = (db: DatabaseClient) => {
             ...(context.set.cookie ?? {}),
             [selectedProfessionalUnitCookieName]: {
                 value: professionalUnitId,
-                ...selectedClinicCookieOptions,
+                ...selectedUnitCookieOptions,
+            },
+        };
+    };
+
+    const clearSelectedUnitCookies = (context: { set: { cookie?: Record<string, unknown> } }) => {
+        const expiredCookieOptions = {
+            httpOnly: true,
+            secure: IS_PRODUCTION,
+            sameSite: (IS_PRODUCTION ? "none" : "lax") as "none" | "lax",
+            path: "/",
+            maxAge: 0,
+            expires: new Date(0),
+        };
+
+        context.set.cookie = {
+            ...(context.set.cookie ?? {}),
+            [selectedUnitCookieName]: {
+                value: "",
+                ...expiredCookieOptions,
+            },
+            [selectedProfessionalUnitCookieName]: {
+                value: "",
+                ...expiredCookieOptions,
             },
         };
     };
 
     return new Elysia({ name: "session-routes", prefix: "/session" })
         /**
-         * GET /session/clinics
-         * Retorna lista de clínicas disponíveis e a clínica selecionada (se houver)
+         * GET /session/units
+         * Retorna lista de unidades disponíveis e a unidade selecionada (se houver)
          */
         .get(
-            "/clinics",
+            "/units",
             async (context) => {
-                const session = await auth.api.getSession({ headers: context.request.headers });
+                const session = await auth.api.getSession({
+                    headers: context.request.headers,
+                    query: {
+                        disableCookieCache: true,
+                    },
+                });
 
                 if (!session?.user) {
+                    clearSelectedUnitCookies(context);
+
                     return context.status(401, {
                         message: "Unauthorized",
                     });
                 }
 
                 const userId = session.user.id;
-                const clinics = await listAvailableClinics(db, userId);
-                const currentClinicId = getClinicIdFromRequest(context.request) ?? undefined;
+                const units = await listAvailableUnits(db, userId);
+                const currentUnitId = getUnitIdFromRequest(context.request) ?? undefined;
                 const currentProfessionalUnitId = getProfessionalUnitIdFromRequest(context.request) ?? undefined;
 
                 return context.status(200, {
-                    clinics,
-                    selectedClinicId: currentClinicId,
+                    units,
+                    selectedUnitId: currentUnitId,
                     selectedProfessionalUnitId: currentProfessionalUnitId,
-                } satisfies AvailableClinicsResponse);
+                } satisfies AvailableUnitsResponse);
             },
             {
                 detail: {
-                    summary: "List available clinics for authenticated user",
+                    summary: "List available units for authenticated user",
                     description:
-                        "Returns all clinics linked to the authenticated user via professional_units table, along with the currently selected clinic (if any).",
+                        "Returns all units linked to the authenticated user via professional_units table, along with the currently selected unit (if any).",
                     tags: ["Session Management"],
                 },
                 response: {
                     200: t.Object({
-                        clinics: t.Array(
+                        units: t.Array(
                             t.Object({
                                 id: t.String({ format: "uuid" }),
                                 name: t.String(),
                             }),
                         ),
-                        selectedClinicId: t.Optional(t.String({ format: "uuid" })),
+                        selectedUnitId: t.Optional(t.String({ format: "uuid" })),
                         selectedProfessionalUnitId: t.Optional(t.String({ format: "uuid" })),
                     }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
@@ -136,50 +166,58 @@ export const createSessionRoutes = (db: DatabaseClient) => {
         )
 
         /**
-         * POST /session/select-clinic
-         * Seleciona uma clínica para a sessão atual.
-         * Valida se o usuário tem acesso a essa clínica antes de armazenar.
+         * POST /session/select-unit
+         * Seleciona uma unidade para a sessão atual.
+         * Valida se o usuário tem acesso a essa unidade antes de armazenar.
          */
         .post(
-            "/select-clinic",
+            "/select-unit",
             async (context) => {
                 const { body, request, status } = context;
-                const session = await auth.api.getSession({ headers: request.headers });
+                const session = await auth.api.getSession({
+                    headers: request.headers,
+                    query: {
+                        disableCookieCache: true,
+                    },
+                });
 
                 if (!session?.user) {
+                    clearSelectedUnitCookies(context);
+
                     return status(401, {
                         message: "Unauthorized",
                     });
                 }
 
                 const userId = session.user.id;
-                const { clinicId } = body;
+                const { unitId } = body;
 
-                // Valida que o usuário tem acesso a essa clínica
-                const hasAccess = await accessChecker(userId, clinicId);
+                // Valida que o usuário tem acesso a essa unidade
+                const hasAccess = await accessChecker(userId, unitId);
 
                 if (!hasAccess) {
                     return status(403, {
                         success: false,
-                        message: "You do not have access to this clinic",
-                    } satisfies SelectClinicResponse);
+                        message: "You do not have access to this unit",
+                    } satisfies SelectUnitResponse);
                 }
 
-                const professionalUnitId = await findProfessionalUnitIdForUserAndClinic(db, userId, clinicId);
+                const professionalUnitId = await findProfessionalUnitIdForUserAndUnit(db, userId, unitId);
 
                 if (!professionalUnitId) {
-                    throw new Error("Failed to resolve professional unit for selected clinic");
+                    throw new Error("Failed to resolve professional unit for selected unit");
                 }
 
-                setSelectedClinicCookie(context, clinicId);
+                clearSelectedUnitCookies(context);
+                setSelectedUnitCookie(context, unitId);
                 setSelectedProfessionalUnitCookie(context, professionalUnitId);
 
                 /**
-                 * Atualiza a sessão com o clinicId
+                 * Atualiza a sessão com o unitId
                  * 
                  * TODO: Implementar atualização via Better Auth custom sessionData
                  * Opção 1: Usar auth.api.updateSession com sessionData
-                 * Opção 2: Re-emitir JWT com clinicId
+                 * Opção 2: Re-emitir JWT com unitId
                  * 
                  * Por enquanto, retorna sucesso e o frontend deve redirecionar
                  * para /session para atualizar a sessão no navegador
@@ -187,17 +225,17 @@ export const createSessionRoutes = (db: DatabaseClient) => {
 
                 return status(200, {
                     success: true,
-                    message: "Clinic selected successfully. Please refresh your session.",
-                } satisfies SelectClinicResponse);
+                    message: "Unit selected successfully. Please refresh your session.",
+                } satisfies SelectUnitResponse);
             },
             {
                 body: t.Object({
-                    clinicId: t.String({ format: "uuid" }),
+                    unitId: t.String({ format: "uuid" }),
                 }),
                 detail: {
-                    summary: "Select a clinic for the current session",
+                    summary: "Select a unit for the current session",
                     description:
-                        "Updates the session to include the selected clinic ID. Validates that the user has access to the clinic via professional_units.",
+                        "Updates the session to include the selected unit ID. Validates that the user has access to the unit via professional_units.",
                     tags: ["Session Management"],
                 },
                 response: {
@@ -212,7 +250,7 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                                 token: t.Optional(t.String()),
                                 data: t.Optional(
                                     t.Object({
-                                        clinicId: t.Optional(t.String()),
+                                        unitId: t.Optional(t.String()),
                                     }),
                                 ),
                             }),
@@ -225,72 +263,5 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                     }),
                 },
             },
-        )
-
-        /**
-         * POST /session/switch-clinic
-         * Muda a clínica selecionada (para usuários com múltiplas clínicas)
-         * Mesmo que select-clinic mas com semântica de "trocar"
-         */
-        .post(
-            "/switch-clinic",
-            async (context) => {
-                const { body, request, status } = context;
-                const session = await auth.api.getSession({ headers: request.headers });
-
-                if (!session?.user) {
-                    return status(401, {
-                        message: "Unauthorized",
-                    });
-                }
-
-                const userId = session.user.id;
-                const { clinicId } = body;
-
-                const hasAccess = await accessChecker(userId, clinicId);
-
-                if (!hasAccess) {
-                    return status(403, {
-                        success: false,
-                        message: "You do not have access to this clinic",
-                    } satisfies SelectClinicResponse);
-                }
-
-                const professionalUnitId = await findProfessionalUnitIdForUserAndClinic(db, userId, clinicId);
-
-                if (!professionalUnitId) {
-                    throw new Error("Failed to resolve professional unit for selected clinic");
-                }
-
-                setSelectedClinicCookie(context, clinicId);
-                setSelectedProfessionalUnitCookie(context, professionalUnitId);
-
-                return status(200, {
-                    success: true,
-                    message: "Clinic switched successfully. Please refresh your session.",
-                } satisfies SelectClinicResponse);
-            },
-            {
-                body: t.Object({
-                    clinicId: t.String({ format: "uuid" }),
-                }),
-                detail: {
-                    summary: "Switch to a different clinic",
-                    description:
-                        "Changes the active clinic in the current session. Validates access before allowing the switch.",
-                    tags: ["Session Management"],
-                },
-                response: {
-                    200: t.Object({
-                        success: t.Literal(true),
-                        message: t.String(),
-                    }),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    403: t.Object({
-                        success: t.Literal(false),
-                        message: t.String(),
-                    }),
-                },
-            },
         );
-};
+    };

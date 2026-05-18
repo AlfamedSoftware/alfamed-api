@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { professionalProfileSchema } from "../../src/modules/professionals/professionals.schemas";
-import { buildE2EApp, createSelectedClinicCookie, TEST_IDS } from "./helpers/context";
+import { buildE2EApp, createSelectedUnitCookie, TEST_IDS } from "./helpers/context";
 import {
     InMemoryPatientsRepository,
     InMemoryProfessionalsRepository,
@@ -14,14 +14,14 @@ describe("Professionals routes", () => {
 
     const requestHeaders = {
         "x-user-id": TEST_IDS.user,
-        Cookie: createSelectedClinicCookie(TEST_IDS.unit),
+        Cookie: createSelectedUnitCookie(TEST_IDS.unit),
     };
 
     it("POST /professionals cria profissional", async () => {
         const repository = new InMemoryProfessionalsRepository();
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: repository,
+            professionalsRepository: repository as any,
             accessMap,
         });
 
@@ -41,7 +41,7 @@ describe("Professionals routes", () => {
     it("POST /professionals retorna 401 sem autenticação", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository() as any,
             accessMap,
         });
 
@@ -66,7 +66,7 @@ describe("Professionals routes", () => {
 
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: repository,
+            professionalsRepository: repository as any,
             accessMap,
         });
 
@@ -85,7 +85,7 @@ describe("Professionals routes", () => {
         const repository = new InMemoryProfessionalsRepository();
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: repository,
+            professionalsRepository: repository as any,
             accessMap,
         });
 
@@ -94,7 +94,7 @@ describe("Professionals routes", () => {
                 method: "POST",
                 headers: {
                     "x-user-id": TEST_IDS.user,
-                    Cookie: createSelectedClinicCookie(TEST_IDS.unit),
+                    Cookie: createSelectedUnitCookie(TEST_IDS.unit),
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ userId: TEST_IDS.otherUser, isActive: true }),
@@ -107,7 +107,7 @@ describe("Professionals routes", () => {
     it("POST /professionals/link-user permite user já vinculado a patient", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository() as any,
             patientsRepository: new InMemoryPatientsRepository({
                 [TEST_IDS.patient]: {
                     id: TEST_IDS.patient,
@@ -125,7 +125,7 @@ describe("Professionals routes", () => {
                 method: "POST",
                 headers: {
                     "x-user-id": TEST_IDS.user,
-                    Cookie: createSelectedClinicCookie(TEST_IDS.unit),
+                    Cookie: createSelectedUnitCookie(TEST_IDS.unit),
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ userId: TEST_IDS.otherUser, isActive: true }),
@@ -152,7 +152,7 @@ describe("Professionals routes", () => {
         );
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: repository,
+            professionalsRepository: repository as any,
             accessMap,
         });
 
@@ -169,7 +169,7 @@ describe("Professionals routes", () => {
     it("GET /professionals/:id retorna 404 quando não existe", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository() as any,
             accessMap,
         });
 
@@ -199,7 +199,7 @@ describe("Professionals routes", () => {
         );
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: repository,
+            professionalsRepository: repository as any,
             accessMap,
         });
 
@@ -239,7 +239,7 @@ describe("Professionals routes", () => {
 
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: repository,
+            professionalsRepository: repository as any,
             accessMap,
         });
 
@@ -254,41 +254,10 @@ describe("Professionals routes", () => {
         expect(response.status).toBe(409);
     });
 
-    it("DELETE /professionals/:id remove", async () => {
-        const repository = new InMemoryProfessionalsRepository(
-            {
-                [TEST_IDS.professional]: {
-                    id: TEST_IDS.professional,
-                    userId: TEST_IDS.user,
-                    isActive: true,
-                    createdAt: "2026-02-01T17:27:35.202Z",
-                    updatedAt: "2026-02-01T17:27:35.202Z",
-                },
-            },
-            {
-                [TEST_IDS.professional]: [TEST_IDS.unit],
-            },
-        );
-        const app = await buildE2EApp({
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: repository,
-            accessMap,
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/professionals/${TEST_IDS.professional}`, {
-                method: "DELETE",
-                headers: requestHeaders,
-            }),
-        );
-
-        expect(response.status).toBe(200);
-    });
-
     it("retorna 403 quando usuário não tem acesso à unidade", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository() as any,
             accessMap: {},
         });
 
@@ -302,7 +271,7 @@ describe("Professionals routes", () => {
     it("retorna 400 quando clínica não está selecionada", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository() as any,
             accessMap,
         });
 
@@ -318,7 +287,7 @@ describe("Professionals routes", () => {
     it("PATCH /professionals/:id retorna 400 sem clínica selecionada", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(),
+            professionalsRepository: new InMemoryProfessionalsRepository() as any,
             accessMap,
         });
 
@@ -336,22 +305,4 @@ describe("Professionals routes", () => {
         expect(response.status).toBe(400);
     });
 
-    it("DELETE /professionals/:id retorna 400 sem clínica selecionada", async () => {
-        const app = await buildE2EApp({
-            usersRepository: new InMemoryUsersRepository(),
-            professionalsRepository: new InMemoryProfessionalsRepository(),
-            accessMap,
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/professionals/${TEST_IDS.professional}`, {
-                method: "DELETE",
-                headers: {
-                    "x-user-id": TEST_IDS.user,
-                },
-            }),
-        );
-
-        expect(response.status).toBe(400);
-    });
 });

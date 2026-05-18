@@ -83,15 +83,4 @@ export class ProfessionalsService {
         return updatedProfessional;
     }
 
-    async deleteProfessional(requestUserId: string, professionalId: string, unitId: string) {
-        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
-
-        const existingProfessional = await this.professionalsRepository.findByIdAndUnit(professionalId, unitId);
-
-        if (!existingProfessional) {
-            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
-        }
-
-        await this.professionalsRepository.delete(professionalId);
-    }
 }

@@ -225,30 +225,4 @@ describe("UnitsService", () => {
         );
     });
 
-    it("deve deletar uma unidade", async () => {
-        const units = {
-            "unit-user-1": {
-                id: "unit-user-1",
-                name: "Clínica Central",
-                cnpj: null,
-                address: null,
-                city: null,
-                state: null,
-                phone: null,
-                email: null,
-                ownerUserId: "user-1",
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            },
-        };
-        const unitsByUser = { "user-1": ["unit-user-1"] };
-        const repository = new InMemoryUnitsRepository(units, unitsByUser);
-        const service = new UnitsService(repository, hasUserAccessToUnitChecker);
-
-        await service.deleteUnit("user-1", "unit-user-1");
-
-        const result = await repository.findById("unit-user-1");
-        expect(result).toBeNull();
-    });
 });

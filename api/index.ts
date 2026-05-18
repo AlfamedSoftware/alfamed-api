@@ -5,8 +5,7 @@ import { ProfessionalsRepository } from "../src/modules/professionals/profession
 import { UsersRepository } from "../src/modules/users/users.repository.js";
 import { PatientsRepository } from "../src/modules/patients/patients.repository.js";
 import { UnitsRepository } from "../src/modules/units/units.repository.js";
-import { SpecialtiesRepository } from "../src/modules/specialties/specialties.repository.js";
-import { AppointmentsRepository } from "../src/modules/appointments/appointments.repository.js";
+// specialties and appointments repositories removed
 
 type ServerlessRequest = {
 	method?: string;
@@ -27,8 +26,7 @@ const usersRepository = new UsersRepository(db);
 const professionalsRepository = new ProfessionalsRepository(db);
 const patientsRepository = new PatientsRepository(db);
 const unitsRepository = new UnitsRepository(db);
-const specialtiesRepository = new SpecialtiesRepository(db);
-const appointmentsRepository = new AppointmentsRepository(db);
+// specialties and appointments repositories removed
 
 const appPromise = buildApp({
 	db,
@@ -36,8 +34,7 @@ const appPromise = buildApp({
 	professionalsRepository,
 	patientsRepository,
 	unitsRepository,
-	specialtiesRepository,
-	appointmentsRepository,
+	// specialties and appointments removed
 	authPlugin: betterAuthPlugin,
 	withDocs: true,
 });

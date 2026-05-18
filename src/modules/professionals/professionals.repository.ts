@@ -66,17 +66,11 @@ export class ProfessionalsRepository {
             id: string;
             description: string;
             key: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
         }) =>
             professionalRoleProfileSchema.parse({
                 id: result.id,
                 description: result.description,
                 key: result.key,
-                isActive: result.isActive,
-                createdAt: result.createdAt.toISOString(),
-                updatedAt: result.updatedAt.toISOString(),
             });
 
         this.create = async (data) => {
@@ -339,9 +333,6 @@ export class ProfessionalsRepository {
                     id: roles.id,
                     description: roles.description,
                     key: roles.key,
-                    isActive: roles.isActive,
-                    createdAt: roles.createdAt,
-                    updatedAt: roles.updatedAt,
                 })
                 .from(professionalUnitRoles)
                 .innerJoin(roles, eq(professionalUnitRoles.roleId, roles.id))
