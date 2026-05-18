@@ -94,21 +94,30 @@ If an entity belongs to a unit, all database queries must enforce that constrain
 
 # UNIT CONTEXT RULE
 
-The current unit context is provided by:
+The current unit context is provided by **HTTP cookies** set after clinic selection (NOT by header `x-unit-id`, which is no longer used):
 
 ```
-x-unit-id
+selectedClinicId          → units.id of the active clinic
+selectedProfessionalUnitId → professional_units.id for roles/menu
 ```
 
-This header identifies the **clinic unit making the request**.
+Cookies are set by `POST /session/select-clinic` or `POST /session/switch-clinic`.
 
-All operations must respect this unit scope.
+Read them in routes via helpers in `src/http/plugins/clinic-context.ts`:
+
+- `getClinicIdFromRequest(request)`
+- `getProfessionalUnitIdFromRequest(request)`
+
+All unit-scoped operations must:
+
+1. Read `selectedClinicId` from cookies (return 400 if missing when required)
+2. Validate user belongs to that unit via `createHasUserAccessToUnitChecker` / `assertUserHasUnitAccess`
 
 Examples:
 
 ✔ Correct behavior:
 
-User from Unit A lists professionals → only professionals from Unit A are returned.
+User from Unit A lists professionals → only professionals from Unit A are returned (cookie + DB check).
 
 ❌ Incorrect behavior:
 
@@ -486,15 +495,16 @@ When a cross-module rule appears more than once, extract it into a shared utilit
 
 Examples of reusable rules:
 
-- unit header parsing/validation
-- unit ownership checks
+- clinic cookie parsing (`clinic-context.ts`)
+- unit ownership checks (`unit-access.ts`)
 - domain error mapping conventions
 
 Prefer reusing existing shared helpers before creating new ones.
 Do not duplicate the same validation flow across routes/services.
 
-Current shared reference:
+Current shared references:
 
+- src/http/plugins/clinic-context.ts
 - src/http/plugins/unit-access.ts
 
 ---
@@ -516,10 +526,31 @@ If creating a new helper, explain in the PR/commit why existing helpers were ins
 
 For any unit-scoped domain (professionals, appointments, schedules, patients, etc.):
 
-- Always validate x-unit-id using shared helper functions.
-- Always validate user-to-unit ownership using shared helper functions.
-- Never trust x-unit-id from request without ownership verification.
+- Always read unit context from cookies via `getClinicIdFromRequest` (never `x-unit-id`).
+- Return 400 with message "Selecione uma clínica para continuar" when cookie is missing and required.
+- Always validate user-to-unit ownership using `assertUserHasUnitAccess` / `createHasUserAccessToUnitChecker`.
+- Never trust cookie value without ownership verification against `professional_units`.
 - Return 403 Forbidden when user does not belong to the selected unit.
+
+# SERVICE DESK / ADMIN LOGIN RULE
+
+Internal admin login (Service Desk) uses the same `POST /auth/sign-in/email` but:
+
+- Frontend sends `callbackURL` containing `/admin/` (e.g. `/admin/unidades`).
+- `src/auth.ts` `before` hook requires role `internal_alfamed` on sign-in when callbackURL or path includes `/admin/`.
+- Admin routes under `/admin/units/:id+` must use `resolveAdminAccess` pattern from `admin-units.routes.ts`.
+- Service Desk routes do NOT require `selectedClinicId` cookie.
+- `GET /admin/units` and `POST /admin/units` currently only require session (`auth: true`); routes with `:id` use `resolveAdminAccess`.
+
+---
+
+# FRONTEND INTEGRATION RULE (API perspective)
+
+The web app (`alfamed-web`) must NOT send header `x-unit-id`. It must:
+
+- use `credentials: "include"` on all authenticated `fetch` calls;
+- call `POST /session/select-clinic` after login to set `selectedClinicId` and `selectedProfessionalUnitId` cookies;
+- rely on cookies for unit-scoped API routes (no manual unit header).
 
 ---
 
