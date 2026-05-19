@@ -1,0 +1,1 @@
+ALTER TYPE "public"."sex" ADD VALUE IF NOT EXISTS 'O';

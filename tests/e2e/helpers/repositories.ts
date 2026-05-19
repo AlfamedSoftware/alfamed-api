@@ -21,6 +21,8 @@ import type {
 } from "../../../src/modules/patients/patients.repository";
 import type {
     CreateProfessionalUnitInput as CreateProfessionalUnitLinkInput,
+    FullUpdateChanges,
+    ProfileUpdateChanges,
     ProfessionalUnitFullData,
     ProfessionalUnitFullDataByUnit,
     ProfessionalUnitProfile as ProfessionalUnitLinkProfile,
@@ -188,6 +190,257 @@ export class InMemoryProfessionalUnitsRepository implements ProfessionalUnitsRep
 
     async professionalExists(professionalId: string): Promise<boolean> {
         return this.professionals.has(professionalId);
+    }
+
+    async findUserByEmail(email: string): Promise<{ id: string } | null> {
+        for (const fullData of Object.values(this.fullDataByProfessionalUnitId)) {
+            if (fullData.users?.email === email && fullData.users?.id) {
+                return { id: fullData.users.id };
+            }
+        }
+
+        return null;
+    }
+
+    async findUserByCpf(cpf: string): Promise<{ id: string } | null> {
+        for (const fullData of Object.values(this.fullDataByProfessionalUnitId)) {
+            if (fullData.users?.cpf === cpf && fullData.users?.id) {
+                return { id: fullData.users.id };
+            }
+        }
+
+        return null;
+    }
+
+    async roleExists(roleId: string): Promise<boolean> {
+        for (const fullData of Object.values(this.fullDataByProfessionalUnitId)) {
+            if (fullData.roles?.id === roleId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    async findProfileUpdateTarget(
+        unitId: string,
+        userId: string,
+        professionalId: string,
+    ): Promise<{
+        professionalUnitId: string;
+        user: {
+            id: string;
+            name: string;
+            socialName: string | null;
+            email: string;
+            phone: string;
+            cpf: string;
+            birthdate: Date;
+            sex: "M" | "F" | null;
+        };
+        professional: {
+            id: string;
+            crm: string | null;
+        };
+    } | null> {
+        const professionalUnit = Object.values(this.professionalUnits).find(
+            (item) => item.unitId === unitId && item.professionalId === professionalId,
+        );
+
+        if (!professionalUnit) {
+            return null;
+        }
+
+        const fullData = this.fullDataByProfessionalUnitId[professionalUnit.id];
+
+        if (!fullData?.users || fullData.users.id !== userId || !fullData.professionals) {
+            return null;
+        }
+
+        return {
+            professionalUnitId: professionalUnit.id,
+            user: {
+                id: fullData.users.id,
+                name: fullData.users.name,
+                socialName: fullData.users.socialName ?? null,
+                email: fullData.users.email,
+                phone: fullData.users.phone,
+                cpf: fullData.users.cpf,
+                birthdate: new Date(fullData.users.birthdate ?? "2000-01-01T00:00:00.000Z"),
+                sex: (fullData.users.sex as "M" | "F" | null) ?? null,
+            },
+            professional: {
+                id: fullData.professionals.id,
+                crm: fullData.professionals.crm ?? null,
+            },
+        };
+    }
+
+    async findFullUpdateTarget(
+        unitId: string,
+        data: {
+            userId: string;
+            professionalId: string;
+            professionalUnitId: string;
+            professionalUnitRoleId: string;
+            patientId: string;
+        },
+    ): Promise<{
+        user: {
+            id: string;
+            name: string;
+            socialName: string | null;
+            email: string;
+            phone: string;
+            cpf: string;
+            birthdate: Date;
+            sex: "M" | "F" | null;
+        };
+        professional: {
+            id: string;
+            crm: string | null;
+        };
+        professionalUnit: {
+            id: string;
+            isActive: boolean;
+        };
+        professionalUnitRole: {
+            id: string;
+            roleId: string;
+        };
+        patient: {
+            id: string;
+            isActive: boolean;
+        };
+    } | null> {
+        const professionalUnit = this.professionalUnits[data.professionalUnitId];
+
+        if (!professionalUnit || professionalUnit.unitId !== unitId || professionalUnit.professionalId !== data.professionalId) {
+            return null;
+        }
+
+        const fullData = this.fullDataByProfessionalUnitId[data.professionalUnitId];
+
+        if (!fullData?.users || !fullData.professionals || !fullData.professionalUnitRoles || !fullData.roles || !fullData.patients) {
+            return null;
+        }
+
+        if (
+            fullData.users.id !== data.userId ||
+            fullData.professionalUnitRoles.id !== data.professionalUnitRoleId ||
+            fullData.patients.id !== data.patientId
+        ) {
+            return null;
+        }
+
+        return {
+            user: {
+                id: fullData.users.id,
+                name: fullData.users.name,
+                socialName: fullData.users.socialName ?? null,
+                email: fullData.users.email,
+                phone: fullData.users.phone,
+                cpf: fullData.users.cpf,
+                birthdate: new Date(fullData.users.birthdate ?? "2000-01-01T00:00:00.000Z"),
+                sex: (fullData.users.sex as "M" | "F" | null) ?? null,
+            },
+            professional: {
+                id: fullData.professionals.id,
+                crm: fullData.professionals.crm ?? null,
+            },
+            professionalUnit: {
+                id: professionalUnit.id,
+                isActive: professionalUnit.isActive,
+            },
+            professionalUnitRole: {
+                id: fullData.professionalUnitRoles.id,
+                roleId: fullData.roles.id,
+            },
+            patient: {
+                id: fullData.patients.id,
+                isActive: fullData.patients.isActive ?? true,
+            },
+        };
+    }
+
+    async applyProfileUpdate(args: {
+        userId: string;
+        professionalId: string;
+        userChanges: ProfileUpdateChanges["userChanges"];
+        professionalChanges: ProfileUpdateChanges["professionalChanges"];
+        accountPasswordHash?: string;
+    }): Promise<void> {
+        for (const professionalUnitId in this.fullDataByProfessionalUnitId) {
+            const data = this.fullDataByProfessionalUnitId[professionalUnitId];
+
+            if (data.users?.id === args.userId && data.professionals?.id === args.professionalId) {
+                if (data.users) {
+                    if (args.userChanges.name !== undefined) data.users.name = args.userChanges.name;
+                    if (args.userChanges.socialName !== undefined) data.users.socialName = args.userChanges.socialName ?? "";
+                    if (args.userChanges.email !== undefined) data.users.email = args.userChanges.email;
+                    if (args.userChanges.phone !== undefined) data.users.phone = args.userChanges.phone;
+                    if (args.userChanges.cpf !== undefined) data.users.cpf = args.userChanges.cpf;
+                    if (args.userChanges.birthdate !== undefined) data.users.birthdate = args.userChanges.birthdate.toISOString();
+                    if (args.userChanges.sex !== undefined) data.users.sex = args.userChanges.sex ?? "";
+                }
+
+                if (data.professionals && args.professionalChanges.crm !== undefined) {
+                    data.professionals.crm = args.professionalChanges.crm;
+                }
+            }
+        }
+    }
+
+    async applyFullUpdate(args: {
+        userId: string;
+        professionalId: string;
+        professionalUnitId: string;
+        professionalUnitRoleId: string;
+        patientId: string;
+        userChanges: FullUpdateChanges["userChanges"];
+        professionalChanges: FullUpdateChanges["professionalChanges"];
+        professionalUnitChanges: FullUpdateChanges["professionalUnitChanges"];
+        professionalUnitRoleChanges: FullUpdateChanges["professionalUnitRoleChanges"];
+        patientChanges: FullUpdateChanges["patientChanges"];
+    }): Promise<void> {
+        await this.applyProfileUpdate({
+            userId: args.userId,
+            professionalId: args.professionalId,
+            userChanges: args.userChanges,
+            professionalChanges: args.professionalChanges,
+        });
+
+        const professionalUnit = this.professionalUnits[args.professionalUnitId];
+
+        if (professionalUnit && args.professionalUnitChanges.isActive !== undefined) {
+            professionalUnit.isActive = args.professionalUnitChanges.isActive;
+            professionalUnit.updatedAt = new Date().toISOString();
+        }
+
+        const data = this.fullDataByProfessionalUnitId[args.professionalUnitId];
+
+        if (!data) {
+            return;
+        }
+
+        if (args.professionalUnitChanges.isActive !== undefined) {
+            data.isActive = args.professionalUnitChanges.isActive;
+        }
+
+        if (data.professionalUnitRoles?.id === args.professionalUnitRoleId && args.professionalUnitRoleChanges.roleId) {
+            data.roles = {
+                ...(data.roles ?? {
+                    id: args.professionalUnitRoleChanges.roleId,
+                    name: "",
+                    isActive: true,
+                }),
+                id: args.professionalUnitRoleChanges.roleId,
+            };
+        }
+
+        if (data.patients?.id === args.patientId && args.patientChanges.isActive !== undefined) {
+            data.patients.isActive = args.patientChanges.isActive;
+        }
     }
 }
 
