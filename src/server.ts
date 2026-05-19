@@ -10,6 +10,7 @@ const usersRepository = new UsersRepository(db);
 const professionalsRepository = new ProfessionalsRepository(db);
 const patientsRepository = new PatientsRepository(db);
 const unitsRepository = new UnitsRepository(db);
+const IS_PROD = process.env.NODE_ENV === "production";
 const app = await buildApp({
     db,
     usersRepository,
@@ -17,7 +18,7 @@ const app = await buildApp({
     patientsRepository,
     unitsRepository,
     authPlugin: betterAuthPlugin,
-    withDocs: true,
+    withDocs: IS_PROD ? false : true,
 });
 const port = Number(process.env.PORT || 3333);
 

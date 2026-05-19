@@ -38,11 +38,44 @@ export const professionalProfileSchema = z.object({
     updatedAt: z.string().datetime(),
 });
 
+export const professionalWithUnitProfileSchema = professionalProfileSchema.extend({
+    professionalUnitId: z.string().uuid(),
+});
+
 export const professionalRoleProfileSchema = z.object({
     id: z.string().uuid(),
     description: z.string(),
     key: z.string(),
 });
+
+export const professionalUnitRoleProfileSchema = z.object({
+    id: z.string().uuid(),
+    professionalUnitId: z.string().uuid(),
+    roleId: z.string().uuid(),
+    isActive: z.boolean(),
+    role: professionalRoleProfileSchema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+});
+
+export const linkProfessionalUnitRoleSchema = z
+    .object({
+        professionalUnitId: z.string().uuid(),
+        roleId: z.string().uuid(),
+        isActive: z.boolean().optional(),
+    })
+    .strict();
+
+export const updateProfessionalUnitRoleSchema = z
+    .object({
+        professionalUnitRoleId: z.string().uuid(),
+        roleId: z.string().uuid().optional(),
+        isActive: z.boolean().optional(),
+    })
+    .strict()
+    .refine((data) => data.roleId !== undefined || data.isActive !== undefined, {
+        message: "Informe roleId ou isActive para atualizar",
+    });
 
 export const professionalsErrorSchema = z.object({
     message: z.string(),

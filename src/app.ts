@@ -7,6 +7,10 @@ import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
 import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
+import { professionalUnitsRoutes } from "./modules/professional-units/professional-units.routes.js";
+import { ProfessionalUnitsRepository } from "./modules/professional-units/professional-units.repository.js";
+import { rolesRoutes } from "./modules/roles/roles.routes.js";
+import { RolesRepository } from "./modules/roles/roles.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
 import type { PatientsRepository } from "./modules/patients/patients.repository.js";
 // specialties routes removed
@@ -29,7 +33,9 @@ type BuildAppOptions = {
     db: DatabaseClient;
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
+    professionalUnitsRepository?: ProfessionalUnitsRepository;
     patientsRepository: PatientsRepository;
+    rolesRepository?: RolesRepository;
     unitsRepository?: UnitsRepository;
     hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
     authPlugin: ElysiaPlugin;
@@ -40,7 +46,9 @@ export async function buildApp({
     db,
     usersRepository,
     patientsRepository,
+    rolesRepository,
     professionalsRepository,
+    professionalUnitsRepository,
     unitsRepository,
     hasUserAccessToUnitChecker,
     authPlugin,
@@ -73,8 +81,16 @@ export async function buildApp({
                             description: "Operations about professionals",
                         },
                         {
+                            name: "Professional Units",
+                            description: "Operations about links between professionals and units",
+                        },
+                        {
                             name: "Patients",
                             description: "Operations about patients",
+                        },
+                        {
+                            name: "Roles",
+                            description: "Operations about professional roles",
                         },
                         {
                             name: "Better Auth",
@@ -114,7 +130,8 @@ export async function buildApp({
         .use(createSessionRoutes(db))
         .use(systemRoutes())
         .use(usersRoutes({ usersRepository }))
-        .use(patientsRoutes({ patientsRepository }));
+        .use(patientsRoutes({ patientsRepository }))
+        .use(rolesRoutes({ rolesRepository: rolesRepository ?? new RolesRepository(db) }));
 
     const resolvedHasUserAccessToUnitChecker =
         hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
@@ -130,7 +147,14 @@ export async function buildApp({
         )
         : configuredAppBase;
 
-    const configuredAppWithAdmin = configuredAppWithUnits.use(
+    const configuredAppWithProfessionalUnits = configuredAppWithUnits.use(
+        professionalUnitsRoutes({
+            professionalUnitsRepository: professionalUnitsRepository ?? new ProfessionalUnitsRepository(db),
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+        }),
+    );
+
+    const configuredAppWithAdmin = configuredAppWithProfessionalUnits.use(
         adminUnitsRoutes({
             db,
         }),

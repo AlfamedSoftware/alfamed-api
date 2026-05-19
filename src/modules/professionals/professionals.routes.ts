@@ -12,6 +12,7 @@ import {
     professionalProfileSchema,
     professionalRoleProfileSchema,
     professionalDetailSchema,
+    professionalWithUnitProfileSchema,
     professionalsErrorSchema,
     updateProfessionalSchema,
 } from "./professionals.schemas.js";
@@ -68,13 +69,13 @@ export const professionalsRoutes = ({
                         isActive: body.isActive,
                         userId: scope.userId,
                     };
-                    const professional = await professionalsService.createProfessional(
+                    const result = await professionalsService.createProfessional(
                         scope.userId,
                         scope.unitId,
                         createPayload,
                     );
 
-                    return status(201, professional);
+                    return status(201, { ...result.professional, professionalUnitId: result.professionalUnitId });
                 } catch (error) {
                     if (isUniqueConstraintError(error)) {
                         return status(409, { message: "Professional already exists for this user" });
@@ -95,7 +96,7 @@ export const professionalsRoutes = ({
                     tags: ["Professionals"],
                 },
                 response: {
-                    201: professionalProfileSchema,
+                    201: professionalWithUnitProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
@@ -175,7 +176,7 @@ export const professionalsRoutes = ({
                 }
 
                 try {
-                    const professional = await professionalsService.createProfessional(
+                    const result = await professionalsService.createProfessional(
                         scope.userId,
                         scope.unitId,
                         {
@@ -184,7 +185,7 @@ export const professionalsRoutes = ({
                         }
                     );
 
-                    return status(201, professional);
+                    return status(201, { ...result.professional, professionalUnitId: result.professionalUnitId });
                 } catch (error) {
                     if (isUniqueConstraintError(error)) {
                         return status(409, { message: "Professional already exists for this user" });
@@ -206,7 +207,7 @@ export const professionalsRoutes = ({
                     tags: ["Professionals"],
                 },
                 response: {
-                    201: professionalProfileSchema,
+                    201: professionalWithUnitProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),

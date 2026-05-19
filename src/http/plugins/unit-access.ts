@@ -42,6 +42,7 @@ export function createHasUserAccessToUnitChecker(db: DatabaseClient) {
                 and(
                     eq(professionalUnits.professionalId, professional.professionalId),
                     eq(professionalUnits.unitId, unitId),
+                    eq(professionalUnits.isActive, true),
                 ),
             )
             .limit(1);

@@ -2,9 +2,11 @@ import { hash } from "bcryptjs";
 import { and, eq } from "drizzle-orm";
 import type { db as dbType } from "../../db/client.js";
 import { accounts } from "../../db/schema/accounts.js";
+import { professionalUnitRoles } from "../../db/schema/professional-unit-roles.js";
 import { professionalUnitSpecialties } from "../../db/schema/professional-unit-specialties.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionals } from "../../db/schema/professionals.js";
+import { roles } from "../../db/schema/roles.js";
 import { units } from "../../db/schema/units.js";
 import { users } from "../../db/schema/users.js";
 import type {
@@ -15,6 +17,8 @@ import type {
 
 type DatabaseClient = typeof dbType;
 type TransactionClient = Parameters<Parameters<DatabaseClient["transaction"]>[0]>[0];
+
+const ADMINISTRATIVE_ROLE_KEY = "administrative";
 
 export type AdminUnit = {
     id: string;
@@ -269,9 +273,32 @@ export class AdminUnitsRepository {
                     id: units.id,
                 });
 
-            await tx.insert(professionalUnits).values({
-                professionalId: ownerProfessional.id,
-                unitId: createdUnit.id,
+            const [createdProfessionalUnit] = await tx
+                .insert(professionalUnits)
+                .values({
+                    professionalId: ownerProfessional.id,
+                    unitId: createdUnit.id,
+                })
+                .returning({
+                    id: professionalUnits.id,
+                });
+
+            const [administrativeRole] = await tx
+                .select({
+                    id: roles.id,
+                })
+                .from(roles)
+                .where(eq(roles.key, ADMINISTRATIVE_ROLE_KEY))
+                .limit(1);
+
+            if (!administrativeRole) {
+                throw new Error("Administrative role not found");
+            }
+
+            await tx.insert(professionalUnitRoles).values({
+                professionalUnitId: createdProfessionalUnit.id,
+                roleId: administrativeRole.id,
+                isActive: true,
             });
 
             const created = await this.findUnitByIdWithExecutor(tx, createdUnit.id);

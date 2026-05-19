@@ -9,21 +9,27 @@ import { units } from "../../db/schema/units.js";
 import { users } from "../../db/schema/users.js";
 import {
     createProfessionalSchema,
+    linkProfessionalUnitRoleSchema,
     professionalProfileSchema,
     professionalRoleProfileSchema,
+    professionalUnitRoleProfileSchema,
+    updateProfessionalUnitRoleSchema,
     updateProfessionalSchema,
 } from "./professionals.schemas.js";
 
 export type ProfessionalProfile = z.infer<typeof professionalProfileSchema>;
 export type ProfessionalRoleProfile = z.infer<typeof professionalRoleProfileSchema>;
+export type ProfessionalUnitRoleProfile = z.infer<typeof professionalUnitRoleProfileSchema>;
 export type CreateProfessionalInput = z.infer<typeof createProfessionalSchema> & { userId: string };
 export type UpdateProfessionalInput = z.infer<typeof updateProfessionalSchema>;
+export type LinkProfessionalUnitRoleInput = z.infer<typeof linkProfessionalUnitRoleSchema>;
+export type UpdateProfessionalUnitRoleInput = z.infer<typeof updateProfessionalUnitRoleSchema>;
 
 type DatabaseClient = typeof dbType;
 
 export class ProfessionalsRepository {
     readonly create: (data: CreateProfessionalInput) => Promise<ProfessionalProfile>;
-    readonly createWithUnit: (data: CreateProfessionalInput, unitId: string) => Promise<ProfessionalProfile>;
+    readonly createWithUnit: (data: CreateProfessionalInput, unitId: string) => Promise<{ professional: ProfessionalProfile; professionalUnitId: string }>;
     readonly findById: (professionalId: string) => Promise<ProfessionalProfile | null>;
     readonly findDetailById: (professionalId: string) => Promise<any | null>;
     readonly findByIdAndUnit: (professionalId: string, unitId: string) => Promise<ProfessionalProfile | null>;
@@ -37,6 +43,22 @@ export class ProfessionalsRepository {
         unitId: string,
         professionalUnitId: string,
     ) => Promise<ProfessionalRoleProfile[]>;
+    readonly findProfessionalUnitByIdAndUnit: (
+        professionalUnitId: string,
+        unitId: string,
+    ) => Promise<{ id: string } | null>;
+    readonly hasActiveRole: (roleId: string) => Promise<boolean>;
+    readonly findProfessionalUnitRoleByIdAndUnit: (
+        professionalUnitRoleId: string,
+        unitId: string,
+    ) => Promise<ProfessionalUnitRoleProfile | null>;
+    readonly linkProfessionalUnitRole: (
+        data: LinkProfessionalUnitRoleInput,
+    ) => Promise<ProfessionalUnitRoleProfile>;
+    readonly updateProfessionalUnitRole: (
+        professionalUnitRoleId: string,
+        data: Omit<UpdateProfessionalUnitRoleInput, "professionalUnitRoleId">,
+    ) => Promise<ProfessionalUnitRoleProfile | null>;
 
     constructor(db: DatabaseClient) {
         const toProfile = (result: {
@@ -72,6 +94,54 @@ export class ProfessionalsRepository {
                 description: result.description,
                 key: result.key,
             });
+
+        const toProfessionalUnitRoleProfile = (result: {
+            id: string;
+            professionalUnitId: string;
+            roleId: string;
+            isActive: boolean;
+            roleDescription: string;
+            roleKey: string;
+            createdAt: Date;
+            updatedAt: Date;
+        }) =>
+            professionalUnitRoleProfileSchema.parse({
+                id: result.id,
+                professionalUnitId: result.professionalUnitId,
+                roleId: result.roleId,
+                isActive: result.isActive,
+                role: {
+                    id: result.roleId,
+                    description: result.roleDescription,
+                    key: result.roleKey,
+                },
+                createdAt: result.createdAt.toISOString(),
+                updatedAt: result.updatedAt.toISOString(),
+            });
+
+        const findProfessionalUnitRoleById = async (professionalUnitRoleId: string) => {
+            const [result] = await db
+                .select({
+                    id: professionalUnitRoles.id,
+                    professionalUnitId: professionalUnitRoles.professionalUnitId,
+                    roleId: professionalUnitRoles.roleId,
+                    isActive: professionalUnitRoles.isActive,
+                    roleDescription: roles.description,
+                    roleKey: roles.key,
+                    createdAt: professionalUnitRoles.createdAt,
+                    updatedAt: professionalUnitRoles.updatedAt,
+                })
+                .from(professionalUnitRoles)
+                .innerJoin(roles, eq(professionalUnitRoles.roleId, roles.id))
+                .where(eq(professionalUnitRoles.id, professionalUnitRoleId))
+                .limit(1);
+
+            if (!result) {
+                return null;
+            }
+
+            return toProfessionalUnitRoleProfile(result);
+        };
 
         this.create = async (data) => {
             const [result] = await db
@@ -254,21 +324,27 @@ export class ProfessionalsRepository {
                         updatedAt: professionals.updatedAt,
                     });
 
-                await tx.insert(professionalUnits).values({
-                    professionalId: result.id,
-                    unitId,
-                });
+                const [createdProfessionalUnit] = await tx
+                    .insert(professionalUnits)
+                    .values({
+                        professionalId: result.id,
+                        unitId,
+                    })
+                    .returning({ id: professionalUnits.id });
 
-                return result;
+                return {
+                    professional: result,
+                    professionalUnitId: createdProfessionalUnit?.id,
+                };
             });
 
-            const created = await this.findById(createdProfessional.id);
+            const created = await this.findById(createdProfessional.professional.id);
 
             if (!created) {
                 throw new Error("Failed to load created professional");
             }
 
-            return created;
+            return { professional: created, professionalUnitId: createdProfessional.professionalUnitId };
         };
 
         this.update = async (professionalId, data) => {
@@ -352,6 +428,98 @@ export class ProfessionalsRepository {
                 );
 
             return rows.map(toRoleProfile);
+        };
+
+        this.findProfessionalUnitByIdAndUnit = async (professionalUnitId, unitId) => {
+            const [result] = await db
+                .select({ id: professionalUnits.id })
+                .from(professionalUnits)
+                .where(and(eq(professionalUnits.id, professionalUnitId), eq(professionalUnits.unitId, unitId)))
+                .limit(1);
+
+            return result ?? null;
+        };
+
+        this.hasActiveRole = async (roleId) => {
+            const [result] = await db
+                .select({ id: roles.id })
+                .from(roles)
+                .where(and(eq(roles.id, roleId), eq(roles.isActive, true)))
+                .limit(1);
+
+            return !!result;
+        };
+
+        this.findProfessionalUnitRoleByIdAndUnit = async (professionalUnitRoleId, unitId) => {
+            const [result] = await db
+                .select({
+                    id: professionalUnitRoles.id,
+                    professionalUnitId: professionalUnitRoles.professionalUnitId,
+                    roleId: professionalUnitRoles.roleId,
+                    isActive: professionalUnitRoles.isActive,
+                    roleDescription: roles.description,
+                    roleKey: roles.key,
+                    createdAt: professionalUnitRoles.createdAt,
+                    updatedAt: professionalUnitRoles.updatedAt,
+                })
+                .from(professionalUnitRoles)
+                .innerJoin(roles, eq(professionalUnitRoles.roleId, roles.id))
+                .innerJoin(professionalUnits, eq(professionalUnitRoles.professionalUnitId, professionalUnits.id))
+                .where(
+                    and(
+                        eq(professionalUnitRoles.id, professionalUnitRoleId),
+                        eq(professionalUnits.unitId, unitId),
+                    ),
+                )
+                .limit(1);
+
+            if (!result) {
+                return null;
+            }
+
+            return toProfessionalUnitRoleProfile(result);
+        };
+
+        this.linkProfessionalUnitRole = async (data) => {
+            const [linked] = await db
+                .insert(professionalUnitRoles)
+                .values({
+                    professionalUnitId: data.professionalUnitId,
+                    roleId: data.roleId,
+                    isActive: data.isActive ?? true,
+                })
+                .onConflictDoUpdate({
+                    target: [professionalUnitRoles.professionalUnitId, professionalUnitRoles.roleId],
+                    set: {
+                        isActive: data.isActive ?? true,
+                    },
+                })
+                .returning({ id: professionalUnitRoles.id });
+
+            const result = await findProfessionalUnitRoleById(linked.id);
+
+            if (!result) {
+                throw new Error("Failed to load linked professional unit role");
+            }
+
+            return result;
+        };
+
+        this.updateProfessionalUnitRole = async (professionalUnitRoleId, data) => {
+            const [updated] = await db
+                .update(professionalUnitRoles)
+                .set({
+                    roleId: data.roleId,
+                    isActive: data.isActive,
+                })
+                .where(eq(professionalUnitRoles.id, professionalUnitRoleId))
+                .returning({ id: professionalUnitRoles.id });
+
+            if (!updated) {
+                return null;
+            }
+
+            return findProfessionalUnitRoleById(updated.id);
         };
     }
 }
