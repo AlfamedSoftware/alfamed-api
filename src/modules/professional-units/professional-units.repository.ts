@@ -1,3 +1,4 @@
+import { hash } from "bcryptjs";
 import { and, asc, eq } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
@@ -8,7 +9,9 @@ import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionals } from "../../db/schema/professionals.js";
 import { roles } from "../../db/schema/roles.js";
 import { users } from "../../db/schema/users.js";
+import { DomainError } from "../../http/plugins/domain-error.js";
 import {
+    createProfessionalUnitFullCreateSchema,
     createProfessionalUnitSchema,
     professionalUnitFullDataByUnitListSchema,
     professionalUnitFullDataByUnitSchema,
@@ -17,6 +20,7 @@ import {
 } from "./professional-units.schemas.js";
 
 export type CreateProfessionalUnitInput = z.infer<typeof createProfessionalUnitSchema>;
+export type CreateProfessionalUnitFullCreateInput = z.infer<typeof createProfessionalUnitFullCreateSchema>;
 export type ProfessionalUnitProfile = z.infer<typeof professionalUnitProfileSchema>;
 export type ProfessionalUnitFullData = z.infer<typeof professionalUnitFullDataSchema>;
 export type ProfessionalUnitFullDataByUnit = z.infer<typeof professionalUnitFullDataByUnitSchema>;
@@ -65,6 +69,10 @@ export class ProfessionalUnitsRepository {
         professionalId: string,
         unitId: string,
     ) => Promise<ProfessionalUnitProfile | null>;
+    readonly createFullCreate: (
+        unitId: string,
+        data: CreateProfessionalUnitFullCreateInput,
+    ) => Promise<ProfessionalUnitFullData>;
     readonly findUserByEmail: (email: string) => Promise<{ id: string } | null>;
     readonly findUserByCpf: (cpf: string) => Promise<{ id: string } | null>;
     readonly roleExists: (roleId: string) => Promise<boolean>;
@@ -627,6 +635,140 @@ export class ProfessionalUnitsRepository {
                         .where(eq(accounts.userId, userId));
                 }
             });
+        };
+
+        this.createFullCreate = async (unitId, data) => {
+            const normalizedEmail = data.email.trim().toLowerCase();
+            const normalizedCpf = data.cpf.trim();
+            const normalizedSocialName = data.socialName?.trim();
+            const normalizedPhone = data.phone.trim();
+            const normalizedName = data.name.trim();
+            const normalizedPassword = data.password.trim();
+            const normalizedCrm = data.crm.trim().toUpperCase();
+            const professionalUnitStatus = data.professionalUnitStatus ?? true;
+            const patientStatus = data.patientStatus ?? true;
+
+            const [existingByEmail] = await db
+                .select({ id: users.id })
+                .from(users)
+                .where(eq(users.email, normalizedEmail))
+                .limit(1);
+
+            if (existingByEmail) {
+                throw new DomainError("EMAIL_ALREADY_EXISTS", "Email already exists");
+            }
+
+            const [existingByCpf] = await db
+                .select({ id: users.id })
+                .from(users)
+                .where(eq(users.cpf, normalizedCpf))
+                .limit(1);
+
+            if (existingByCpf) {
+                throw new DomainError("CPF_ALREADY_EXISTS", "CPF already exists");
+            }
+
+            const [role] = await db
+                .select({
+                    id: roles.id,
+                    name: roles.description,
+                    isActive: roles.isActive,
+                })
+                .from(roles)
+                .where(eq(roles.id, data.roleId))
+                .limit(1);
+
+            if (!role) {
+                throw new DomainError("ROLE_NOT_FOUND", "Role not found");
+            }
+
+            const createdProfessionalUnitId = await db.transaction(async (tx) => {
+                const [createdUser] = await tx
+                    .insert(users)
+                    .values({
+                        name: normalizedName,
+                        socialName: normalizedSocialName ?? null,
+                        email: normalizedEmail,
+                        cpf: normalizedCpf,
+                        birthdate: new Date(data.birthdate),
+                        phone: normalizedPhone,
+                        sex: data.sex,
+                        emailVerified: false,
+                        isActive: true,
+                        twoFactorEnabled: false,
+                    })
+                    .returning({
+                        id: users.id,
+                    });
+
+                await tx.insert(accounts).values({
+                    userId: createdUser.id,
+                    accountId: createdUser.id,
+                    providerId: "credential",
+                    password: await hash(normalizedPassword, 12),
+                });
+
+                const [createdProfessional] = await tx
+                    .insert(professionals)
+                    .values({
+                        userId: createdUser.id,
+                        crm: normalizedCrm,
+                        isActive: true,
+                    })
+                    .returning({
+                        id: professionals.id,
+                    });
+
+                const [createdPatient] = await tx
+                    .insert(patients)
+                    .values({
+                        userId: createdUser.id,
+                        isActive: patientStatus,
+                    })
+                    .returning({
+                        id: patients.id,
+                    });
+
+                if (!createdPatient) {
+                    throw new Error("Unable to create patient");
+                }
+
+                const [createdProfessionalUnit] = await tx
+                    .insert(professionalUnits)
+                    .values({
+                        professionalId: createdProfessional.id,
+                        unitId,
+                        isActive: professionalUnitStatus,
+                    })
+                    .returning({
+                        id: professionalUnits.id,
+                    });
+
+                const [createdProfessionalUnitRole] = await tx
+                    .insert(professionalUnitRoles)
+                    .values({
+                        professionalUnitId: createdProfessionalUnit.id,
+                        roleId: data.roleId,
+                        isActive: true,
+                    })
+                    .returning({
+                        id: professionalUnitRoles.id,
+                    });
+
+                if (!createdProfessionalUnitRole) {
+                    throw new Error("Unable to create professional unit role");
+                }
+
+                return createdProfessionalUnit.id;
+            });
+
+            const created = await this.findFullDataByIdAndUnit(createdProfessionalUnitId, unitId);
+
+            if (!created) {
+                throw new Error("Unable to create professional unit full data");
+            }
+
+            return created;
         };
 
         this.professionalExists = async (professionalId) => {

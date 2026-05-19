@@ -116,6 +116,75 @@ export class InMemoryProfessionalUnitsRepository implements ProfessionalUnitsRep
         return professionalUnit;
     }
 
+    async createFullCreate(unitId: string, data: {
+        name: string;
+        socialName?: string | null;
+        email: string;
+        cpf: string;
+        birthdate: string;
+        phone: string;
+        sex: "M" | "F" | "O";
+        crm: string;
+        password: string;
+        roleId: string;
+        professionalUnitStatus?: boolean;
+        patientStatus?: boolean;
+    }): Promise<ProfessionalUnitFullData> {
+        const now = new Date().toISOString();
+        const userId = `019c1a3e-e425-7000-8bda-cdfec32d2e${String(this.sequence).padStart(2, "0")}`;
+        const professionalId = `019c1a3e-e425-7000-8bda-cdfec32d2e${String(this.sequence + 1).padStart(2, "0")}`;
+        const professionalUnitId = `019c1a3e-e425-7000-8bda-cdfec32d2e${String(this.sequence + 2).padStart(2, "0")}`;
+        const roleLinkId = `019c1a3e-e425-7000-8bda-cdfec32d2e${String(this.sequence + 3).padStart(2, "0")}`;
+        const patientId = `019c1a3e-e425-7000-8bda-cdfec32d2e${String(this.sequence + 4).padStart(2, "0")}`;
+        this.sequence += 5;
+
+        const professionalUnit: ProfessionalUnitLinkProfile = {
+            id: professionalUnitId,
+            professionalId,
+            unitId,
+            isActive: data.professionalUnitStatus ?? true,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        this.professionals.add(professionalId);
+        this.professionalUnits[professionalUnitId] = professionalUnit;
+        this.fullDataByProfessionalUnitId[professionalUnitId] = {
+            id: professionalUnitId,
+            isActive: professionalUnit.isActive,
+            users: {
+                id: userId,
+                name: data.name,
+                socialName: data.socialName ?? "",
+                email: data.email,
+                phone: data.phone,
+                cpf: data.cpf,
+                birthdate: data.birthdate,
+                sex: data.sex,
+                isActive: true,
+            },
+            professionals: {
+                id: professionalId,
+                crm: data.crm,
+                isActive: true,
+            },
+            roles: {
+                id: data.roleId,
+                name: "Role",
+                isActive: true,
+            },
+            professionalUnitRoles: {
+                id: roleLinkId,
+            },
+            patients: {
+                id: patientId,
+                isActive: data.patientStatus ?? true,
+            },
+        };
+
+        return this.fullDataByProfessionalUnitId[professionalUnitId];
+    }
+
     async findFullDataByIdAndUnit(
         professionalUnitId: string,
         unitId: string,
@@ -805,128 +874,3 @@ type InMemoryRequestContext = {
     professionalId: string;
     scheduleId: string;
 };
-
-
-
-export class InMemorySpecialtiesRepository implements SpecialtiesRepository {
-    private readonly specialties: Record<string, SpecialtyProfile>;
-    private readonly professionalUnitByProfessionalId: Record<string, string>;
-    private readonly links = new Set<string>();
-    private sequence = 1;
-
-    constructor(args?: {
-        specialties?: Record<string, SpecialtyProfile>;
-        professionalUnitByProfessionalId?: Record<string, string>;
-        links?: Array<{ professionalId: string; specialtyId: string }>;
-    }) {
-        this.specialties = { ...(args?.specialties ?? {}) };
-        this.professionalUnitByProfessionalId = { ...(args?.professionalUnitByProfessionalId ?? {}) };
-        args?.links?.forEach((item) => this.links.add(`${item.professionalId}:${item.specialtyId}`));
-    }
-
-    async create(data: CreateSpecialtyInput): Promise<SpecialtyProfile> {
-        const now = new Date().toISOString();
-        const id = `019c1a3e-e425-7000-8bda-cdfec32e1f${String(this.sequence).padStart(2, "0")}`;
-        this.sequence += 1;
-
-        const exists = Object.values(this.specialties).some(
-            (specialty) => specialty.name.toLowerCase() === data.name.toLowerCase(),
-        );
-
-        if (exists) {
-            const error = new Error("duplicate") as Error & { code?: string };
-            error.code = "23505";
-            throw error;
-        }
-
-        const specialty: SpecialtyProfile = {
-            id,
-            name: data.name,
-            isActive: data.isActive ?? true,
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        this.specialties[id] = specialty;
-        return specialty;
-    }
-
-    async findById(specialtyId: string): Promise<SpecialtyProfile | null> {
-        return this.specialties[specialtyId] ?? null;
-    }
-
-    async list(): Promise<SpecialtyProfile[]> {
-        return Object.values(this.specialties);
-    }
-
-    async update(specialtyId: string, data: UpdateSpecialtyInput): Promise<SpecialtyProfile | null> {
-        const current = this.specialties[specialtyId];
-
-        if (!current) {
-            return null;
-        }
-
-        if (data.name) {
-            const exists = Object.values(this.specialties).some(
-                (specialty) =>
-                    specialty.id !== specialtyId && specialty.name.toLowerCase() === data.name?.toLowerCase(),
-            );
-            if (exists) {
-                const error = new Error("duplicate") as Error & { code?: string };
-                error.code = "23505";
-                throw error;
-            }
-        }
-
-        const updated: SpecialtyProfile = {
-            ...current,
-            name: data.name ?? current.name,
-            isActive: data.isActive ?? current.isActive,
-            updatedAt: new Date().toISOString(),
-        };
-
-        this.specialties[specialtyId] = updated;
-        return updated;
-    }
-
-    async delete(specialtyId: string): Promise<void> {
-        delete this.specialties[specialtyId];
-    }
-
-    async findProfessionalByIdAndUnit(professionalId: string, unitId: string): Promise<{ id: string } | null> {
-        return this.professionalUnitByProfessionalId[professionalId] === unitId ? { id: professionalId } : null;
-    }
-
-    async linkProfessionalSpecialty(professionalId: string, specialtyId: string): Promise<void> {
-        const key = `${professionalId}:${specialtyId}`;
-        if (this.links.has(key)) {
-            const error = new Error("duplicate") as Error & { code?: string };
-            error.code = "23505";
-            throw error;
-        }
-        this.links.add(key);
-    }
-
-    async unlinkProfessionalSpecialty(professionalId: string, specialtyId: string): Promise<boolean> {
-        const key = `${professionalId}:${specialtyId}`;
-        const hasLink = this.links.has(key);
-        if (hasLink) {
-            this.links.delete(key);
-        }
-        return hasLink;
-    }
-
-    async listByProfessionalAndUnit(professionalId: string, unitId: string): Promise<SpecialtyProfile[]> {
-        if (this.professionalUnitByProfessionalId[professionalId] !== unitId) {
-            return [];
-        }
-
-        const specialtyIds = [...this.links]
-            .filter((key) => key.startsWith(`${professionalId}:`))
-            .map((key) => key.split(":")[1]);
-
-        return specialtyIds
-            .map((id) => this.specialties[id])
-            .filter((specialty): specialty is SpecialtyProfile => !!specialty);
-    }
-}

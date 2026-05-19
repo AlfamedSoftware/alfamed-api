@@ -5,6 +5,7 @@ import { getUnitIdFromRequest } from "../../http/plugins/unit-context.js";
 import type { ProfessionalUnitsRepository } from "./professional-units.repository.js";
 import { ProfessionalUnitsService } from "./professional-units.service.js";
 import {
+    createProfessionalUnitFullCreateSchema,
     createProfessionalUnitSchema,
     professionalUnitFullUpdateSchema,
     professionalUnitFullDataByUnitListSchema,
@@ -66,8 +67,7 @@ export const professionalUnitsRoutes = ({
                 body: createProfessionalUnitSchema,
                 detail: {
                     summary: "Create professional unit",
-                    description:
-                        "Creates a professional unit.",
+                    description: "Creates a professional unit.",
                     tags: ["Professional Units"],
                 },
                 response: {
@@ -76,6 +76,75 @@ export const professionalUnitsRoutes = ({
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
                     409: t.Object({ message: t.Literal("Professional unit already exists") }),
+                    500: professionalUnitsErrorSchema,
+                },
+            },
+        )
+        .post(
+            "/full-create",
+            async (context) => {
+                const { body, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                const unitId = getUnitIdFromRequest(context.request);
+
+                if (!unitId) {
+                    return status(400, { message: unitSelectionRequiredMessage });
+                }
+
+                try {
+                    const created = await professionalUnitsService.createProfessionalUnitFullCreate(
+                        userId,
+                        unitId,
+                        body,
+                    );
+
+                    return status(201, created);
+                } catch (error) {
+                    if (isDomainError(error, "FORBIDDEN")) {
+                        return status(403, { message: "Forbidden" });
+                    }
+
+                    if (isDomainError(error, "EMAIL_ALREADY_EXISTS")) {
+                        return status(409, { message: "Email already exists" });
+                    }
+
+                    if (isDomainError(error, "CPF_ALREADY_EXISTS")) {
+                        return status(409, { message: "CPF already exists" });
+                    }
+
+                    if (isDomainError(error, "ROLE_NOT_FOUND")) {
+                        return status(404, { message: "Role not found" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                body: createProfessionalUnitFullCreateSchema,
+                detail: {
+                    summary: "Full create professional unit",
+                    description:
+                        "Creates the user, account, professional, patient, professional unit and professional unit role in a single transaction.",
+                    tags: ["Professional Units"],
+                },
+                response: {
+                    201: professionalUnitFullDataSchema,
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
+                    404: t.Object({ message: t.Literal("Role not found") }),
+                    409: t.Object({
+                        message: t.Union([
+                            t.Literal("Email already exists"),
+                            t.Literal("CPF already exists"),
+                        ]),
+                    }),
                     500: professionalUnitsErrorSchema,
                 },
             },

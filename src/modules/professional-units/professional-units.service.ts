@@ -8,6 +8,7 @@ import type {
     ProfessionalUnitsRepository,
 } from "./professional-units.repository.js";
 import {
+    createProfessionalUnitFullCreateSchema,
     professionalUnitFullUpdateSchema,
     professionalUnitProfileUpdateSchema,
 } from "./professional-units.schemas.js";
@@ -15,6 +16,7 @@ import type { z } from "zod";
 
 type ProfileUpdateInput = z.infer<typeof professionalUnitProfileUpdateSchema>;
 type FullUpdateInput = z.infer<typeof professionalUnitFullUpdateSchema>;
+type FullCreateInput = z.infer<typeof createProfessionalUnitFullCreateSchema>;
 
 export class ProfessionalUnitsService {
     constructor(
@@ -44,6 +46,16 @@ export class ProfessionalUnitsService {
         }
 
         return this.professionalUnitsRepository.create(data);
+    }
+
+    async createProfessionalUnitFullCreate(
+        requestUserId: string,
+        unitId: string,
+        data: FullCreateInput,
+    ) {
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
+
+        return this.professionalUnitsRepository.createFullCreate(unitId, data);
     }
 
     async getProfessionalUnitById(

@@ -8,6 +8,23 @@ export const createProfessionalUnitSchema = z
     })
     .strict();
 
+export const createProfessionalUnitFullCreateSchema = z
+    .object({
+        name: z.string().min(1),
+        socialName: z.union([z.string(), z.null()]).optional(),
+        email: z.string().email(),
+        cpf: z.string().min(1),
+        birthdate: z.string().datetime(),
+        phone: z.string().min(1),
+        sex: z.enum(["M", "F", "O"]),
+        crm: z.string().min(1),
+        password: z.string().min(8),
+        roleId: z.string().uuid(),
+        professionalUnitStatus: z.boolean().optional(),
+        patientStatus: z.boolean().optional(),
+    })
+    .strict();
+
 export const professionalUnitProfileUpdateSchema = z
     .object({
         userId: z.string().uuid(),
@@ -18,7 +35,7 @@ export const professionalUnitProfileUpdateSchema = z
         phone: z.string().optional(),
         cpf: z.string().optional(),
         birthdate: z.string().datetime().optional(),
-        sex: z.union([z.enum(["M", "F"]), z.null()]).optional(),
+        sex: z.union([z.enum(["M", "F", "O"]), z.null()]).optional(),
         crmNumber: z.union([z.string(), z.null()]).optional(),
         crmState: z.union([z.string(), z.null()]).optional(),
         password: z.string().min(8).optional(),
@@ -39,7 +56,7 @@ export const professionalUnitFullUpdateSchema = z
         phone: z.string().optional(),
         cpf: z.string().optional(),
         birthdate: z.string().datetime().optional(),
-        sex: z.union([z.enum(["M", "F"]), z.null()]).optional(),
+        sex: z.union([z.enum(["M", "F", "O"]), z.null()]).optional(),
         crmNumber: z.union([z.string(), z.null()]).optional(),
         crmState: z.union([z.string(), z.null()]).optional(),
         password: z.union([z.literal(""), z.string().min(8)]).optional(),
