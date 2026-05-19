@@ -62,8 +62,10 @@ const toDate = (value: string) => new Date(`${value}T00:00:00.000Z`);
 
 async function main() {
     const result = await db.transaction(async (tx) => {
+        // Etapa 1: garantir que as roles base existam antes de qualquer vínculo.
         await ensureDefaultRoles(tx);
 
+        // Etapa 2: localizar a role interna que libera acesso ao painel admin.
         const [internalRole] = await tx
             .select({ id: roles.id })
             .from(roles)
@@ -74,14 +76,17 @@ async function main() {
             throw new Error(`Role obrigatória não encontrada: ${INTERNAL_ALFAMED_ROLE_KEY}`);
         }
 
+        // Etapa 3: reaproveitar o usuário admin se ele já existir.
         const [existingUser] = await tx
             .select({ id: users.id })
             .from(users)
             .where(eq(users.email, normalizedInitialAdmin.email))
             .limit(1);
 
+        // Etapa 4: criar o usuário administrador quando ele ainda não existir.
         const userId = existingUser?.id ?? (await createInitialAdminUser(tx));
 
+        // Etapa 5: criar a credencial apenas para o primeiro cadastro do usuário.
         if (!existingUser) {
             await tx.insert(accounts).values({
                 userId,
@@ -92,10 +97,16 @@ async function main() {
             });
         }
 
+        // Etapa 6: garantir o perfil profissional vinculado ao usuário admin.
         const professionalId = await ensureInitialAdminProfessional(tx, userId);
+
+        // Etapa 7: garantir a unidade interna da Alfamed.
         const unitId = await ensureInternalUnit(tx);
+
+        // Etapa 8: vincular o profissional admin à unidade interna.
         const professionalUnitId = await ensureProfessionalUnit(tx, professionalId, unitId);
 
+        // Etapa 9: aplicar a role interna ao vínculo profissional-unidade.
         await ensureProfessionalUnitRole(tx, professionalUnitId, internalRole.id);
 
         return {
@@ -111,6 +122,7 @@ async function main() {
 type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 async function ensureDefaultRoles(tx: TransactionClient) {
+    // Cria apenas as roles que ainda não existem para manter o seed idempotente.
     for (const defaultRole of DEFAULT_ROLES) {
         const [existingRole] = await tx
             .select({ id: roles.id })
@@ -132,6 +144,7 @@ async function ensureDefaultRoles(tx: TransactionClient) {
 }
 
 async function createInitialAdminUser(tx: TransactionClient) {
+    // Insere o usuário principal do ambiente interno.
     const [createdUser] = await tx
         .insert(users)
         .values({
@@ -151,6 +164,7 @@ async function createInitialAdminUser(tx: TransactionClient) {
 }
 
 async function ensureInitialAdminProfessional(tx: TransactionClient, userId: string) {
+    // Cria o cadastro profissional do admin se ele ainda não existir.
     const [existingProfessional] = await tx
         .select({ id: professionals.id })
         .from(professionals)
@@ -175,6 +189,7 @@ async function ensureInitialAdminProfessional(tx: TransactionClient, userId: str
 }
 
 async function ensureInternalUnit(tx: TransactionClient) {
+    // Reutiliza a unidade interna quando já existir no banco.
     const [existingInternalUnit] = await tx
         .select({ id: units.id })
         .from(units)
@@ -206,6 +221,7 @@ async function ensureInternalUnit(tx: TransactionClient) {
 }
 
 async function ensureProfessionalUnit(tx: TransactionClient, professionalId: string, unitId: string) {
+    // Garante que o vínculo entre profissional e unidade exista apenas uma vez.
     const [existingProfessionalUnit] = await tx
         .select({ id: professionalUnits.id })
         .from(professionalUnits)
@@ -226,6 +242,7 @@ async function ensureProfessionalUnit(tx: TransactionClient, professionalId: str
         .values({
             professionalId,
             unitId,
+            isActive: true,
         })
         .returning({
             id: professionalUnits.id,
@@ -239,6 +256,7 @@ async function ensureProfessionalUnitRole(
     professionalUnitId: string,
     roleId: string,
 ) {
+    // Aplica a role interna ao vínculo sem duplicar registros.
     const [existingProfessionalUnitRole] = await tx
         .select({ id: professionalUnitRoles.id })
         .from(professionalUnitRoles)

@@ -169,6 +169,13 @@
       "when": 1778942542563,
       "tag": "0023_add_o_to_sex_enum",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1779231421138,
+      "tag": "0024_naive_ink",
+      "breakpoints": true
     }
   ]
 }
