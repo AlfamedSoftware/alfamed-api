@@ -6,13 +6,11 @@ This repository contains the backend API for **Alfamed**, a SaaS platform for **
 
 Alfamed allows clinics and hospitals to manage:
 
-* patients
-* healthcare professionals
-* appointments
-* specialties
-* units (clinics/hospital branches)
+- patients
+- healthcare professionals
+- units (clinics/hospital branches)
 
-The core functionality of the platform is **managing patient appointments with healthcare professionals inside specific clinic units**.
+The core functionality of the platform is **managing clinical entities and relationships between patients and healthcare professionals inside specific clinic units**.
 
 The backend is built with:
 
@@ -82,11 +80,10 @@ This means:
 
 Examples of domain entities that must respect this rule:
 
-* professionals
-* patients
-* appointments
-* schedules
-* medical records
+- professionals
+- patients
+- schedules
+- medical records
 
 If an entity belongs to a unit, all database queries must enforce that constraint.
 
@@ -94,21 +91,30 @@ If an entity belongs to a unit, all database queries must enforce that constrain
 
 # UNIT CONTEXT RULE
 
-The current unit context is provided by:
+The current unit context is provided by **HTTP cookies** set after clinic selection (NOT by header `x-unit-id`, which is no longer used):
 
 ```
-x-unit-id
+selectedClinicId          → units.id of the active clinic
+selectedProfessionalUnitId → professional_units.id for roles/menu
 ```
 
-This header identifies the **clinic unit making the request**.
+Cookies are set by `POST /session/select-clinic` or `POST /session/switch-clinic`.
 
-All operations must respect this unit scope.
+Read them in routes via helpers in `src/http/plugins/clinic-context.ts`:
+
+- `getClinicIdFromRequest(request)`
+- `getProfessionalUnitIdFromRequest(request)`
+
+All unit-scoped operations must:
+
+1. Read `selectedClinicId` from cookies (return 400 if missing when required)
+2. Validate user belongs to that unit via `createHasUserAccessToUnitChecker` / `assertUserHasUnitAccess`
 
 Examples:
 
 ✔ Correct behavior:
 
-User from Unit A lists professionals → only professionals from Unit A are returned.
+User from Unit A lists professionals → only professionals from Unit A are returned (cookie + DB check).
 
 ❌ Incorrect behavior:
 
@@ -118,7 +124,7 @@ User from Unit A lists professionals → professionals from Unit B are returned.
 
 # DATABASE ACCESS RULE FOR UNIT-SCOPED ENTITIES
 
-When accessing entities related to units (professionals, appointments, etc.), the repository must always:
+When accessing entities related to units (professionals, patients, etc.), the repository must always:
 
 * filter by unit
 * validate unit ownership
@@ -134,11 +140,7 @@ professional_units
 
 Queries must ensure that the professional belongs to the requesting unit.
 
-This pattern must be reused for other modules like:
-
-* appointments
-* schedules
-* patient assignments
+This pattern must be reused for other modules like schedules and patient assignments.
 
 ---
 
@@ -416,12 +418,12 @@ When creating a new module:
 
 Example module:
 
-modules/appointments
+modules/<entity>
 
-appointments.repository.ts
-appointments.service.ts
-appointments.routes.ts
-appointments.schemas.ts
+<entity>.repository.ts
+<entity>.service.ts
+<entity>.routes.ts
+<entity>.schemas.ts
 
 ---
 
@@ -486,15 +488,16 @@ When a cross-module rule appears more than once, extract it into a shared utilit
 
 Examples of reusable rules:
 
-- unit header parsing/validation
-- unit ownership checks
+- clinic cookie parsing (`clinic-context.ts`)
+- unit ownership checks (`unit-access.ts`)
 - domain error mapping conventions
 
 Prefer reusing existing shared helpers before creating new ones.
 Do not duplicate the same validation flow across routes/services.
 
-Current shared reference:
+Current shared references:
 
+- src/http/plugins/clinic-context.ts
 - src/http/plugins/unit-access.ts
 
 ---
@@ -514,12 +517,33 @@ If creating a new helper, explain in the PR/commit why existing helpers were ins
 
 # UNIT SCOPE REUSE RULE
 
-For any unit-scoped domain (professionals, appointments, schedules, patients, etc.):
+For any unit-scoped domain (professionals, schedules, patients, etc.):
 
-- Always validate x-unit-id using shared helper functions.
-- Always validate user-to-unit ownership using shared helper functions.
-- Never trust x-unit-id from request without ownership verification.
+- Always read unit context from cookies via `getClinicIdFromRequest` (never `x-unit-id`).
+- Return 400 with message "Selecione uma clínica para continuar" when cookie is missing and required.
+- Always validate user-to-unit ownership using `assertUserHasUnitAccess` / `createHasUserAccessToUnitChecker`.
+- Never trust cookie value without ownership verification against `professional_units`.
 - Return 403 Forbidden when user does not belong to the selected unit.
+
+# SERVICE DESK / ADMIN LOGIN RULE
+
+Internal admin login (Service Desk) uses the same `POST /auth/sign-in/email` but:
+
+- Frontend sends `callbackURL` containing `/admin/` (e.g. `/admin/unidades`).
+- `src/auth.ts` `before` hook requires role `internal_alfamed` on sign-in when callbackURL or path includes `/admin/`.
+- Admin routes under `/admin/units/:id+` must use `resolveAdminAccess` pattern from `admin-units.routes.ts`.
+- Service Desk routes do NOT require `selectedClinicId` cookie.
+- `GET /admin/units` and `POST /admin/units` currently only require session (`auth: true`); routes with `:id` use `resolveAdminAccess`.
+
+---
+
+# FRONTEND INTEGRATION RULE (API perspective)
+
+The web app (`alfamed-web`) must NOT send header `x-unit-id`. It must:
+
+- use `credentials: "include"` on all authenticated `fetch` calls;
+- call `POST /session/select-clinic` after login to set `selectedClinicId` and `selectedProfessionalUnitId` cookies;
+- rely on cookies for unit-scoped API routes (no manual unit header).
 
 ---
 
@@ -543,3 +567,40 @@ Preferred mappings:
 - Forbidden -> 403
 - NotFound -> 404
 - Conflict -> 409
+
+---
+
+# RECENT PROJECT UPDATES (MAY/2026)
+
+The following project updates are now part of the current baseline and must be respected by AI agents:
+
+1. Initial admin bootstrap seed was added at:
+
+`src/scripts/seed-initial-admin.ts`
+
+Current seed behavior:
+- creates first admin user in `users`
+- creates credential account in `accounts` with bcrypt hash
+- creates linked professional in `professionals`
+- validates `INITIAL_ADMIN_*` inputs via Zod
+- enforces admin email domain `@alfamed.com`
+
+2. New script was added in `package.json`:
+
+`db:seed` -> `bun --env-file .env --bun src/scripts/seed-initial-admin.ts`
+
+3. README was updated with bootstrap instructions for first admin creation using:
+
+`bun run db:seed`
+
+4. Environment file conventions were updated:
+- `.env.example` now keeps only generic placeholders for the 3 core keys:
+	- `BETTER_AUTH_SECRET`
+	- `BETTER_AUTH_BASE_URL`
+	- `DATABASE_URL`
+- Initial admin variables (`INITIAL_ADMIN_*`) are expected in local/private env files (`.env` / `.env.local`) when running seed.
+
+5. Repository ignore rules were updated:
+- `.env.local` is now ignored in `.gitignore`.
+
+Agents must preserve this bootstrap flow and avoid reintroducing sensitive real credentials into `.env.example`.

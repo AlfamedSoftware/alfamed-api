@@ -7,14 +7,14 @@ import {
 } from "./helpers/repositories";
 
 describe("Patients routes", () => {
-    it("POST /patients/link-user cria paciente para userId informado", async () => {
+    it("POST /patients cria paciente para userId informado", async () => {
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
             patientsRepository: new InMemoryPatientsRepository(),
         });
 
         const response = await app.handle(
-            new Request("http://localhost/patients/link-user", {
+            new Request("http://localhost/patients", {
                 method: "POST",
                 headers: {
                     "x-user-id": TEST_IDS.user,
@@ -30,7 +30,7 @@ describe("Patients routes", () => {
         expect(body.userId).toBe(TEST_IDS.otherUser);
     });
 
-    it("POST /patients/link-user retorna 409 quando paciente já existe", async () => {
+    it("POST /patients retorna 409 quando paciente já existe", async () => {
         const patientId = "019c1a3e-e425-7000-8bda-cdfec32c7f21";
         const app = await buildE2EApp({
             usersRepository: new InMemoryUsersRepository(),
@@ -46,7 +46,7 @@ describe("Patients routes", () => {
         });
 
         const response = await app.handle(
-            new Request("http://localhost/patients/link-user", {
+            new Request("http://localhost/patients", {
                 method: "POST",
                 headers: {
                     "x-user-id": TEST_IDS.user,
@@ -57,21 +57,6 @@ describe("Patients routes", () => {
         );
 
         expect(response.status).toBe(409);
-    });
-
-    it("GET /patients/me retorna 404 quando usuário não tem paciente", async () => {
-        const app = await buildE2EApp({
-            usersRepository: new InMemoryUsersRepository(),
-            patientsRepository: new InMemoryPatientsRepository(),
-        });
-
-        const response = await app.handle(
-            new Request("http://localhost/patients/me", {
-                headers: { "x-user-id": TEST_IDS.user },
-            }),
-        );
-
-        expect(response.status).toBe(404);
     });
 
     it("GET /patients/:id retorna 403 quando paciente não pertence ao usuário", async () => {

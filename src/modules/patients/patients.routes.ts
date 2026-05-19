@@ -18,7 +18,7 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
 
     return new Elysia({ name: "patients-routes", prefix: "/patients" })
         .post(
-            "/link-user",
+            "/",
             async (context) => {
                 const { body, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
@@ -45,8 +45,8 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 auth: true,
                 body: createPatientForUserSchema,
                 detail: {
-                    summary: "Create patient for user",
-                    description: "Creates a patient linked to the userId provided in the request body.",
+                    summary: "Create patient",
+                    description: "Creates a patient.",
                     tags: ["Patients"],
                 },
                 response: {
@@ -86,8 +86,8 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     patientId: t.String({ format: "uuid" }),
                 }),
                 detail: {
-                    summary: "Get own patient by id",
-                    description: "Returns patient details by id when owned by the authenticated user.",
+                    summary: "Get patient by id",
+                    description: "Returns all rows for the specified patient.",
                     tags: ["Patients"],
                 },
                 response: {
@@ -98,38 +98,5 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     500: patientsErrorSchema,
                 },
             },
-        )
-        .get(
-            "/me",
-            async (context) => {
-                const { status } = context;
-                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
-
-                const patient = await patientsService.getPatientByUserId(userId);
-
-                if (!patient) {
-                    return status(404, { message: "Patient not found" });
-                }
-
-                return status(200, patient);
-            },
-            {
-                auth: true,
-                detail: {
-                    summary: "Get current user patient profile",
-                    description: "Returns the patient profile for the authenticated user.",
-                    tags: ["Patients"],
-                },
-                response: {
-                    200: patientProfileSchema,
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    404: t.Object({ message: t.Literal("Patient not found") }),
-                    500: patientsErrorSchema,
-                },
-            },
         );
-};
+    };

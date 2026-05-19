@@ -46,15 +46,4 @@ export class UnitsService {
         return unit;
     }
 
-    async deleteUnit(userId: string, unitId: string) {
-        const existing = await this.unitsRepository.findById(unitId);
-
-        if (!existing) {
-            throw new DomainError("UNIT_NOT_FOUND", "Unit not found");
-        }
-
-        await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
-
-        await this.unitsRepository.delete(unitId);
-    }
 }

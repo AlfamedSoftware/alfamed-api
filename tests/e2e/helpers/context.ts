@@ -3,10 +3,10 @@ import { buildApp } from "../../../src/app";
 import type { db as dbType } from "../../../src/db/client";
 import type { UsersRepository } from "../../../src/modules/users/users.repository";
 import type { ProfessionalsRepository } from "../../../src/modules/professionals/professionals.repository";
+import type { ProfessionalUnitsRepository } from "../../../src/modules/professional-units/professional-units.repository";
 import type { PatientsRepository } from "../../../src/modules/patients/patients.repository";
-import type { SpecialtiesRepository } from "../../../src/modules/specialties/specialties.repository";
 import type { UnitsRepository } from "../../../src/modules/units/units.repository";
-import type { AppointmentsRepository } from "../../../src/modules/appointments/appointments.repository";
+// Specialties and Appointments modules removed; not required for e2e context
 import { InMemoryPatientsRepository } from "./repositories";
 
 export const TEST_IDS = {
@@ -24,6 +24,9 @@ export const TEST_IDS = {
     schedule2: "019c1a3e-e425-7000-8bda-cdfec32c8ff2",
     request: "019c1a3e-e425-7000-8bda-cdfec32c8fa2",
 } as const;
+
+export const createSelectedUnitCookie = (unitId: string) =>
+    `${"selectedUnitId"}=${encodeURIComponent(unitId)}`;
 
 export const unusedDb = new Proxy(
     {},
@@ -65,10 +68,9 @@ export const createHasUserAccessToUnitChecker =
 type BuildE2EAppOptions = {
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
+    professionalUnitsRepository?: ProfessionalUnitsRepository;
     patientsRepository?: PatientsRepository;
-    specialtiesRepository?: SpecialtiesRepository;
     unitsRepository?: UnitsRepository;
-    appointmentsRepository?: AppointmentsRepository;
     accessMap?: AllowedUnitsByUser;
     authPlugin?: any;
 };
@@ -76,10 +78,9 @@ type BuildE2EAppOptions = {
 export const buildE2EApp = async ({
     usersRepository,
     professionalsRepository,
+    professionalUnitsRepository,
     patientsRepository = new InMemoryPatientsRepository(),
-    specialtiesRepository,
     unitsRepository,
-    appointmentsRepository,
     accessMap = {},
     authPlugin = fakeAuthPlugin,
 }: BuildE2EAppOptions) =>
@@ -89,9 +90,8 @@ export const buildE2EApp = async ({
         withDocs: false,
         usersRepository,
         professionalsRepository,
+        professionalUnitsRepository,
         patientsRepository,
-        specialtiesRepository,
         unitsRepository,
-        appointmentsRepository,
         hasUserAccessToUnitChecker: createHasUserAccessToUnitChecker(accessMap),
-    });
+        });

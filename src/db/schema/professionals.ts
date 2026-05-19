@@ -9,6 +9,7 @@ export const professionals = pgTable("professionals", {
         .notNull()
         .unique()
         .references(() => users.id, { onDelete: "cascade" }),
+    crm: text("crm"),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

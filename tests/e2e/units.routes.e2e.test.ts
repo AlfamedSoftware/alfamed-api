@@ -12,6 +12,13 @@ describe("Units routes", () => {
         [TEST_IDS.unit]: {
             id: TEST_IDS.unit,
             name: "Unidade A",
+            cnpj: null,
+            address: null,
+            city: null,
+            state: null,
+            phone: null,
+            email: null,
+            ownerUserId: null,
             isActive: true,
             createdAt: "2026-02-01T17:27:35.202Z",
             updatedAt: "2026-02-01T17:27:35.202Z",
@@ -153,6 +160,13 @@ describe("Units routes", () => {
             [TEST_IDS.unit]: {
                 id: TEST_IDS.unit,
                 name: "Unidade A",
+                cnpj: null,
+                address: null,
+                city: null,
+                state: null,
+                phone: null,
+                email: null,
+                ownerUserId: null,
                 isActive: false,
                 createdAt: "2026-02-01T17:27:35.202Z",
                 updatedAt: "2026-02-01T17:27:35.202Z",
@@ -266,7 +280,6 @@ describe("Units routes", () => {
             new Request(`http://localhost/units/${TEST_IDS.unit}`, {
                 headers: {
                     "x-user-id": TEST_IDS.user,
-                    "x-unit-id": TEST_IDS.unit,
                 },
             }),
         );
@@ -392,62 +405,4 @@ describe("Units routes", () => {
         expect(body).toMatchObject({ message: "Unit not found" });
     });
 
-    it("DELETE /units remove unidade", async () => {
-        const app = await buildE2EApp({
-            usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: new InMemoryUnitsRepository(unitFixture),
-            accessMap,
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/units/${TEST_IDS.unit}`, {
-                method: "DELETE",
-                headers: {
-                    "x-user-id": TEST_IDS.user,
-                },
-            }),
-        );
-        const body = await response.json();
-
-        expect(response.status).toBe(200);
-        expect(body).toMatchObject({ message: "Unit deleted" });
-    });
-
-    it("DELETE /units/:id retorna 403 sem acesso", async () => {
-        const app = await buildE2EApp({
-            usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: new InMemoryUnitsRepository(unitFixture),
-            accessMap: { [TEST_IDS.otherUser]: [TEST_IDS.unit] },
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/units/${TEST_IDS.unit}`, {
-                method: "DELETE",
-                headers: {
-                    "x-user-id": TEST_IDS.user,
-                },
-            }),
-        );
-
-        expect(response.status).toBe(403);
-    });
-
-    it("DELETE /units/:id retorna 404 para unidade inexistente", async () => {
-        const app = await buildE2EApp({
-            usersRepository: new InMemoryUsersRepository(),
-            unitsRepository: new InMemoryUnitsRepository(),
-            accessMap,
-        });
-
-        const response = await app.handle(
-            new Request(`http://localhost/units/${TEST_IDS.missingUnit}`, {
-                method: "DELETE",
-                headers: {
-                    "x-user-id": TEST_IDS.user,
-                },
-            }),
-        );
-
-        expect(response.status).toBe(404);
-    });
 });

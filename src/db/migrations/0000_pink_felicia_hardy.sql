@@ -30,7 +30,7 @@ CREATE TABLE "users" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"cpf" text NOT NULL UNIQUE,
-	"birthdate" date NOT NULL,
+	"birthdate" timestamp NOT NULL,
 	"phone" text NOT NULL,
 	"email" text NOT NULL,
 	"email_verified" boolean DEFAULT false NOT NULL,

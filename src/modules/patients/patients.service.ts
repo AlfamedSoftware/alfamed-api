@@ -14,10 +14,6 @@ export class PatientsService {
         return this.patientsRepository.createPatient(data);
     }
 
-    async getPatientByUserId(userId: string) {
-        return this.patientsRepository.getPatientByUserId(userId);
-    }
-
     async getPatientById(patientId: string) {
         const patient = await this.patientsRepository.getPatientById(patientId);
 

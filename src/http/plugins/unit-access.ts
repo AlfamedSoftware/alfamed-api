@@ -5,36 +5,6 @@ import { professionals } from "../../db/schema/professionals.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { DomainError } from "./domain-error.js";
 
-export const unitHeaderName = "x-unit-id";
-export const invalidOrMissingUnitHeaderMessage = "Invalid or missing unit header";
-export const trustedOrigins = [
-    "https://dev-alfamed.vercel.app",
-    "https://web-alfamed.vercel.app",
-    "http://localhost:5173",
-    "http://localhost:53441",
-];
-
-export function getValidatedUnitIdFromRequest(request: Request) {
-    const unitId = request.headers.get(unitHeaderName);
-    const parsedUnitId = z.string().uuid().safeParse(unitId);
-
-    if (!parsedUnitId.success) {
-        return null;
-    }
-
-    return parsedUnitId.data;
-}
-
-export function getRequiredUnitIdFromRequest(request: Request) {
-    const unitId = getValidatedUnitIdFromRequest(request);
-
-    if (!unitId) {
-        throw new Error(invalidOrMissingUnitHeaderMessage);
-    }
-
-    return unitId;
-}
-
 export function getAuthenticatedUserId(context: { user?: { id?: string } }) {
     return context.user?.id ?? null;
 }
@@ -72,6 +42,7 @@ export function createHasUserAccessToUnitChecker(db: DatabaseClient) {
                 and(
                     eq(professionalUnits.professionalId, professional.professionalId),
                     eq(professionalUnits.unitId, unitId),
+                    eq(professionalUnits.isActive, true),
                 ),
             )
             .limit(1);
