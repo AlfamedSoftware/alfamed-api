@@ -9,16 +9,14 @@ O projeto implementa autenticação, gestão de usuários e perfis clínicos, es
 ## Escopo atual
 
 - Autenticação com Better Auth
- - Gestão de sessão e seleção de unidade ativa
+- Gestão de sessão e seleção da unidade ativa
 - Usuários
 - Profissionais
 - Pacientes
 - Unidades
- - Usuários
- - Profissionais
- - Pacientes
- - Unidades
- - Administração interna
+- Vínculos profissional-unidade
+- Roles
+- Administração interna
 
 ## Stack
 
@@ -49,16 +47,16 @@ O sistema é multi-tenant por unidade clínica/hospitalar.
 - O vínculo usuário ↔ unidade é validado no banco via `professional_units` (`createHasUserAccessToUnitChecker`).
 - Requisições fora do escopo retornam `403 Forbidden` ou `400` quando a clínica não foi selecionada.
 
-### Cookies de contexto (após `POST /session/select-clinic`)
+### Cookies de contexto (após `POST /session/select-unit`)
 
 | Cookie | Descrição |
 |--------|-----------|
-| `selectedClinicId` | UUID da unidade ativa (`units.id`) |
+| `selectedUnitId` | UUID da unidade ativa (`units.id`) |
 | `selectedProfessionalUnitId` | UUID do vínculo em `professional_units` |
 
-Helpers: `src/http/plugins/clinic-context.ts` (`getClinicIdFromRequest`, `getProfessionalUnitIdFromRequest`).
+Helpers: `src/http/plugins/unit-context.ts` (`getUnitIdFromRequest`, `getProfessionalUnitIdFromRequest`).
 
-Rotas de domínio clínico (ex.: `GET /professionals`, `POST /specialties`) leem `selectedClinicId`. Se ausente:
+Rotas de domínio clínico (ex.: `GET /professionals`, `POST /professional-units/full-create`) leem `selectedUnitId`. Se ausente:
 
 ```json
 { "message": "Selecione uma clínica para continuar" }
@@ -169,31 +167,37 @@ Criar primeiro usuário administrativo:
 bun run db:seed
 ```
 
-O seed cria:
+O seed cria ou garante:
 
-- registro em users
-- conta de login em accounts com senha hashada
-- professional vinculado ao user
+- as roles base (`administrative`, `administrative_assistant`, `medic`, `internal_alfamed`)
+- a unidade interna `Alfamed Interno`
+- registro em `users`
+- conta de login em `accounts` com senha hashada
+- `professional` vinculado ao usuário admin
+- vínculo em `professional_units` com `is_active = true`
+- role `internal_alfamed` aplicada ao vínculo profissional-unidade
 
-Regra do seed: o e-mail do admin inicial deve terminar com @alfamed.com.
+Regra do seed: o e-mail do admin inicial deve terminar com `@alfamed.com`.
 
 ## Autenticação e sessão
 
 - Better Auth montado em `/auth` (sessão por **cookies**, `credentials: include` no frontend).
 - Rota de conveniência: `POST /auth/register` (encaminha para sign-up com `cpf`, `phone`, `birthdate`).
 - Senha: bcrypt com **12 rounds**.
-- Sessão: expira em 24h; cache de cookie 5 min.
+- Sessão: expira em **1 hora** e usa cache de cookie no Better Auth.
+- O helper de renovação em `src/http/plugins/session-helpers.ts` renova cookies autenticados em requisições válidas.
 
 ### Login clínico (fluxo padrão)
 
 1. `POST /auth/sign-in/email` com e-mail e senha.
 2. Hook `before` em `src/auth.ts` valida:
    - `users.isActive` e `professionals.isActive` (se existir profissional).
+  - se o login apontar para `/admin/` via `callbackURL` ou path, também valida a role `internal_alfamed`.
 3. Frontend redireciona para `/session`.
-4. `GET /session/clinics` → usuário escolhe unidade.
-5. `POST /session/select-clinic` com `{ "clinicId": "uuid" }`:
-   - valida acesso via `professional_units`;
-   - define cookies `selectedClinicId` e `selectedProfessionalUnitId`.
+4. `GET /session/units` → lista unidades disponíveis e a unidade/vínculo atuais.
+5. `POST /session/select-unit` com `{ "unitId": "uuid" }`:
+  - valida acesso via `professional_units`;
+  - define cookies `selectedUnitId` e `selectedProfessionalUnitId`.
 6. Demais chamadas à API enviam os cookies automaticamente (não é necessário header de unidade).
 
 ### Login Service Desk (admin interno)
@@ -212,69 +216,54 @@ auth.signIn.email({
 
 **API** — no mesmo hook `before` do sign-in:
 
+- Se o e-mail/senha pertencerem a um usuário ativo com profissional ativo, o login é aceito.
+- Se o callback incluir `/admin/`, o usuário também precisa possuir a role `internal_alfamed` no vínculo profissional-unidade.
+- O logout (`POST /auth/sign-out`) expira `selectedUnitId` e `selectedProfessionalUnitId`.
 
-Sessão e renovação de cookies (atualização recente)
-
-- A aplicação renova automaticamente a sessão e os cookies relacionados em cada request autenticada. Isso previne que usuários ativos sejam desconectados por inatividade curta.
-- Cookies renovados:
-  - `better-auth.session_token` (cookie do Better Auth)
-  - `better-auth.session_data` (cookie do Better Auth)
-  - `selectedUnitId` (unidade selecionada)
-  - `selectedProfessionalUnitId` (vínculo profissional selecionado)
-- Configurações e pontos de controle:
-  - Constantes centrais em `src/config/session.ts`:
-    - `SESSION_EXPIRY_SECONDS` — tempo de expiração da sessão (padrão: 1 hora)
-    - `SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS` — usado para cookies de unidade/profissional (igual a `SESSION_EXPIRY_SECONDS` por padrão)
-    - `TRUSTED_ORIGINS` — origens confiáveis usadas por CORS/Better Auth
-  - Renovação implementada via helper `src/http/plugins/session-helpers.ts` e invocação global em `src/app.ts` (`onBeforeHandle`).
-  - Para desativar esse comportamento remova a chamada a `renewSessionCookies` em `src/app.ts`.
-
-- Observação: o logout (POST `/auth/sign-out`) já expira explicitamente os cookies de seleção de unidade/vínculo no plugin `src/http/plugins/better-auth.ts`.
-
-Service Desk **não** passa por seleção de clínica; rotas `/admin/*` não dependem de `selectedClinicId`.
+Service Desk **não** passa por seleção de unidade; rotas `/admin/*` não dependem de `selectedUnitId`.
 
 ### Proteção de rotas admin (`/admin/units`)
 
 | Rotas | Validação |
 |-------|-----------|
-| `GET /admin/units`, `POST /admin/units` | Apenas `auth: true` (sessão) |
-| `GET/PATCH/DELETE /admin/units/:id`, profissionais da unidade | `auth: true` + `resolveAdminAccess` (role `internal_alfamed`) |
+| `GET /admin/units`, `POST /admin/units` | `auth: true` (sessão) |
+| `GET /admin/units/:id`, `PATCH /admin/units/:id`, `GET /admin/units/:id/professionals`, `POST /admin/units/:id/professionals` | `auth: true` + `resolveAdminAccess` (role `internal_alfamed`) |
 
 `resolveAdminAccess`: consulta `professionals` → `professional_unit_roles` → `roles.key === "internal_alfamed"`.
 
 Rotas `/admin/upm/*`: `auth: true` (gestão de usuários internos UPM).
 
-### Endpoints de sessão de clínica
+### Endpoints de sessão
 
-- `GET /session/clinics` — lista unidades do profissional + cookies atuais
-- `POST /session/select-clinic` — seleciona unidade e grava cookies
-- `POST /session/switch-clinic` — troca de unidade (mesma validação)
+- `GET /session/units` — lista unidades do profissional + cookies atuais
+- `POST /session/select-unit` — seleciona unidade e grava cookies
 
 ### Padrões de validação nas rotas
 
 | Camada | Mecanismo | Quando |
 |--------|-----------|--------|
 | Sessão | macro `auth: true` (`better-auth.ts`) | Maioria das rotas de domínio |
-| Clínica ativa | `getClinicIdFromRequest(request)` | Professionals, specialties, schedules (create), etc. |
-| Acesso à unidade | `assertUserHasUnitAccess` / `hasUserAccessToUnitChecker` | Services (regra no banco) |
+| Unidade ativa | `getUnitIdFromRequest(request)` | Professionals, professional-units, units, etc. |
+| Acesso à unidade | `assertUserHasUnitAccess` / `createHasUserAccessToUnitChecker` | Services (regra no banco) |
 | Admin interno | `resolveAdminAccess` | Operações sensíveis em `/admin/units/:id+` |
 | Recurso próprio | comparação `userId` na rota | Ex.: `GET /users/:id` só para o próprio id |
 
 Referências de plugins:
 
 - `src/http/plugins/better-auth.ts` — macro `auth`
-- `src/http/plugins/clinic-context.ts` — cookies e listagem de clínicas
-- `src/http/plugins/unit-access.ts` — `trustedOrigins`, checker de unidade
+- `src/http/plugins/unit-context.ts` — cookies e seleção de unidade
+- `src/http/plugins/unit-access.ts` — checker de unidade
+- `src/config/session.ts` — `TRUSTED_ORIGINS` e expiração de sessão
 - `src/http/plugins/clinic-context-middleware.ts` — middleware opcional (derive/guard)
 
 ## Headers e cookies importantes
 
 **Requisições autenticadas (browser / cliente com cookies):**
 
-- `Cookie` — sessão Better Auth + `selectedClinicId` + `selectedProfessionalUnitId` (após seleção de clínica)
+- `Cookie` — sessão Better Auth + `selectedUnitId` + `selectedProfessionalUnitId` (após seleção de unidade)
 - `Content-Type: application/json` — quando houver body
 
-**CORS:** `credentials: true`; origens em `trustedOrigins` (`unit-access.ts`).
+**CORS:** `credentials: true`; origens em `TRUSTED_ORIGINS` (`src/config/session.ts`).
 
 Não utilize `x-unit-id` — não é lido pelo código atual.
 
@@ -292,7 +281,10 @@ Tags atuais:
 - Users
 - Units
 - Professionals
+- Professional Units
 - Patients
+- Roles
+- Session Management
 - Better Auth
 - Admin
 
@@ -303,14 +295,32 @@ System:
 - GET /
 - GET /health
 
+Auth:
+
+- POST /auth/register
+- POST /auth/sign-in/email
+- POST /auth/sign-out
+- POST /auth/forgot-password
+- GET /auth/validate-reset-token/:token
+- POST /auth/reset-password
+
+Session Management:
+
+- GET /session/units
+- POST /session/select-unit
+
 Users:
 
 - GET /users/:id
 
 Patients:
 
-- POST /patients/link-user
+- POST /patients
 - GET /patients/:patientId
+
+Roles:
+
+- GET /roles
 
 Professionals:
 
@@ -320,6 +330,16 @@ Professionals:
 - GET /professionals
 - GET /professionals/:id
 - PATCH /professionals/:id
+
+Professional Units:
+
+- POST /professional-units
+- POST /professional-units/full-create
+- GET /professional-units/list-professional-unit-full-data-by-unit/:unitId
+- GET /professional-units/professional-unit-full-data/:professionalUnitId
+- GET /professional-units/:professionalUnitId
+- PATCH /professional-units/profile-update
+- PATCH /professional-units/full-update
 
 Units:
 
