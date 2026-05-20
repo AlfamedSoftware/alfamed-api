@@ -20,6 +20,8 @@ import { adminUpmRoutes } from "./modules/admin/admin-upm.routes.js";
 import { createSessionRoutes } from "./modules/session/session.routes.js";
 import { authPasswordResetRoutes } from "./modules/auth/auth-password-reset.routes.js";
 import { renewSessionCookies } from "./http/plugins/session-helpers.js";
+import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
+import { schedulesRoutes } from "./modules/schedules/schedules.routes.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -77,6 +79,10 @@ export async function buildApp({
                             description: "Operations about patients",
                         },
                         {
+                            name: "Appointments",
+                            description: "Appointment scheduling, availability and agenda operations",
+                        },
+                        {
                             name: "Better Auth",
                             description: "Authentication and session operations",
                         },
@@ -114,7 +120,8 @@ export async function buildApp({
         .use(createSessionRoutes(db))
         .use(systemRoutes())
         .use(usersRoutes({ usersRepository }))
-        .use(patientsRoutes({ patientsRepository }));
+        .use(patientsRoutes({ patientsRepository }))
+        .use(appointmentsRoutes({ db }));
 
     const resolvedHasUserAccessToUnitChecker =
         hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
@@ -151,5 +158,9 @@ export async function buildApp({
         }),
     );
 
-    return configuredAppWithProfessionals;
+    const configuredAppWithSchedules = configuredAppWithProfessionals.use(
+        schedulesRoutes({ db }),
+    );
+
+    return configuredAppWithSchedules;
 }

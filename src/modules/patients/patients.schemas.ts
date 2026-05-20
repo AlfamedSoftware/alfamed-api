@@ -6,11 +6,20 @@ export const createPatientForUserSchema = z.object({
 }).strict();
 
 export const patientProfileSchema = z.object({
-    id: z.string().uuid(),
-    userId: z.string().uuid(),
+    id: z.string(),
+    userId: z.string(),
     isActive: z.boolean(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
+});
+
+export const patientListItemSchema = z.object({
+    id: z.string(),
+    userId: z.string(),
+    name: z.string().min(1),
+    email: z.string().email(),
+    phone: z.string().min(1),
+    isActive: z.boolean(),
 });
 
 export const patientsErrorSchema = z.object({

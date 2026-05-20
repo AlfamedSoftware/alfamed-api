@@ -5,6 +5,7 @@ import type { PatientsRepository } from "./patients.repository.js";
 import { PatientsService } from "./patients.service.js";
 import {
     createPatientForUserSchema,
+    patientListItemSchema,
     patientProfileSchema,
     patientsErrorSchema,
 } from "./patients.schemas.js";
@@ -53,6 +54,38 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     201: patientProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     409: t.Object({ message: t.Literal("Patient already exists for this user") }),
+                    500: patientsErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/",
+            async (context) => {
+                const { status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                try {
+                    const patients = await patientsRepository.listPatients();
+                    return status(200, patients);
+                } catch (error) {
+                    console.error("[patients.routes] Error listing patients:", error);
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                detail: {
+                    summary: "List patients",
+                    description: "Returns patients for appointment selection.",
+                    tags: ["Patients"],
+                },
+                response: {
+                    200: patientListItemSchema.array(),
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
                     500: patientsErrorSchema,
                 },
             },
