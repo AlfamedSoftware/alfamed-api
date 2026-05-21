@@ -581,6 +581,18 @@ export class InMemoryUnitsRepository implements UnitsRepository {
             .filter((unit) => unit.isActive);
     }
 
+    async listAccessibleUnitsByProfessional(
+        userId: string,
+    ): Promise<{ id: string; name: string; roles: { id: string; description: string; key: string }[] }[]> {
+        const units = await this.listByUserId(userId);
+
+        return units.map((unit) => ({
+            id: unit.id,
+            name: unit.name,
+            roles: [],
+        }));
+    }
+
     async update(unitId: string, data: UpdateUnitInput): Promise<UnitProfile | null> {
         const current = this.units[unitId];
 
