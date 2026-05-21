@@ -65,6 +65,18 @@ class InMemoryUnitsRepository implements UnitsRepository {
         return userUnits.map((id) => this.units[id]!);
     }
 
+    async listAccessibleUnitsByProfessional(userId: string): Promise<
+        { id: string; name: string; roles: { id: string; description: string; key: string }[] }[]
+    > {
+        const units = await this.listByUserId(userId);
+
+        return units.map((unit) => ({
+            id: unit.id,
+            name: unit.name,
+            roles: [],
+        }));
+    }
+
     async update(unitId: string, data: UpdateUnitInput): Promise<UnitProfile | null> {
         const unit = this.units[unitId];
         if (!unit) return null;

@@ -5,6 +5,7 @@ import {
     getUnitIdFromRequest,
     getProfessionalUnitIdFromRequest,
 } from "./unit-context.js";
+import { getCookieValueFromRequest } from "./cookie-helpers.js";
 import {
     IS_PRODUCTION,
     SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS,
@@ -13,41 +14,6 @@ import {
 
 const betterAuthSessionTokenCookieName = "better-auth.session_token";
 const betterAuthSessionDataCookieName = "better-auth.session_data";
-
-const getCookieValueFromRequest = (request: Request, cookieName: string) => {
-    const rawCookie = request.headers.get("cookie");
-
-    if (!rawCookie) {
-        return null;
-    }
-
-    const cookies = rawCookie
-        .split(";")
-        .map((entry) => entry.trim())
-        .map((entry) => {
-            const separator = entry.indexOf("=");
-            if (separator < 0) {
-                return { key: entry, value: "" };
-            }
-
-            return {
-                key: entry.slice(0, separator),
-                value: entry.slice(separator + 1),
-            };
-        });
-
-    const found = cookies.find((cookie) => cookie.key === cookieName);
-
-    if (!found?.value) {
-        return null;
-    }
-
-    try {
-        return decodeURIComponent(found.value);
-    } catch {
-        return found.value;
-    }
-};
 
 /**
  * Helper to renew session and unit cookies

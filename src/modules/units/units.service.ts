@@ -28,6 +28,10 @@ export class UnitsService {
         return this.unitsRepository.listByUserId(userId);
     }
 
+    async listAccessibleUnitsByProfessional(userId: string) {
+        return this.unitsRepository.listAccessibleUnitsByProfessional(userId);
+    }
+
     async updateUnit(userId: string, unitId: string, data: { name?: string; isActive?: boolean }) {
         const existing = await this.unitsRepository.findById(unitId);
 

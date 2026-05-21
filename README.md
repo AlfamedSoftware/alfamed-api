@@ -4,19 +4,20 @@ Backend do Alfamed, uma API SaaS para gestão clínica e hospitalar.
 
 > **Agentes de IA:** leia também [`AGENTS.md`](./AGENTS.md) — regras de arquitetura, escopo por unidade (cookies) e Service Desk.
 
-O projeto implementa autenticação, gestão de usuários e perfis clínicos, escopo por unidade, agenda e solicitações de atendimento, com arquitetura modular em TypeScript.
+O projeto implementa autenticação, gestão de usuários e perfis clínicos, escopo por unidade, sessão, redefinição de senha e administração interna, com arquitetura modular em TypeScript.
 
 ## Escopo atual
 
 - Autenticação com Better Auth
 - Gestão de sessão e seleção da unidade ativa
+- Redefinição de senha por token
 - Usuários
 - Profissionais
 - Pacientes
 - Unidades
 - Vínculos profissional-unidade
 - Roles
-- Administração interna
+- Administração interna (Admin e UPM)
 
 ## Stack
 
@@ -194,11 +195,12 @@ Regra do seed: o e-mail do admin inicial deve terminar com `@alfamed.com`.
    - `users.isActive` e `professionals.isActive` (se existir profissional).
   - se o login apontar para `/admin/` via `callbackURL` ou path, também valida a role `internal_alfamed`.
 3. Frontend redireciona para `/session`.
-4. `GET /session/units` → lista unidades disponíveis e a unidade/vínculo atuais.
-5. `POST /session/select-unit` com `{ "unitId": "uuid" }`:
+4. `GET /session/list-units-acessable-by-professional` → lista as unidades disponíveis para o profissional autenticado.
+5. `GET /session/get-session-unit` → retorna a unidade e o vínculo atualmente selecionados, quando existirem.
+6. `POST /session/select-unit` com `{ "unitId": "uuid" }`:
   - valida acesso via `professional_units`;
   - define cookies `selectedUnitId` e `selectedProfessionalUnitId`.
-6. Demais chamadas à API enviam os cookies automaticamente (não é necessário header de unidade).
+7. Demais chamadas à API enviam os cookies automaticamente (não é necessário header de unidade).
 
 ### Login Service Desk (admin interno)
 
@@ -235,8 +237,15 @@ Rotas `/admin/upm/*`: `auth: true` (gestão de usuários internos UPM).
 
 ### Endpoints de sessão
 
-- `GET /session/units` — lista unidades do profissional + cookies atuais
+- `GET /session/list-units-acessable-by-professional` — lista unidades acessíveis ao profissional autenticado
+- `GET /session/get-session-unit` — retorna a unidade/vínculo selecionados na sessão
 - `POST /session/select-unit` — seleciona unidade e grava cookies
+
+### Reset de senha
+
+- `POST /auth/forgot-password` — solicita link de redefinição
+- `GET /auth/validate-reset-token/:token` — valida token
+- `POST /auth/reset-password` — redefine a senha com token válido
 
 ### Padrões de validação nas rotas
 
@@ -285,6 +294,7 @@ Tags atuais:
 - Patients
 - Roles
 - Session Management
+- Auth
 - Better Auth
 - Admin
 
@@ -306,7 +316,8 @@ Auth:
 
 Session Management:
 
-- GET /session/units
+- GET /session/list-units-acessable-by-professional
+- GET /session/get-session-unit
 - POST /session/select-unit
 
 Users:
@@ -358,15 +369,12 @@ Admin / Service Desk (login com `callbackURL` `/admin/` + role `internal_alfamed
 - PATCH /admin/units/:id
 - GET /admin/units/:id/professionals
 - POST /admin/units/:id/professionals
+
+Admin / UPM:
+
 - GET /admin/upm/users
 - POST /admin/upm/users
 - PATCH /admin/upm/users/:professionalUnitId
-
-Auth — reset de senha (sem sessão):
-
-- POST /auth/forgot-password
-- GET /auth/validate-reset-token/:token
-- POST /auth/reset-password
 
 ## Testes
 

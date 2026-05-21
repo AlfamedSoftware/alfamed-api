@@ -4,6 +4,8 @@ import type { db as dbType } from "../../db/client.js";
 import { units } from "../../db/schema/units.js";
 import { professionals } from "../../db/schema/professionals.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
+import { professionalUnitRoles } from "../../db/schema/professional-unit-roles.js";
+import { roles } from "../../db/schema/roles.js";
 import { users } from "../../db/schema/users.js";
 import { DomainError } from "../../http/plugins/domain-error.js";
 import {
@@ -18,11 +20,54 @@ export type UpdateUnitInput = z.infer<typeof updateUnitSchema>;
 
 type DatabaseClient = typeof dbType;
 
+type AccessibleUnitRole = {
+    id: string;
+    description: string;
+    key: string;
+};
+
+type AccessibleUnit = {
+    id: string;
+    name: string;
+    roles: AccessibleUnitRole[];
+};
+
+export async function findProfessionalUnitIdForUserAndUnit(
+    db: DatabaseClient,
+    userId: string,
+    unitId: string,
+): Promise<string | null> {
+    const [professional] = await db
+        .select({ id: professionals.id })
+        .from(professionals)
+        .where(eq(professionals.userId, userId))
+        .limit(1);
+
+    if (!professional) {
+        return null;
+    }
+
+    const [access] = await db
+        .select({ id: professionalUnits.id })
+        .from(professionalUnits)
+        .where(
+            and(
+                eq(professionalUnits.professionalId, professional.id),
+                eq(professionalUnits.unitId, unitId),
+                eq(professionalUnits.isActive, true),
+            ),
+        )
+        .limit(1);
+
+    return access?.id ?? null;
+}
+
 export class UnitsRepository {
     readonly create: (data: CreateUnitInput) => Promise<UnitProfile>;
     readonly createForUser: (userId: string, data: CreateUnitInput) => Promise<UnitProfile>;
     readonly findById: (unitId: string) => Promise<UnitProfile | null>;
     readonly listByUserId: (userId: string) => Promise<UnitProfile[]>;
+    readonly listAccessibleUnitsByProfessional: (userId: string) => Promise<AccessibleUnit[]>;
     readonly update: (unitId: string, data: UpdateUnitInput) => Promise<UnitProfile | null>;
     readonly delete: (unitId: string) => Promise<void>;
 
@@ -212,6 +257,65 @@ export class UnitsRepository {
                     updatedAt: result.updatedAt,
                 }),
             );
+        };
+
+        this.listAccessibleUnitsByProfessional = async (userId) => {
+            const rows = await db
+                .select({
+                    unitId: units.id,
+                    unitName: units.name,
+                    roleId: roles.id,
+                    roleDescription: roles.description,
+                    roleKey: roles.key,
+                })
+                .from(professionals)
+                .innerJoin(users, eq(users.id, professionals.userId))
+                .innerJoin(professionalUnits, eq(professionalUnits.professionalId, professionals.id))
+                .innerJoin(units, eq(units.id, professionalUnits.unitId))
+                .innerJoin(
+                    professionalUnitRoles,
+                    eq(professionalUnitRoles.professionalUnitId, professionalUnits.id),
+                )
+                .innerJoin(roles, eq(roles.id, professionalUnitRoles.roleId))
+                .where(
+                    and(
+                        eq(users.id, userId),
+                        eq(users.isActive, true),
+                        eq(professionals.isActive, true),
+                        eq(professionalUnits.isActive, true),
+                        eq(units.isActive, true),
+                        eq(professionalUnitRoles.isActive, true),
+                        eq(roles.isActive, true),
+                    ),
+                );
+
+            const unitsById = new Map<string, AccessibleUnit>();
+
+            for (const row of rows) {
+                const existingUnit = unitsById.get(row.unitId);
+
+                const role: AccessibleUnitRole = {
+                    id: row.roleId,
+                    description: row.roleDescription,
+                    key: row.roleKey,
+                };
+
+                if (existingUnit) {
+                    if (!existingUnit.roles.some((currentRole) => currentRole.id === role.id)) {
+                        existingUnit.roles.push(role);
+                    }
+
+                    continue;
+                }
+
+                unitsById.set(row.unitId, {
+                    id: row.unitId,
+                    name: row.unitName,
+                    roles: [role],
+                });
+            }
+
+            return [...unitsById.values()];
         };
 
         this.update = async (unitId, data) => {

@@ -93,6 +93,14 @@ export async function buildApp({
                             description: "Operations about professional roles",
                         },
                         {
+                            name: "Session Management",
+                            description: "Operations about session unit selection and lookup",
+                        },
+                        {
+                            name: "Auth",
+                            description: "Password reset operations",
+                        },
+                        {
                             name: "Better Auth",
                             description: "Authentication and session operations",
                         },
