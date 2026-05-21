@@ -12,7 +12,6 @@ import type { db as dbType } from "../../db/client.js";
 import { eq, and } from "drizzle-orm";
 import { professionals } from "../../db/schema/professionals.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
-import { units } from "../../db/schema/units.js";
 import type { Session } from "better-auth";
 
 type DatabaseClient = typeof dbType;
@@ -181,41 +180,6 @@ export async function findProfessionalUnitIdForUserAndUnit(
         .limit(1);
 
     return access?.id ?? null;
-}
-
-/**
- * Listar clínicas disponíveis para o usuário
- */
-export async function listAvailableUnits(
-    db: DatabaseClient,
-    userId: string,
-): Promise<Array<{ id: string; name: string }>> {
-    const [professional] = await db
-        .select({ id: professionals.id })
-        .from(professionals)
-        .where(eq(professionals.userId, userId))
-        .limit(1);
-
-    if (!professional) {
-        return [];
-    }
-
-    const unitsList = await db
-        .select({
-            id: units.id,
-            name: units.name,
-        })
-        .from(units)
-        .innerJoin(
-            professionalUnits,
-            and(
-                eq(professionalUnits.unitId, units.id),
-                eq(professionalUnits.professionalId, professional.id),
-                eq(professionalUnits.isActive, true),
-            ),
-        );
-
-    return unitsList;
 }
 
 /**

@@ -1,10 +1,3 @@
-/**
- * Session Management Routes
- * 
- * Gerencia a sessão do usuário, incluindo seleção e troca de clínicas.
- * Todos os endpoints aqui trabalham com a sessão do Better Auth.
- */
-
 import Elysia, { t } from "elysia";
 import type { db as dbType } from "../../db/client.js";
 import { auth } from "../../auth.js";
@@ -15,8 +8,9 @@ import {
     selectedUnitCookieName,
     selectedProfessionalUnitCookieName,
     createUnitAccessChecker,
-    listAvailableUnits,
 } from "../../http/plugins/unit-context.js";
+import { UnitsRepository } from "../units/units.repository.js";
+import { UnitsService } from "../units/units.service.js";
 import { SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS, IS_PRODUCTION } from "../../config/session.js";
 
 type DatabaseClient = typeof dbType;
@@ -34,10 +28,11 @@ interface SessionResponse {
 interface UnitOption {
     id: string;
     name: string;
-}
-
-interface SelectUnitRequest {
-    unitId: string;
+    roles: {
+        id: string;
+        description: string;
+        key: string;
+    };
 }
 
 interface SelectUnitResponse {
@@ -48,12 +43,22 @@ interface SelectUnitResponse {
 
 interface AvailableUnitsResponse {
     units: UnitOption[];
+}
+
+interface SessionUnitResponse {
     selectedUnitId?: string;
+    selectedUnitName?: string;
     selectedProfessionalUnitId?: string;
+    selectedRoles?: {
+        id: string;
+        description: string;
+        key: string;
+    };
 }
 
 export const createSessionRoutes = (db: DatabaseClient) => {
     const accessChecker = createUnitAccessChecker(db);
+    const unitsService = new UnitsService(new UnitsRepository(db), accessChecker);
     const selectedUnitCookieOptions = {
         httpOnly: true,
         secure: IS_PRODUCTION,
@@ -109,12 +114,8 @@ export const createSessionRoutes = (db: DatabaseClient) => {
     };
 
     return new Elysia({ name: "session-routes", prefix: "/session" })
-        /**
-         * GET /session/units
-         * Retorna lista de unidades disponíveis e a unidade selecionada (se houver)
-         */
         .get(
-            "/units",
+            "/list-units-acessable-by-professional",
             async (context) => {
                 const session = await auth.api.getSession({
                     headers: context.request.headers,
@@ -132,21 +133,22 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                 }
 
                 const userId = session.user.id;
-                const units = await listAvailableUnits(db, userId);
-                const currentUnitId = getUnitIdFromRequest(context.request) ?? undefined;
-                const currentProfessionalUnitId = getProfessionalUnitIdFromRequest(context.request) ?? undefined;
+                const units = await unitsService.listAccessibleUnitsByProfessional(userId);
+                const unitsAsObjects = units.map((unit) => ({
+                    id: unit.id,
+                    name: unit.name,
+                    roles: unit.roles[0],
+                }));
 
                 return context.status(200, {
-                    units,
-                    selectedUnitId: currentUnitId,
-                    selectedProfessionalUnitId: currentProfessionalUnitId,
+                    units: unitsAsObjects,
                 } satisfies AvailableUnitsResponse);
             },
             {
                 detail: {
-                    summary: "List available units for authenticated user",
+                    summary: "List units accessible by professional",
                     description:
-                        "Returns all units linked to the authenticated user via professional_units table, along with the currently selected unit (if any).",
+                        "Returns all active units linked to the authenticated professional with at least one active role, along with the currently selected unit (if any).",
                     tags: ["Session Management"],
                 },
                 response: {
@@ -155,21 +157,79 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                             t.Object({
                                 id: t.String({ format: "uuid" }),
                                 name: t.String(),
+                                roles: t.Object({
+                                    id: t.String({ format: "uuid" }),
+                                    description: t.String(),
+                                    key: t.String(),
+                                }),
                             }),
                         ),
-                        selectedUnitId: t.Optional(t.String({ format: "uuid" })),
-                        selectedProfessionalUnitId: t.Optional(t.String({ format: "uuid" })),
                     }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                 },
             },
         )
+        .get(
+            "/get-session-unit",
+            async (context) => {
+                const session = await auth.api.getSession({
+                    headers: context.request.headers,
+                    query: {
+                        disableCookieCache: true,
+                    },
+                });
 
-        /**
-         * POST /session/select-unit
-         * Seleciona uma unidade para a sessão atual.
-         * Valida se o usuário tem acesso a essa unidade antes de armazenar.
-         */
+                if (!session?.user) {
+                    clearSelectedUnitCookies(context);
+
+                    return context.status(401, {
+                        message: "Unauthorized",
+                    });
+                }
+
+                const selectedUnitId = getUnitIdFromRequest(context.request) ?? undefined;
+                const selectedProfessionalUnitId = getProfessionalUnitIdFromRequest(context.request) ?? undefined;
+
+                if (!selectedUnitId || !selectedProfessionalUnitId) {
+                    return context.status(200, {
+                        selectedUnitId,
+                        selectedProfessionalUnitId,
+                    } satisfies SessionUnitResponse);
+                }
+
+                const units = await unitsService.listAccessibleUnitsByProfessional(session.user.id);
+                const selectedUnit = units.find((unit) => unit.id === selectedUnitId);
+
+                return context.status(200, {
+                    selectedUnitId,
+                    selectedProfessionalUnitId,
+                    selectedUnitName: selectedUnit?.name,
+                    selectedRoles: selectedUnit?.roles[0],
+                } satisfies SessionUnitResponse);
+            },
+            {
+                detail: {
+                    summary: "Get current session unit",
+                    description: "Returns the selected unit IDs and the selected unit details from the current session/professional.",
+                    tags: ["Session Management"],
+                },
+                response: {
+                    200: t.Object({
+                        selectedUnitId: t.Optional(t.String({ format: "uuid" })),
+                        selectedUnitName: t.Optional(t.String()),
+                        selectedProfessionalUnitId: t.Optional(t.String({ format: "uuid" })),
+                        selectedRoles: t.Optional(
+                            t.Object({
+                                id: t.String({ format: "uuid" }),
+                                description: t.String(),
+                                key: t.String(),
+                            }),
+                        ),
+                    }),
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                },
+            },
+        )
         .post(
             "/select-unit",
             async (context) => {
@@ -192,7 +252,6 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                 const userId = session.user.id;
                 const { unitId } = body;
 
-                // Valida que o usuário tem acesso a essa unidade
                 const hasAccess = await accessChecker(userId, unitId);
 
                 if (!hasAccess) {
@@ -212,20 +271,9 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                 setSelectedUnitCookie(context, unitId);
                 setSelectedProfessionalUnitCookie(context, professionalUnitId);
 
-                /**
-                 * Atualiza a sessão com o unitId
-                 * 
-                 * TODO: Implementar atualização via Better Auth custom sessionData
-                 * Opção 1: Usar auth.api.updateSession com sessionData
-                 * Opção 2: Re-emitir JWT com unitId
-                 * 
-                 * Por enquanto, retorna sucesso e o frontend deve redirecionar
-                 * para /session para atualizar a sessão no navegador
-                 */
-
                 return status(200, {
                     success: true,
-                    message: "Unit selected successfully. Please refresh your session.",
+                    message: "Unit selected successfully.",
                 } satisfies SelectUnitResponse);
             },
             {
