@@ -4,11 +4,11 @@ import { auth } from "../../auth.js";
 import {
     getUnitIdFromRequest,
     getProfessionalUnitIdFromRequest,
-    findProfessionalUnitIdForUserAndUnit,
     selectedUnitCookieName,
     selectedProfessionalUnitCookieName,
-    createUnitAccessChecker,
 } from "../../http/plugins/unit-context.js";
+import { findProfessionalUnitIdForUserAndUnit } from "../units/units.repository.js";
+import { createHasUserAccessToUnitChecker } from "../../http/plugins/unit-access.js";
 import { UnitsRepository } from "../units/units.repository.js";
 import { UnitsService } from "../units/units.service.js";
 import { SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS, IS_PRODUCTION } from "../../config/session.js";
@@ -57,7 +57,7 @@ interface SessionUnitResponse {
 }
 
 export const createSessionRoutes = (db: DatabaseClient) => {
-    const accessChecker = createUnitAccessChecker(db);
+    const accessChecker = createHasUserAccessToUnitChecker(db);
     const unitsService = new UnitsService(new UnitsRepository(db), accessChecker);
     const selectedUnitCookieOptions = {
         httpOnly: true,

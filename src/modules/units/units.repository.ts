@@ -32,6 +32,36 @@ type AccessibleUnit = {
     roles: AccessibleUnitRole[];
 };
 
+export async function findProfessionalUnitIdForUserAndUnit(
+    db: DatabaseClient,
+    userId: string,
+    unitId: string,
+): Promise<string | null> {
+    const [professional] = await db
+        .select({ id: professionals.id })
+        .from(professionals)
+        .where(eq(professionals.userId, userId))
+        .limit(1);
+
+    if (!professional) {
+        return null;
+    }
+
+    const [access] = await db
+        .select({ id: professionalUnits.id })
+        .from(professionalUnits)
+        .where(
+            and(
+                eq(professionalUnits.professionalId, professional.id),
+                eq(professionalUnits.unitId, unitId),
+                eq(professionalUnits.isActive, true),
+            ),
+        )
+        .limit(1);
+
+    return access?.id ?? null;
+}
+
 export class UnitsRepository {
     readonly create: (data: CreateUnitInput) => Promise<UnitProfile>;
     readonly createForUser: (userId: string, data: CreateUnitInput) => Promise<UnitProfile>;
