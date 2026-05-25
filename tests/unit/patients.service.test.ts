@@ -3,6 +3,7 @@ import { DomainError } from "../../src/http/plugins/domain-error";
 import { PatientsService } from "../../src/modules/patients/patients.service";
 import type {
     CreatePatientInput,
+    PatientFullDataByUser,
     Patient,
     PatientsRepository,
 } from "../../src/modules/patients/patients.repository";
@@ -27,6 +28,30 @@ class InMemoryPatientsRepository implements PatientsRepository {
 
     async getPatientById(patientId: string): Promise<Patient | null> {
         return this.patients[patientId] ?? null;
+    }
+
+    async getPatientFullDataByUserId(userId: string): Promise<PatientFullDataByUser | null> {
+        const patient = Object.values(this.patients).find((entry) => entry.userId === userId);
+
+        if (!patient) {
+            return null;
+        }
+
+        return {
+            id: patient.id,
+            isActive: patient.isActive,
+            users: {
+                id: patient.userId,
+                name: "Test User",
+                socialName: null,
+                email: "test@example.com",
+                phone: "11999999999",
+                cpf: "12345678900",
+                birthdate: "2026-02-01T17:27:35.202Z",
+                sex: null,
+                isActive: true,
+            },
+        };
     }
 }
 
