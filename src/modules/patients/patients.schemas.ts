@@ -5,6 +5,17 @@ export const createPatientForUserSchema = z.object({
     isActive: z.boolean().optional(),
 }).strict();
 
+export const createPatientFullCreateSchema = z.object({
+    name: z.string().min(1),
+    socialName: z.union([z.string(), z.null()]).optional(),
+    email: z.string().email(),
+    cpf: z.string().min(1),
+    birthdate: z.string().datetime(),
+    phone: z.string().min(1),
+    sex: z.enum(["M", "F", "O"]),
+    password: z.string().min(8),
+}).strict();
+
 export const patientProfileSchema = z.object({
     id: z.string().uuid(),
     userId: z.string().uuid(),

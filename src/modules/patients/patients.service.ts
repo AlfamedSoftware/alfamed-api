@@ -1,4 +1,8 @@
-import type { CreatePatientInput, PatientsRepository } from "./patients.repository.js";
+import type {
+    CreatePatientFullCreateInput,
+    CreatePatientInput,
+    PatientsRepository,
+} from "./patients.repository.js";
 import { DomainError } from "../../http/plugins/domain-error.js";
 
 export class PatientsService {
@@ -22,6 +26,10 @@ export class PatientsService {
         }
 
         return patient;
+    }
+
+    async createPatientFullCreate(data: CreatePatientFullCreateInput) {
+        return this.patientsRepository.createPatientFullCreate(data);
     }
 
     async getPatientFullDataByUserId(userId: string) {

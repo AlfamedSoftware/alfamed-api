@@ -16,6 +16,7 @@ import type {
 } from "../../../src/modules/units/units.repository";
 import type {
     CreatePatientInput,
+    CreatePatientFullCreateInput,
     PatientFullDataByUser,
     Patient,
     PatientsRepository,
@@ -42,10 +43,15 @@ export class InMemoryUsersRepository implements UsersRepository {
 
 export class InMemoryPatientsRepository implements PatientsRepository {
     private readonly patients: Record<string, Patient>;
+    private readonly users: Record<string, PatientFullDataByUser["users"]>;
     private sequence = 1;
 
-    constructor(initialPatients: Record<string, Patient> = {}) {
+    constructor(
+        initialPatients: Record<string, Patient> = {},
+        initialUsers: Record<string, PatientFullDataByUser["users"]> = {},
+    ) {
         this.patients = { ...initialPatients };
+        this.users = { ...initialUsers };
     }
 
     async createPatient(data: CreatePatientInput): Promise<Patient> {
@@ -80,6 +86,53 @@ export class InMemoryPatientsRepository implements PatientsRepository {
         return this.patients[patientId] ?? null;
     }
 
+    async createPatientFullCreate(data: CreatePatientFullCreateInput): Promise<PatientFullDataByUser> {
+        this.ensureFullCreateUniqueness(data);
+
+        const now = new Date().toISOString();
+        const userId = `019c1a3e-e425-7000-8bda-cdfec32d8f${String(this.sequence).padStart(2, "0")}`;
+        const patientId = `019c1a3e-e425-7000-8bda-cdfec32d9f${String(this.sequence).padStart(2, "0")}`;
+        this.sequence += 1;
+
+        const user = {
+            id: userId,
+            name: data.name,
+            socialName: data.socialName?.trim() || null,
+            email: data.email.trim().toLowerCase(),
+            phone: data.phone.trim(),
+            cpf: data.cpf.trim(),
+            birthdate: new Date(data.birthdate).toISOString(),
+            sex: data.sex,
+            isActive: true,
+        };
+
+        this.users[userId] = user;
+
+        const patient: Patient = {
+            id: patientId,
+            userId,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        this.patients[patientId] = patient;
+
+        return {
+            id: patient.id,
+            isActive: patient.isActive,
+            users: user,
+        };
+    }
+
+    private findUserByEmail(email: string) {
+        return Object.values(this.users).find((user) => user.email === email) ?? null;
+    }
+
+    private findUserByCpf(cpf: string) {
+        return Object.values(this.users).find((user) => user.cpf === cpf) ?? null;
+    }
+
     async getPatientFullDataByUserId(userId: string): Promise<PatientFullDataByUser | null> {
         const patient = await this.getPatientByUserId(userId);
 
@@ -87,21 +140,31 @@ export class InMemoryPatientsRepository implements PatientsRepository {
             return null;
         }
 
+        const user = this.users[userId];
+
+        if (!user) {
+            return null;
+        }
+
         return {
             id: patient.id,
             isActive: patient.isActive,
-            users: {
-                id: patient.userId,
-                name: "Test User",
-                socialName: null,
-                email: "test@example.com",
-                phone: "11999999999",
-                cpf: "12345678900",
-                birthdate: "2026-02-01T17:27:35.202Z",
-                sex: null,
-                isActive: true,
-            },
+            users: user,
         };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    private ensureFullCreateUniqueness(data: CreatePatientFullCreateInput) {
+        const normalizedEmail = data.email.trim().toLowerCase();
+        const normalizedCpf = data.cpf.trim();
+
+        if (this.findUserByEmail(normalizedEmail)) {
+            throw new DomainError("EMAIL_ALREADY_EXISTS", "Email already exists");
+        }
+
+        if (this.findUserByCpf(normalizedCpf)) {
+            throw new DomainError("CPF_ALREADY_EXISTS", "CPF already exists");
+        }
     }
 }
 
