@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DomainError } from "../../src/http/plugins/domain-error";
 import { PatientsService } from "../../src/modules/patients/patients.service";
 import type {
+    CreatePatientFullCreateInput,
     CreatePatientInput,
     PatientFullDataByUser,
     Patient,
@@ -28,6 +29,10 @@ class InMemoryPatientsRepository implements PatientsRepository {
 
     async getPatientById(patientId: string): Promise<Patient | null> {
         return this.patients[patientId] ?? null;
+    }
+
+    async createPatientFullCreate(_data: CreatePatientFullCreateInput): Promise<PatientFullDataByUser> {
+        throw new Error("Not implemented");
     }
 
     async getPatientFullDataByUserId(userId: string): Promise<PatientFullDataByUser | null> {

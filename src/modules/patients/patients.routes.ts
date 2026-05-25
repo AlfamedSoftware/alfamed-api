@@ -4,6 +4,7 @@ import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
 import type { PatientsRepository } from "./patients.repository.js";
 import { PatientsService } from "./patients.service.js";
 import {
+    createPatientFullCreateSchema,
     createPatientForUserSchema,
     patientFullDataByUserSchema,
     patientProfileSchema,
@@ -18,6 +19,45 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
     const patientsService = new PatientsService(patientsRepository);
 
     return new Elysia({ name: "patients-routes", prefix: "/patients" })
+        .post(
+            "/full-create",
+            async (context) => {
+                const { body, status } = context;
+
+                try {
+                    const patient = await patientsService.createPatientFullCreate(body);
+                    return status(201, patient);
+                } catch (error) {
+                    if (isDomainError(error, "EMAIL_ALREADY_EXISTS")) {
+                        return status(409, { message: "Email already exists" });
+                    }
+
+                    if (isDomainError(error, "CPF_ALREADY_EXISTS")) {
+                        return status(409, { message: "CPF already exists" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                body: createPatientFullCreateSchema,
+                detail: {
+                    summary: "Full create patient",
+                    description: "Creates the user, account and patient in a single transaction.",
+                    tags: ["Patients"],
+                },
+                response: {
+                    201: patientFullDataByUserSchema,
+                    409: t.Object({
+                        message: t.Union([
+                            t.Literal("Email already exists"),
+                            t.Literal("CPF already exists"),
+                        ]),
+                    }),
+                    500: patientsErrorSchema,
+                },
+            },
+        )
         .post(
             "/",
             async (context) => {
