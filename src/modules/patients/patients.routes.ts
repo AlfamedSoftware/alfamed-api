@@ -5,6 +5,7 @@ import type { PatientsRepository } from "./patients.repository.js";
 import { PatientsService } from "./patients.service.js";
 import {
     createPatientForUserSchema,
+    patientFullDataByUserSchema,
     patientProfileSchema,
     patientsErrorSchema,
 } from "./patients.schemas.js";
@@ -92,6 +93,50 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 },
                 response: {
                     200: patientProfileSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
+                    404: t.Object({ message: t.Literal("Patient not found") }),
+                    500: patientsErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/patient-full-data-by-user/:UserId",
+            async (context) => {
+                const { params, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                if (params.UserId !== userId) {
+                    return status(403, { message: "Forbidden" });
+                }
+
+                try {
+                    const patient = await patientsService.getPatientFullDataByUserId(params.UserId);
+                    return status(200, patient);
+                } catch (error) {
+                    if (isDomainError(error, "PATIENT_NOT_FOUND")) {
+                        return status(404, { message: "Patient not found" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                params: t.Object({
+                    UserId: t.String({ format: "uuid" }),
+                }),
+                detail: {
+                    summary: "Get patient full data by user",
+                    description: "Returns the patient and related user data for the specified user.",
+                    tags: ["Patients"],
+                },
+                response: {
+                    200: patientFullDataByUserSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Patient not found") }),

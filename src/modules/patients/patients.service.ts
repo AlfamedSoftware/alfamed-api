@@ -23,4 +23,14 @@ export class PatientsService {
 
         return patient;
     }
+
+    async getPatientFullDataByUserId(userId: string) {
+        const patient = await this.patientsRepository.getPatientFullDataByUserId(userId);
+
+        if (!patient) {
+            throw new DomainError("PATIENT_NOT_FOUND", "Patient not found");
+        }
+
+        return patient;
+    }
 }
