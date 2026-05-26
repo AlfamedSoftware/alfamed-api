@@ -236,4 +236,166 @@ describe("Patients routes", () => {
 
         expect(response.status).toBe(409);
     });
+
+    it("PATCH /patients/full-update atualiza os dados do paciente", async () => {
+        const patientId = "019c1a3e-e425-7000-8bda-cdfec32c7f51";
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            patientsRepository: new InMemoryPatientsRepository({
+                [patientId]: {
+                    id: patientId,
+                    userId: TEST_IDS.user,
+                    isActive: true,
+                    createdAt: "2026-02-01T17:27:35.202Z",
+                    updatedAt: "2026-02-01T17:27:35.202Z",
+                },
+            }, {
+                [TEST_IDS.user]: {
+                    id: TEST_IDS.user,
+                    name: "Old Name",
+                    socialName: null,
+                    email: "old@example.com",
+                    phone: "11999999999",
+                    cpf: "11111111111",
+                    birthdate: "1990-01-01T00:00:00.000Z",
+                    sex: "F",
+                    isActive: true,
+                },
+            }),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/patients/full-update", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": TEST_IDS.user,
+                },
+                body: JSON.stringify({
+                    userId: TEST_IDS.user,
+                    patientId,
+                    name: "New Name",
+                    email: "new@example.com",
+                }),
+            }),
+        );
+
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(body.users.name).toBe("New Name");
+        expect(body.users.email).toBe("new@example.com");
+    });
+
+    it("PATCH /patients/full-update retorna 409 quando email já existe", async () => {
+        const patientId = "019c1a3e-e425-7000-8bda-cdfec32c7f61";
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            patientsRepository: new InMemoryPatientsRepository({
+                [patientId]: {
+                    id: patientId,
+                    userId: TEST_IDS.user,
+                    isActive: true,
+                    createdAt: "2026-02-01T17:27:35.202Z",
+                    updatedAt: "2026-02-01T17:27:35.202Z",
+                },
+            }, {
+                [TEST_IDS.user]: {
+                    id: TEST_IDS.user,
+                    name: "Old Name",
+                    socialName: null,
+                    email: "old@example.com",
+                    phone: "11999999999",
+                    cpf: "11111111111",
+                    birthdate: "1990-01-01T00:00:00.000Z",
+                    sex: "F",
+                    isActive: true,
+                },
+                [TEST_IDS.otherUser]: {
+                    id: TEST_IDS.otherUser,
+                    name: "Existing",
+                    socialName: null,
+                    email: "exists@example.com",
+                    phone: "11999999999",
+                    cpf: "22222222222",
+                    birthdate: "1990-01-01T00:00:00.000Z",
+                    sex: "F",
+                    isActive: true,
+                },
+            }),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/patients/full-update", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": TEST_IDS.user,
+                },
+                body: JSON.stringify({
+                    userId: TEST_IDS.user,
+                    patientId,
+                    email: "exists@example.com",
+                }),
+            }),
+        );
+
+        expect(response.status).toBe(409);
+    });
+
+    it("PATCH /patients/full-update retorna 409 quando cpf já existe", async () => {
+        const patientId = "019c1a3e-e425-7000-8bda-cdfec32c7f71";
+        const app = await buildE2EApp({
+            usersRepository: new InMemoryUsersRepository(),
+            patientsRepository: new InMemoryPatientsRepository({
+                [patientId]: {
+                    id: patientId,
+                    userId: TEST_IDS.user,
+                    isActive: true,
+                    createdAt: "2026-02-01T17:27:35.202Z",
+                    updatedAt: "2026-02-01T17:27:35.202Z",
+                },
+            }, {
+                [TEST_IDS.user]: {
+                    id: TEST_IDS.user,
+                    name: "Old Name",
+                    socialName: null,
+                    email: "old@example.com",
+                    phone: "11999999999",
+                    cpf: "11111111111",
+                    birthdate: "1990-01-01T00:00:00.000Z",
+                    sex: "F",
+                    isActive: true,
+                },
+                [TEST_IDS.otherUser]: {
+                    id: TEST_IDS.otherUser,
+                    name: "Existing",
+                    socialName: null,
+                    email: "other@example.com",
+                    phone: "11999999999",
+                    cpf: "22222222222",
+                    birthdate: "1990-01-01T00:00:00.000Z",
+                    sex: "F",
+                    isActive: true,
+                },
+            }),
+        });
+
+        const response = await app.handle(
+            new Request("http://localhost/patients/full-update", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": TEST_IDS.user,
+                },
+                body: JSON.stringify({
+                    userId: TEST_IDS.user,
+                    patientId,
+                    cpf: "22222222222",
+                }),
+            }),
+        );
+
+        expect(response.status).toBe(409);
+    });
 });
