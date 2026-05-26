@@ -30,14 +30,14 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     return status(201, patient);
                 } catch (error) {
                     if (isDomainError(error, "EMAIL_ALREADY_EXISTS")) {
-                        return status(409, { message: "Email already exists" });
+                        return status(409, { message: "E-mail já cadastrado" });
                     }
 
                     if (isDomainError(error, "CPF_ALREADY_EXISTS")) {
-                        return status(409, { message: "CPF already exists" });
+                        return status(409, { message: "CPF já cadastrado" });
                     }
 
-                    return status(500, { message: "Internal server error" });
+                    return status(500, { message: "Erro interno do servidor" });
                 }
             },
             {
@@ -51,8 +51,8 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     201: patientFullDataByUserSchema,
                     409: t.Object({
                         message: t.Union([
-                            t.Literal("Email already exists"),
-                            t.Literal("CPF already exists"),
+                            t.Literal("E-mail já cadastrado"),
+                            t.Literal("CPF já cadastrado"),
                         ]),
                     }),
                     500: patientsErrorSchema,
@@ -66,7 +66,7 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
 
                 if (!userId) {
-                    return status(401, { message: "Unauthorized" });
+                    return status(401, { message: "Não autorizado" });
                 }
 
                 try {
@@ -77,10 +77,10 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     return status(201, patient);
                 } catch (error) {
                     if (isDomainError(error, "PATIENT_ALREADY_EXISTS")) {
-                        return status(409, { message: "Patient already exists for this user" });
+                        return status(409, { message: "Paciente já existe para este usuário" });
                     }
 
-                    return status(500, { message: "Internal server error" });
+                    return status(500, { message: "Erro interno do servidor" });
                 }
             },
             {
@@ -93,8 +93,8 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 },
                 response: {
                     201: patientProfileSchema,
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    409: t.Object({ message: t.Literal("Patient already exists for this user") }),
+                    401: t.Object({ message: t.Literal("Não autorizado") }),
+                    409: t.Object({ message: t.Literal("Paciente já existe para este usuário") }),
                     500: patientsErrorSchema,
                 },
             },
@@ -106,20 +106,20 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
 
                 if (!userId) {
-                    return status(401, { message: "Unauthorized" });
+                    return status(401, { message: "Não autorizado" });
                 }
 
                 try {
                     const patient = await patientsService.getPatientById(params.patientId);
                     if (patient.userId !== userId) {
-                        return status(403, { message: "Forbidden" });
+                        return status(403, { message: "Acesso negado" });
                     }
                     return status(200, patient);
                 } catch (error) {
                     if (isDomainError(error, "PATIENT_NOT_FOUND")) {
-                        return status(404, { message: "Patient not found" });
+                        return status(404, { message: "Paciente não encontrado" });
                     }
-                    return status(500, { message: "Internal server error" });
+                    return status(500, { message: "Erro interno do servidor" });
                 }
             },
             {
@@ -134,9 +134,9 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 },
                 response: {
                     200: patientProfileSchema,
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    403: t.Object({ message: t.Literal("Forbidden") }),
-                    404: t.Object({ message: t.Literal("Patient not found") }),
+                    401: t.Object({ message: t.Literal("Não autorizado") }),
+                    403: t.Object({ message: t.Literal("Acesso negado") }),
+                    404: t.Object({ message: t.Literal("Paciente não encontrado") }),
                     500: patientsErrorSchema,
                 },
             },
@@ -148,11 +148,11 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
 
                 if (!userId) {
-                    return status(401, { message: "Unauthorized" });
+                    return status(401, { message: "Não autorizado" });
                 }
 
                 if (params.userId !== userId) {
-                    return status(403, { message: "Forbidden" });
+                    return status(403, { message: "Acesso negado" });
                 }
 
                 try {
@@ -160,10 +160,10 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     return status(200, patient);
                 } catch (error) {
                     if (isDomainError(error, "PATIENT_NOT_FOUND")) {
-                        return status(404, { message: "Patient not found" });
+                        return status(404, { message: "Paciente não encontrado" });
                     }
 
-                    return status(500, { message: "Internal server error" });
+                    return status(500, { message: "Erro interno do servidor" });
                 }
             },
             {
@@ -178,9 +178,9 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 },
                 response: {
                     200: patientFullDataByUserSchema,
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    403: t.Object({ message: t.Literal("Forbidden") }),
-                    404: t.Object({ message: t.Literal("Patient not found") }),
+                    401: t.Object({ message: t.Literal("Não autorizado") }),
+                    403: t.Object({ message: t.Literal("Acesso negado") }),
+                    404: t.Object({ message: t.Literal("Paciente não encontrado") }),
                     500: patientsErrorSchema,
                 },
             },
@@ -192,12 +192,12 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
 
                 if (!userId) {
-                    return status(401, { message: "Unauthorized" });
+                    return status(401, { message: "Não autorizado" });
                 }
 
                 try {
                     if (userId !== (body as any).userId) {
-                        return status(403, { message: "Forbidden" });
+                        return status(403, { message: "Acesso negado" });
                     }
 
                     const updated = await patientsService.fullUpdate(userId, body as any);
@@ -205,18 +205,18 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     return status(200, updated);
                 } catch (error) {
                     if (isDomainError(error, "EMAIL_ALREADY_EXISTS")) {
-                        return status(409, { message: "Email already exists" });
+                        return status(409, { message: "E-mail já cadastrado" });
                     }
 
                     if (isDomainError(error, "CPF_ALREADY_EXISTS")) {
-                        return status(409, { message: "CPF already exists" });
+                        return status(409, { message: "CPF já cadastrado" });
                     }
 
                     if (isDomainError(error, "PATIENT_NOT_FOUND")) {
-                        return status(404, { message: "Patient not found" });
+                        return status(404, { message: "Paciente não encontrado" });
                     }
 
-                    return status(500, { message: "Internal server error" });
+                    return status(500, { message: "Erro interno do servidor" });
                 }
             },
             {
@@ -229,10 +229,10 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 },
                 response: {
                     200: patientFullDataByUserSchema,
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    403: t.Object({ message: t.Literal("Forbidden") }),
-                    404: t.Object({ message: t.Literal("Patient not found") }),
-                    409: t.Object({ message: t.Union([t.Literal("Email already exists"), t.Literal("CPF already exists")]) }),
+                    401: t.Object({ message: t.Literal("Não autorizado") }),
+                    403: t.Object({ message: t.Literal("Acesso negado") }),
+                    404: t.Object({ message: t.Literal("Paciente não encontrado") }),
+                    409: t.Object({ message: t.Union([t.Literal("E-mail já cadastrado"), t.Literal("CPF já cadastrado")]) }),
                     500: patientsErrorSchema,
                 },
             },

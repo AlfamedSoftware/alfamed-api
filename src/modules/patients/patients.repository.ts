@@ -85,7 +85,7 @@ export class PatientsRepository {
                 .limit(1);
 
             if (existingByEmail) {
-                throw new DomainError("EMAIL_ALREADY_EXISTS", "Email already exists");
+                throw new DomainError("EMAIL_ALREADY_EXISTS", "E-mail já cadastrado");
             }
 
             const [existingByCpf] = await db
@@ -95,7 +95,7 @@ export class PatientsRepository {
                 .limit(1);
 
             if (existingByCpf) {
-                throw new DomainError("CPF_ALREADY_EXISTS", "CPF already exists");
+                throw new DomainError("CPF_ALREADY_EXISTS", "CPF já cadastrado");
             }
 
             const createdPatient = await db.transaction(async (tx) => {

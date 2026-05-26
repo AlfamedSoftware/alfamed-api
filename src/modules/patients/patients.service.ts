@@ -15,7 +15,7 @@ export class PatientsService {
         const existingPatient = await this.patientsRepository.getPatientByUserId(data.userId);
 
         if (existingPatient) {
-            throw new DomainError("PATIENT_ALREADY_EXISTS", "Patient already exists for this user");
+            throw new DomainError("PATIENT_ALREADY_EXISTS", "Paciente já existe para este usuário");
         }
 
         return this.patientsRepository.createPatient(data);
@@ -25,7 +25,7 @@ export class PatientsService {
         const patient = await this.patientsRepository.getPatientById(patientId);
 
         if (!patient) {
-            throw new DomainError("PATIENT_NOT_FOUND", "Patient not found");
+            throw new DomainError("PATIENT_NOT_FOUND", "Paciente não encontrado");
         }
 
         return patient;
@@ -45,7 +45,7 @@ export class PatientsService {
             const existingByEmail = await this.patientsRepository.findUserByEmail(normalizedEmail);
 
             if (existingByEmail && existingByEmail.id !== data.userId) {
-                throw new DomainError("EMAIL_ALREADY_EXISTS", "Email already exists");
+                throw new DomainError("EMAIL_ALREADY_EXISTS", "E-mail já cadastrado");
             }
         }
 
@@ -53,7 +53,7 @@ export class PatientsService {
             const existingByCpf = await this.patientsRepository.findUserByCpf(normalizedCpf);
 
             if (existingByCpf && existingByCpf.id !== data.userId) {
-                throw new DomainError("CPF_ALREADY_EXISTS", "CPF already exists");
+                throw new DomainError("CPF_ALREADY_EXISTS", "CPF já cadastrado");
             }
         }
 
@@ -87,7 +87,7 @@ export class PatientsService {
         const updated = await this.patientsRepository.getPatientFullDataByUserId(data.userId);
 
         if (!updated) {
-            throw new DomainError("PATIENT_NOT_FOUND", "Patient not found");
+            throw new DomainError("PATIENT_NOT_FOUND", "Paciente não encontrado");
         }
 
         return updated;
@@ -97,7 +97,7 @@ export class PatientsService {
         const patient = await this.patientsRepository.getPatientFullDataByUserId(userId);
 
         if (!patient) {
-            throw new DomainError("PATIENT_NOT_FOUND", "Patient not found");
+            throw new DomainError("PATIENT_NOT_FOUND", "Paciente não encontrado");
         }
 
         return patient;
