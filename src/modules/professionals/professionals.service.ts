@@ -1,8 +1,6 @@
 import type {
     CreateProfessionalInput,
-    LinkProfessionalUnitRoleInput,
     ProfessionalsRepository,
-    UpdateProfessionalUnitRoleInput,
     UpdateProfessionalInput,
 } from "./professionals.repository.js";
 import { assertUserHasUnitAccess } from "../../http/plugins/unit-access.js";
@@ -46,84 +44,6 @@ export class ProfessionalsService {
         await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         return this.professionalsRepository.listByUnit(unitId);
-    }
-
-    async listCurrentProfessionalUnitRoles(
-        requestUserId: string,
-        unitId: string,
-        professionalUnitId: string,
-    ) {
-        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
-
-        return this.professionalsRepository.listActiveRolesByProfessionalUnit(
-            requestUserId,
-            unitId,
-            professionalUnitId,
-        );
-    }
-
-    async linkProfessionalUnitRole(
-        requestUserId: string,
-        unitId: string,
-        data: LinkProfessionalUnitRoleInput,
-    ) {
-        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
-
-        const professionalUnit = await this.professionalsRepository.findProfessionalUnitByIdAndUnit(
-            data.professionalUnitId,
-            unitId,
-        );
-
-        if (!professionalUnit) {
-            throw new DomainError("PROFESSIONAL_UNIT_NOT_FOUND", "Professional unit not found");
-        }
-
-        const hasRole = await this.professionalsRepository.hasActiveRole(data.roleId);
-
-        if (!hasRole) {
-            throw new DomainError("ROLE_NOT_FOUND", "Role not found");
-        }
-
-        return this.professionalsRepository.linkProfessionalUnitRole(data);
-    }
-
-    async updateProfessionalUnitRole(
-        requestUserId: string,
-        unitId: string,
-        data: UpdateProfessionalUnitRoleInput,
-    ) {
-        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
-
-        const existingLink = await this.professionalsRepository.findProfessionalUnitRoleByIdAndUnit(
-            data.professionalUnitRoleId,
-            unitId,
-        );
-
-        if (!existingLink) {
-            throw new DomainError("PROFESSIONAL_UNIT_ROLE_NOT_FOUND", "Professional unit role not found");
-        }
-
-        if (data.roleId) {
-            const hasRole = await this.professionalsRepository.hasActiveRole(data.roleId);
-
-            if (!hasRole) {
-                throw new DomainError("ROLE_NOT_FOUND", "Role not found");
-            }
-        }
-
-        const updated = await this.professionalsRepository.updateProfessionalUnitRole(
-            data.professionalUnitRoleId,
-            {
-                roleId: data.roleId,
-                isActive: data.isActive,
-            },
-        );
-
-        if (!updated) {
-            throw new DomainError("PROFESSIONAL_UNIT_ROLE_NOT_FOUND", "Professional unit role not found");
-        }
-
-        return updated;
     }
 
     async updateProfessional(

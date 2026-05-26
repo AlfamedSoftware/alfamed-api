@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 import { ProfessionalsService } from "../../src/modules/professionals/professionals.service";
 import type {
     CreateProfessionalInput,
-    LinkProfessionalUnitRoleInput,
     ProfessionalProfile,
     ProfessionalsRepository,
     UpdateProfessionalInput,
-    UpdateProfessionalUnitRoleInput,
 } from "../../src/modules/professionals/professionals.repository";
 import { DomainError } from "../../src/http/plugins/domain-error";
 
@@ -100,29 +98,7 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
     ): Promise<any | null> {
         return null;
     }
-
-    async linkProfessionalUnitRole(data: LinkProfessionalUnitRoleInput): Promise<any> {
-        return {
-            id: "professional-unit-role-1",
-            professionalUnitId: data.professionalUnitId,
-            roleId: data.roleId,
-            isActive: data.isActive ?? true,
-            role: {
-                id: data.roleId,
-                description: "Role",
-                key: "role",
-            },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-    }
-
-    async updateProfessionalUnitRole(
-        professionalUnitRoleId: string,
-        data: Omit<UpdateProfessionalUnitRoleInput, "professionalUnitRoleId">,
-    ): Promise<any | null> {
-        return null;
-    }
+    
 
     async list(): Promise<ProfessionalProfile[]> {
         return Object.values(this.professionals);

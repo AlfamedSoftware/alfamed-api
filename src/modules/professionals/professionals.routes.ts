@@ -8,9 +8,7 @@ import type { ProfessionalsRepository } from "./professionals.repository.js";
 import { ProfessionalsService } from "./professionals.service.js";
 import {
     createProfessionalSchema,
-    createProfessionalForUserSchema,
     professionalProfileSchema,
-    professionalRoleProfileSchema,
     professionalDetailSchema,
     professionalWithUnitProfileSchema,
     professionalsErrorSchema,
@@ -101,61 +99,6 @@ export const professionalsRoutes = ({
                     400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.Literal("Professional already exists for this user") }),
-                    500: professionalsErrorSchema,
-                },
-            },
-        )
-        .post(
-            "/link-user",
-            async (context) => {
-                const { body, status } = context;
-                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
-
-                if ("error" in scope) {
-                    if (scope.error === "unauthorized") {
-                        return status(401, { message: "Unauthorized" });
-                    }
-
-                    return status(400, { message: unitSelectionRequiredMessage });
-                }
-
-                try {
-                    const result = await professionalsService.createProfessional(
-                        scope.userId,
-                        scope.unitId,
-                        {
-                            userId: body.userId,
-                            isActive: body.isActive,
-                        }
-                    );
-
-                    return status(201, { ...result.professional, professionalUnitId: result.professionalUnitId });
-                } catch (error) {
-                    if (isUniqueConstraintError(error)) {
-                        return status(409, { message: "Professional already exists for this user" });
-                    }
-
-                    if (isDomainError(error, "FORBIDDEN")) {
-                        return status(403, { message: "Forbidden" });
-                    }
-
-                    return status(500, { message: "Internal server error" });
-                }
-            },
-            {
-                auth: true,
-                body: createProfessionalForUserSchema,
-                detail: {
-                    summary: "Create professional for user",
-                    description: "Creates a professional linked to the userId provided in the request body and to the selected unit.",
-                    tags: ["Professionals"],
-                },
-                response: {
-                    201: professionalWithUnitProfileSchema,
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
-                    403: t.Object({ message: t.Literal("Forbidden") }),
-                    409: t.Object({ message: t.String() }),
                     500: professionalsErrorSchema,
                 },
             },

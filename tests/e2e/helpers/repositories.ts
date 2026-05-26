@@ -1,13 +1,20 @@
 import type { UserProfile, UsersRepository } from "../../../src/modules/users/users.repository";
 import type {
     CreateProfessionalInput,
-    LinkProfessionalUnitRoleInput,
     ProfessionalProfile,
-    ProfessionalUnitRoleProfile,
     ProfessionalsRepository,
-    UpdateProfessionalUnitRoleInput,
     UpdateProfessionalInput,
 } from "../../../src/modules/professionals/professionals.repository";
+
+type ProfessionalUnitRoleProfile = {
+    id: string;
+    professionalUnitId: string;
+    roleId: string;
+    isActive: boolean;
+    role: { id: string; description: string; key: string };
+    createdAt: string;
+    updatedAt: string;
+};
 import type {
     CreateUnitInput,
     UnitProfile,
@@ -929,90 +936,4 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
 
         return link;
     }
-
-    async linkProfessionalUnitRole(data: LinkProfessionalUnitRoleInput): Promise<ProfessionalUnitRoleProfile> {
-        const existingLink = Object.values(this.professionalUnitRoles).find(
-            (link) => link.professionalUnitId === data.professionalUnitId && link.roleId === data.roleId,
-        );
-        const role = this.roles[data.roleId];
-
-        if (!role) {
-            throw new DomainError("ROLE_NOT_FOUND", "Role not found");
-        }
-
-        const now = new Date().toISOString();
-
-        if (existingLink) {
-            const updated = {
-                ...existingLink,
-                isActive: data.isActive ?? true,
-                updatedAt: now,
-            };
-            this.professionalUnitRoles[updated.id] = updated;
-            return updated;
-        }
-
-        const id = `019c1a3e-e425-7000-8bda-cdfec32d1f${String(this.roleSequence).padStart(2, "0")}`;
-        this.roleSequence += 1;
-
-        const link: ProfessionalUnitRoleProfile = {
-            id,
-            professionalUnitId: data.professionalUnitId,
-            roleId: data.roleId,
-            isActive: data.isActive ?? true,
-            role: {
-                id: role.id,
-                description: role.description,
-                key: role.key,
-            },
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        this.professionalUnitRoles[id] = link;
-        return link;
-    }
-
-    async updateProfessionalUnitRole(
-        professionalUnitRoleId: string,
-        data: Omit<UpdateProfessionalUnitRoleInput, "professionalUnitRoleId">,
-    ): Promise<ProfessionalUnitRoleProfile | null> {
-        const current = this.professionalUnitRoles[professionalUnitRoleId];
-
-        if (!current) {
-            return null;
-        }
-
-        const role = data.roleId ? this.roles[data.roleId] : current.role;
-
-        if (!role) {
-            throw new DomainError("ROLE_NOT_FOUND", "Role not found");
-        }
-
-        const updated: ProfessionalUnitRoleProfile = {
-            ...current,
-            roleId: role.id,
-            isActive: data.isActive ?? current.isActive,
-            role: {
-                id: role.id,
-                description: role.description,
-                key: role.key,
-            },
-            updatedAt: new Date().toISOString(),
-        };
-
-        this.professionalUnitRoles[professionalUnitRoleId] = updated;
-        return updated;
-    }
 }
-
-type InMemoryRequestContext = {
-    id: string;
-    appointmentId: string;
-    status: string;
-    type: string;
-    patientUserId: string;
-    unitId: string;
-    professionalId: string;
-    scheduleId: string;
-};
