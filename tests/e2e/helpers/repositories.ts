@@ -87,7 +87,7 @@ export class InMemoryPatientsRepository implements PatientsRepository {
     }
 
     async createPatientFullCreate(data: CreatePatientFullCreateInput): Promise<PatientFullDataByUser> {
-        this.ensureFullCreateUniqueness(data);
+        await this.ensureFullCreateUniqueness(data);
 
         const now = new Date().toISOString();
         const userId = `019c1a3e-e425-7000-8bda-cdfec32d8f${String(this.sequence).padStart(2, "0")}`;
@@ -125,12 +125,52 @@ export class InMemoryPatientsRepository implements PatientsRepository {
         };
     }
 
-    private findUserByEmail(email: string) {
-        return Object.values(this.users).find((user) => user.email === email) ?? null;
+    
+
+    async findUserByEmail(email: string): Promise<{ id: string } | null> {
+        for (const [id, user] of Object.entries(this.users)) {
+            if (user.email === email) return { id };
+        }
+
+        return null;
     }
 
-    private findUserByCpf(cpf: string) {
-        return Object.values(this.users).find((user) => user.cpf === cpf) ?? null;
+    async findUserByCpf(cpf: string): Promise<{ id: string } | null> {
+        for (const [id, user] of Object.entries(this.users)) {
+            if (user.cpf === cpf) return { id };
+        }
+
+        return null;
+    }
+
+    async applyFullUpdate({
+        userId,
+        patientId,
+        userChanges,
+        patientChanges,
+    }: {
+        userId: string;
+        patientId: string;
+        userChanges: Record<string, unknown>;
+        patientChanges: Record<string, unknown>;
+    }): Promise<void> {
+        const user = this.users[userId];
+
+        if (user) {
+            for (const [k, v] of Object.entries(userChanges)) {
+                // @ts-ignore
+                user[k] = v as any;
+            }
+        }
+
+        const patient = this.patients[patientId];
+
+        if (patient) {
+            if (typeof patientChanges.isActive !== "undefined") {
+                patient.isActive = patientChanges.isActive as boolean;
+            }
+            patient.updatedAt = new Date().toISOString();
+        }
     }
 
     async getPatientFullDataByUserId(userId: string): Promise<PatientFullDataByUser | null> {
@@ -154,15 +194,17 @@ export class InMemoryPatientsRepository implements PatientsRepository {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    private ensureFullCreateUniqueness(data: CreatePatientFullCreateInput) {
+    private async ensureFullCreateUniqueness(data: CreatePatientFullCreateInput) {
         const normalizedEmail = data.email.trim().toLowerCase();
         const normalizedCpf = data.cpf.trim();
 
-        if (this.findUserByEmail(normalizedEmail)) {
+        const byEmail = await this.findUserByEmail(normalizedEmail);
+        if (byEmail) {
             throw new DomainError("EMAIL_ALREADY_EXISTS", "Email already exists");
         }
 
-        if (this.findUserByCpf(normalizedCpf)) {
+        const byCpf = await this.findUserByCpf(normalizedCpf);
+        if (byCpf) {
             throw new DomainError("CPF_ALREADY_EXISTS", "CPF already exists");
         }
     }

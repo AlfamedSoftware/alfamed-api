@@ -7,6 +7,7 @@ import {
     createPatientFullCreateSchema,
     createPatientForUserSchema,
     patientFullDataByUserSchema,
+    patientFullUpdateSchema,
     patientProfileSchema,
     patientsErrorSchema,
 } from "./patients.schemas.js";
@@ -141,7 +142,7 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
             },
         )
         .get(
-            "/patient-full-data-by-user/:UserId",
+            "/patient-full-data-by-user/:userId",
             async (context) => {
                 const { params, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
@@ -150,12 +151,12 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     return status(401, { message: "Unauthorized" });
                 }
 
-                if (params.UserId !== userId) {
+                if (params.userId !== userId) {
                     return status(403, { message: "Forbidden" });
                 }
 
                 try {
-                    const patient = await patientsService.getPatientFullDataByUserId(params.UserId);
+                    const patient = await patientsService.getPatientFullDataByUserId(params.userId);
                     return status(200, patient);
                 } catch (error) {
                     if (isDomainError(error, "PATIENT_NOT_FOUND")) {
@@ -168,7 +169,7 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
             {
                 auth: true,
                 params: t.Object({
-                    UserId: t.String({ format: "uuid" }),
+                    userId: t.String({ format: "uuid" }),
                 }),
                 detail: {
                     summary: "Get patient full data by user",
@@ -183,5 +184,57 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     500: patientsErrorSchema,
                 },
             },
+        )
+        .patch(
+            "/full-update",
+            async (context) => {
+                const { body, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                try {
+                    if (userId !== (body as any).userId) {
+                        return status(403, { message: "Forbidden" });
+                    }
+
+                    const updated = await patientsService.fullUpdate(userId, body as any);
+
+                    return status(200, updated);
+                } catch (error) {
+                    if (isDomainError(error, "EMAIL_ALREADY_EXISTS")) {
+                        return status(409, { message: "Email already exists" });
+                    }
+
+                    if (isDomainError(error, "CPF_ALREADY_EXISTS")) {
+                        return status(409, { message: "CPF already exists" });
+                    }
+
+                    if (isDomainError(error, "PATIENT_NOT_FOUND")) {
+                        return status(404, { message: "Patient not found" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                body: patientFullUpdateSchema,
+                detail: {
+                    summary: "Full update",
+                    description: "Updates patient and user data. Only changed fields are persisted and cpf/email uniqueness is validated.",
+                    tags: ["Patients"],
+                },
+                response: {
+                    200: patientFullDataByUserSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
+                    404: t.Object({ message: t.Literal("Patient not found") }),
+                    409: t.Object({ message: t.Union([t.Literal("Email already exists"), t.Literal("CPF already exists")]) }),
+                    500: patientsErrorSchema,
+                },
+            },
         );
-    };
+};

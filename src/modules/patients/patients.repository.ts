@@ -26,6 +26,15 @@ export class PatientsRepository {
     readonly getPatientByUserId: (userId: string) => Promise<Patient | null>;
     readonly getPatientById: (patientId: string) => Promise<Patient | null>;
     readonly getPatientFullDataByUserId: (userId: string) => Promise<PatientFullDataByUser | null>;
+    readonly findUserByEmail: (email: string) => Promise<{ id: string } | null>;
+    readonly findUserByCpf: (cpf: string) => Promise<{ id: string } | null>;
+    readonly applyFullUpdate: (args: {
+        userId: string;
+        patientId: string;
+        userChanges: Record<string, unknown>;
+        patientChanges: Record<string, unknown>;
+        accountPasswordHash?: string;
+    }) => Promise<void>;
 
     constructor(db: DatabaseClient) {
         const toProfile = (row: {
@@ -224,6 +233,48 @@ export class PatientsRepository {
                     sex: result.userSex,
                     isActive: result.userIsActive,
                 },
+            });
+        };
+
+        this.findUserByEmail = async (email: string) => {
+            const [result] = await db
+                .select({ id: users.id })
+                .from(users)
+                .where(eq(users.email, email))
+                .limit(1);
+
+            return result ?? null;
+        };
+
+        this.findUserByCpf = async (cpf: string) => {
+            const [result] = await db
+                .select({ id: users.id })
+                .from(users)
+                .where(eq(users.cpf, cpf))
+                .limit(1);
+
+            return result ?? null;
+        };
+
+        this.applyFullUpdate = async ({
+            userId,
+            patientId,
+            userChanges,
+            patientChanges,
+            accountPasswordHash,
+        }) => {
+            await db.transaction(async (tx) => {
+                if (Object.keys(userChanges).length > 0) {
+                    await tx.update(users).set(userChanges).where(eq(users.id, userId));
+                }
+
+                if (Object.keys(patientChanges).length > 0) {
+                    await tx.update(patients).set(patientChanges).where(eq(patients.id, patientId));
+                }
+
+                if (accountPasswordHash) {
+                    await tx.update(accounts).set({ password: accountPasswordHash }).where(eq(accounts.userId, userId));
+                }
             });
         };
     }
