@@ -7,6 +7,8 @@ import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
 import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
+import { proceduresRoutes } from "./modules/procedures/procedures.routes.js";
+import { ProceduresRepository } from "./modules/procedures/procedures.repository.js";
 import { professionalUnitsRoutes } from "./modules/professional-units/professional-units.routes.js";
 import { ProfessionalUnitsRepository } from "./modules/professional-units/professional-units.repository.js";
 import { rolesRoutes } from "./modules/roles/roles.routes.js";
@@ -33,6 +35,7 @@ type BuildAppOptions = {
     db: DatabaseClient;
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
+    proceduresRepository?: ProceduresRepository;
     professionalUnitsRepository?: ProfessionalUnitsRepository;
     patientsRepository: PatientsRepository;
     rolesRepository?: RolesRepository;
@@ -48,6 +51,7 @@ export async function buildApp({
     patientsRepository,
     rolesRepository,
     professionalsRepository,
+    proceduresRepository,
     professionalUnitsRepository,
     unitsRepository,
     hasUserAccessToUnitChecker,
@@ -79,6 +83,10 @@ export async function buildApp({
                         {
                             name: "Professionals",
                             description: "Operations about professionals",
+                        },
+                        {
+                            name: "Procedures",
+                            description: "Operations about procedures",
                         },
                         {
                             name: "Professional Units",
@@ -155,7 +163,14 @@ export async function buildApp({
         )
         : configuredAppBase;
 
-    const configuredAppWithProfessionalUnits = configuredAppWithUnits.use(
+    const configuredAppWithProcedures = configuredAppWithUnits.use(
+        proceduresRoutes({
+            proceduresRepository: proceduresRepository ?? new ProceduresRepository(db),
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+        }),
+    );
+
+    const configuredAppWithProfessionalUnits = configuredAppWithProcedures.use(
         professionalUnitsRoutes({
             professionalUnitsRepository: professionalUnitsRepository ?? new ProfessionalUnitsRepository(db),
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
