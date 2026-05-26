@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { DomainError } from "../../src/http/plugins/domain-error";
 import { PatientsService } from "../../src/modules/patients/patients.service";
 import type {
     CreatePatientFullCreateInput,
@@ -14,13 +13,17 @@ class InMemoryPatientsRepository implements PatientsRepository {
 
     async createPatient(data: CreatePatientInput): Promise<Patient> {
         const now = new Date().toISOString();
-        return {
+        const patient = {
             id: "019c1a3e-e425-7000-8bda-cdfec32c7f01",
             userId: data.userId,
             isActive: data.isActive ?? true,
             createdAt: now,
             updatedAt: now,
         };
+
+        this.patients[patient.id] = patient;
+
+        return patient;
     }
 
     async getPatientByUserId(userId: string): Promise<Patient | null> {
@@ -58,6 +61,16 @@ class InMemoryPatientsRepository implements PatientsRepository {
             },
         };
     }
+
+    async findUserByEmail(_email: string): Promise<{ id: string } | null> {
+        return null;
+    }
+
+    async findUserByCpf(_cpf: string): Promise<{ id: string } | null> {
+        return null;
+    }
+
+    async applyFullUpdate(): Promise<void> {}
 }
 
 describe("PatientsService", () => {
@@ -91,8 +104,10 @@ describe("PatientsService", () => {
                 userId: "019c1a3e-e425-7000-8bda-cdfec32c8fed",
                 isActive: true,
             }),
-        ).rejects.toEqual(
-            new DomainError("PATIENT_ALREADY_EXISTS", "Patient already exists for this user"),
-        );
+        ).rejects.toMatchObject({
+            name: "DomainError",
+            code: "PATIENT_ALREADY_EXISTS",
+            message: "Paciente já existe para este usuário",
+        });
     });
 });
