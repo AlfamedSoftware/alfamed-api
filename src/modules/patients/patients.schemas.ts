@@ -18,6 +18,7 @@ export const patientListItemSchema = z.object({
     userId: z.string(),
     name: z.string().min(1),
     email: z.string().email(),
+    cpf: z.string().optional(),
     phone: z.string().min(1),
     isActive: z.boolean(),
 });

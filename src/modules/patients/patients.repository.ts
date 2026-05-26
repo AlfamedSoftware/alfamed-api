@@ -90,6 +90,7 @@ export class PatientsRepository {
                     userId: patients.userId,
                     name: users.name,
                     email: users.email,
+                    cpf: users.cpf,
                     phone: users.phone,
                     isActive: patients.isActive,
                 })
@@ -102,6 +103,7 @@ export class PatientsRepository {
                     userId: row.userId,
                     name: row.name ?? "Sem nome",
                     email: row.email ?? "sem-email@example.com",
+                    cpf: row.cpf ?? undefined,
                     phone: row.phone ?? "-",
                     isActive: row.isActive,
                 }),

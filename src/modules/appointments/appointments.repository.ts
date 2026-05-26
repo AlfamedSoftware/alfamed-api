@@ -1,4 +1,4 @@
-import { and, eq, gt, gte, inArray, lt, or } from "drizzle-orm";
+import { and, eq, gt, gte, inArray, lt, ne, or } from "drizzle-orm";
 import type { db as dbType } from "../../db/client.js";
 import { appointments } from "../../db/schema/appointments.js";
 import { appointmentsStatus } from "../../db/schema/appointments-status.js";
@@ -81,7 +81,7 @@ function subtractIntervals(base: Interval, blocks: Interval[]) {
 }
 
 export class AppointmentsRepository {
-    constructor(private readonly db: DatabaseClient) {}
+    constructor(private readonly db: DatabaseClient) { }
 
     async findProfessionalUnitByProfessionalIdAndUnitId(professionalId: string, unitId: string) {
         const [row] = await this.db
@@ -147,6 +147,7 @@ export class AppointmentsRepository {
                 and(
                     eq(professionalUnits.unitId, unitId),
                     professionalIds.length > 0 ? inArray(professionals.id, professionalIds) : or(eq(professionalUnits.unitId, unitId), eq(professionalUnits.unitId, unitId)),
+                    eq(appointments.isActive, true),
                     lt(appointments.startAt, to),
                     gt(appointments.endAt, from),
                 ),
@@ -218,7 +219,7 @@ export class AppointmentsRepository {
         return [...appointmentEvents, ...blockEvents].sort((left, right) => left.start.localeCompare(right.start));
     }
 
-    async checkAvailability(query: AvailabilityQuery, unitId: string) {
+    async checkAvailability(query: AvailabilityQuery & { excludeAppointmentId?: string }, unitId: string) {
         const [professionalUnit] = await this.db
             .select({
                 professionalUnitId: professionalUnits.id,
@@ -281,6 +282,7 @@ export class AppointmentsRepository {
                     and(
                         eq(professionalAvailabilityBlocks.professionalUnitId, professionalUnit.professionalUnitId),
                         eq(professionalAvailabilityBlocks.isActive, true),
+                        query.excludeAppointmentId ? ne(professionalAvailabilityBlocks.id, query.excludeAppointmentId) : undefined,
                         lt(professionalAvailabilityBlocks.startAt, requestedEnd ?? dayEnd),
                         gt(professionalAvailabilityBlocks.endAt, requestedStart ?? dayStart),
                     ),
@@ -295,6 +297,7 @@ export class AppointmentsRepository {
                     and(
                         eq(appointments.professionalUnitId, professionalUnit.professionalUnitId),
                         eq(appointments.isActive, true),
+                        query.excludeAppointmentId ? ne(appointments.id, query.excludeAppointmentId) : undefined,
                         lt(appointments.startAt, requestedEnd ?? dayEnd),
                         gt(appointments.endAt, requestedStart ?? dayStart),
                     ),
@@ -321,6 +324,43 @@ export class AppointmentsRepository {
 
         if (!professionalUnit) {
             throw new Error("Professional not found for selected unit");
+        }
+
+        // Check for patient overlapping appointments (any professional)
+        const [patientConflict] = await this.db
+            .select({ id: appointments.id })
+            .from(appointments)
+            .where(
+                and(
+                    eq(appointments.patientId, input.patientId),
+                    eq(appointments.isActive, true),
+                    lt(appointments.startAt, new Date(input.endAt)),
+                    gt(appointments.endAt, new Date(input.startAt)),
+                ),
+            )
+            .limit(1);
+
+        if (patientConflict) {
+            throw new Error("Paciente já possui outro agendamento no mesmo intervalo");
+        }
+
+        // Check for professional overlapping appointments across units
+        const [professionalConflict] = await this.db
+            .select({ id: appointments.id })
+            .from(appointments)
+            .innerJoin(professionalUnits, eq(professionalUnits.id, appointments.professionalUnitId))
+            .where(
+                and(
+                    eq(professionalUnits.professionalId, input.professionalId),
+                    eq(appointments.isActive, true),
+                    lt(appointments.startAt, new Date(input.endAt)),
+                    gt(appointments.endAt, new Date(input.startAt)),
+                ),
+            )
+            .limit(1);
+
+        if (professionalConflict) {
+            throw new Error("Profissional já tem outro agendamento no mesmo intervalo");
         }
 
         const availability = await this.checkAvailability(
@@ -373,23 +413,41 @@ export class AppointmentsRepository {
     }
 
     async getAppointmentById(appointmentId: string, unitId: string) {
-        const [appointment] = await this.db
-            .select({
-                id: appointments.id,
-                patientId: appointments.patientId,
-                professionalUnitId: appointments.professionalUnitId,
-                startAt: appointments.startAt,
-                endAt: appointments.endAt,
-                reason: appointments.reason,
-                professionalId: professionals.id,
-            })
-            .from(appointments)
-            .innerJoin(professionalUnits, eq(professionalUnits.id, appointments.professionalUnitId))
-            .innerJoin(professionals, eq(professionals.id, professionalUnits.professionalId))
-            .where(and(eq(appointments.id, appointmentId), eq(professionalUnits.unitId, unitId)))
-            .limit(1);
+        try {
+            const rows = await this.db
+                .select({
+                    id: appointments.id,
+                    patientId: appointments.patientId,
+                    professionalUnitId: appointments.professionalUnitId,
+                    startAt: appointments.startAt,
+                    endAt: appointments.endAt,
+                    professionalId: professionalUnits.professionalId,
+                })
+                .from(appointments)
+                .innerJoin(professionalUnits, eq(professionalUnits.id, appointments.professionalUnitId))
+                .where(and(eq(appointments.id, appointmentId), eq(professionalUnits.unitId, unitId), eq(appointments.isActive, true)))
+                .limit(1);
 
-        return appointment ?? null;
+            console.log(`[getAppointmentById] Query result for ${appointmentId}:`, rows);
+
+            if (!rows || rows.length === 0) {
+                return null;
+            }
+
+            const appointment = rows[0];
+
+            return {
+                id: appointment.id,
+                patientId: appointment.patientId,
+                professionalUnitId: appointment.professionalUnitId,
+                startAt: appointment.startAt,
+                endAt: appointment.endAt,
+                professionalId: appointment.professionalId,
+            };
+        } catch (error) {
+            console.error(`[getAppointmentById] Error for ${appointmentId}:`, error);
+            throw error;
+        }
     }
 
     async updateAppointment(
@@ -419,6 +477,7 @@ export class AppointmentsRepository {
                     date: startAt.toISOString().slice(0, 10),
                     startAt: startAt.toISOString(),
                     endAt: endAt.toISOString(),
+                    excludeAppointmentId: appointmentId,
                 },
                 unitId,
             );

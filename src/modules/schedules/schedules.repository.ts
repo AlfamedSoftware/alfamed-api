@@ -1,7 +1,7 @@
 import type { db as dbType } from "../../db/client.js";
 import { schedules } from "../../db/schema/schedules.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 type DatabaseClient = typeof dbType;
 
@@ -15,14 +15,13 @@ export type ScheduleRow = {
 }
 
 export class SchedulesRepository {
-    constructor(private db: DatabaseClient) {}
+    constructor(private db: DatabaseClient) { }
 
     private async findProfessionalUnitId(professionalId: string, unitId: string) {
         const [row] = await this.db
             .select({ id: professionalUnits.id })
             .from(professionalUnits)
-            .where(eq(professionalUnits.professionalId, professionalId))
-            .where(eq(professionalUnits.unitId, unitId))
+            .where(and(eq(professionalUnits.professionalId, professionalId), eq(professionalUnits.unitId, unitId)))
             .limit(1);
 
         return row?.id ?? null;
@@ -59,29 +58,70 @@ export class SchedulesRepository {
         if (!professionalUnitId) throw new Error("PROFESSIONAL_UNIT_NOT_FOUND");
 
         return this.db.transaction(async (tx) => {
-            await tx.delete(schedules).where(eq(schedules.professionalUnitId, professionalUnitId));
+            const existingRows = await tx
+                .select({ id: schedules.id })
+                .from(schedules)
+                .where(eq(schedules.professionalUnitId, professionalUnitId));
 
-            if (items.length === 0) return [];
+            const existingIds = new Set(existingRows.map((row) => row.id));
+            const inputIds = new Set(items.map((item) => item.id).filter((id): id is string => Boolean(id)));
 
-            const toInsert = items.map((it) => ({
-                professionalUnitId,
-                dayOfWeek: it.dayOfWeek,
-                startTime: it.startTime,
-                endTime: it.endTime,
-                appointmentDurationMinutes: it.appointmentDurationMinutes,
-                isActive: it.isActive ?? true,
-            }));
+            for (const item of items) {
+                if (!item.id) continue;
 
-            const inserted = await tx.insert(schedules).values(...toInsert).returning({
-                id: schedules.id,
-                dayOfWeek: schedules.dayOfWeek,
-                startTime: schedules.startTime,
-                endTime: schedules.endTime,
-                appointmentDurationMinutes: schedules.appointmentDurationMinutes,
-                isActive: schedules.isActive,
-            });
+                if (!existingIds.has(item.id)) {
+                    throw new Error("SCHEDULE_NOT_FOUND");
+                }
 
-            return inserted.map((r) => ({
+                await tx
+                    .update(schedules)
+                    .set({
+                        dayOfWeek: item.dayOfWeek,
+                        startTime: item.startTime,
+                        endTime: item.endTime,
+                        appointmentDurationMinutes: item.appointmentDurationMinutes,
+                        isActive: item.isActive ?? true,
+                    })
+                    .where(and(eq(schedules.professionalUnitId, professionalUnitId), eq(schedules.id, item.id)));
+            }
+
+            const newItems = items.filter((item) => !item.id);
+
+            if (newItems.length > 0) {
+                await tx.insert(schedules).values(
+                    newItems.map((item) => ({
+                        professionalUnitId,
+                        dayOfWeek: item.dayOfWeek,
+                        startTime: item.startTime,
+                        endTime: item.endTime,
+                        appointmentDurationMinutes: item.appointmentDurationMinutes,
+                        isActive: item.isActive ?? true,
+                    })),
+                );
+            }
+
+            const removedIds = [...existingIds].filter((id) => !inputIds.has(id));
+
+            if (removedIds.length > 0) {
+                await tx
+                    .delete(schedules)
+                    .where(and(eq(schedules.professionalUnitId, professionalUnitId), inArray(schedules.id, removedIds)));
+            }
+
+            const rows = await tx
+                .select({
+                    id: schedules.id,
+                    dayOfWeek: schedules.dayOfWeek,
+                    startTime: schedules.startTime,
+                    endTime: schedules.endTime,
+                    appointmentDurationMinutes: schedules.appointmentDurationMinutes,
+                    isActive: schedules.isActive,
+                })
+                .from(schedules)
+                .where(eq(schedules.professionalUnitId, professionalUnitId))
+                .orderBy(schedules.dayOfWeek, schedules.startTime, schedules.endTime, schedules.id);
+
+            return rows.map((r) => ({
                 id: r.id,
                 dayOfWeek: r.dayOfWeek,
                 startTime: r.startTime,

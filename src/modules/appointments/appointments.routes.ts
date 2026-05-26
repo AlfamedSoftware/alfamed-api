@@ -200,16 +200,30 @@ export const appointmentsRoutes = ({ db }: AppointmentsRoutesOptions) => {
                 }
 
                 try {
+                    console.log("[appointments.routes] GET /:id params:", params);
+                    console.log("[appointments.routes] GET /:id unitId:", unitId);
+                    
                     const appointment = await appointmentsRepository.getAppointmentById(params.id, unitId);
 
                     if (!appointment) {
+                        console.log("[appointments.routes] Appointment not found:", params.id);
                         return status(404, { message: "Appointment not found" });
                     }
 
-                    return status(200, appointment);
+                    console.log("[appointments.routes] Returning appointment:", appointment);
+
+                    return status(200, {
+                        id: appointment.id,
+                        patientId: appointment.patientId,
+                        professionalUnitId: appointment.professionalUnitId,
+                        startAt: appointment.startAt,
+                        endAt: appointment.endAt,
+                        professionalId: appointment.professionalId,
+                    });
                 } catch (error) {
-                    console.error("[appointments.routes] Error getting appointment:", error);
-                    return status(500, { message: "Internal server error" });
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    console.error("[appointments.routes] Error getting appointment:", errorMessage, error);
+                    return status(500, { message: `Internal server error: ${errorMessage}` });
                 }
             },
             {
