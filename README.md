@@ -328,6 +328,9 @@ Patients:
 
 - POST /patients
 - GET /patients/:patientId
+- POST /patients/full-create — Criação completa: cria `user`, `account` e `patient` em uma única transação (sem autenticação requerida). Retorna o registro agregado do paciente e do usuário.
+- PATCH /patients/full-update — Atualização completa: altera campos do `user`, `account` (senha opcional) e `patient` numa transação. Requer autenticação e valida unicidade de E-mail/CPF.
+- GET /patients/patient-full-data-by-user/:userId — Retorna os dados agregados do paciente e do usuário para o `userId` informado. Requer autenticação; apenas o próprio usuário pode consultar seus dados.
 
 Roles:
 
