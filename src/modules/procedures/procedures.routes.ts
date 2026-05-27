@@ -4,7 +4,13 @@ import { isDomainError } from "../../http/plugins/domain-error.js";
 import { getUnitIdFromRequest } from "../../http/plugins/unit-context.js";
 import type { ProceduresRepository } from "./procedures.repository.js";
 import { ProceduresService } from "./procedures.service.js";
-import { proceduresErrorSchema, proceduresListSchema, createProcedureSchema, procedureSchema } from "./procedures.schemas.js";
+import {
+    proceduresErrorSchema,
+    proceduresListSchema,
+    createProcedureSchema,
+    updateProcedureSchema,
+    procedureSchema,
+} from "./procedures.schemas.js";
 
 const unitSelectionRequiredMessage = "Selecione uma unidade para continuar";
 
@@ -47,6 +53,10 @@ export const proceduresRoutes = ({
                         return status(403, { message: "Forbidden" });
                     }
 
+                    if (isDomainError(error, "PROCEDURE_CODE_ALREADY_EXISTS")) {
+                        return status(409, { message: "Procedure code already exists" });
+                    }
+
                     return status(500, { message: "Internal server error" });
                 }
             },
@@ -63,6 +73,7 @@ export const proceduresRoutes = ({
                     400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
+                    409: t.Object({ message: t.Literal("Procedure code already exists") }),
                     500: proceduresErrorSchema,
                 },
             },
@@ -164,6 +175,74 @@ export const proceduresRoutes = ({
                     400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Procedure not found") }),
+                    500: proceduresErrorSchema,
+                },
+            },
+        )
+        .patch(
+            "/",
+            async (context) => {
+                const { body, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+                const selectedUnitId = getUnitIdFromRequest(context.request);
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                if (!selectedUnitId) {
+                    return status(400, { message: unitSelectionRequiredMessage });
+                }
+
+                try {
+                    const { procedureId, ...payload } = body as {
+                        procedureId: string;
+                        description?: string;
+                        observation?: string | null;
+                        code?: string;
+                        price?: string;
+                        isActive?: boolean;
+                    };
+
+                    const updated = await proceduresService.updateProcedureForUnit(
+                        userId,
+                        selectedUnitId,
+                        procedureId,
+                        payload,
+                    );
+
+                    if (!updated) {
+                        return status(404, { message: "Procedure not found" });
+                    }
+
+                    return status(200, updated);
+                } catch (error) {
+                    if (isDomainError(error, "FORBIDDEN")) {
+                        return status(403, { message: "Forbidden" });
+                    }
+
+                    if (isDomainError(error, "PROCEDURE_CODE_ALREADY_EXISTS")) {
+                        return status(409, { message: "Procedure code already exists" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                body: updateProcedureSchema,
+                detail: {
+                    summary: "Update procedure",
+                    description: "Updates a procedure by id (sent in body) within the selected unit.",
+                    tags: ["Procedures"],
+                },
+                response: {
+                    200: procedureSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
+                    404: t.Object({ message: t.Literal("Procedure not found") }),
+                    409: t.Object({ message: t.Literal("Procedure code already exists") }),
                     500: proceduresErrorSchema,
                 },
             },

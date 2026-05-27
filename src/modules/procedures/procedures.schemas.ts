@@ -27,3 +27,14 @@ export const createProcedureSchema = z
         isActive: z.boolean().optional(),
     })
     .strict();
+
+export const updateProcedureSchema = z
+    .object({
+        procedureId: z.string().uuid(),
+        description: z.string().min(1).optional(),
+        observation: z.union([z.string(), z.null()]).optional(),
+        code: z.string().min(1).optional(),
+        price: z.string().min(1).optional(),
+        isActive: z.boolean().optional(),
+    })
+    .strict();
