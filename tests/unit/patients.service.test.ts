@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DomainError } from "../../src/http/plugins/domain-error";
 import { PatientsService } from "../../src/modules/patients/patients.service";
 import type {
+    CreatePatientFullCreateInput,
     CreatePatientInput,
+    PatientFullDataByUser,
     Patient,
     PatientsRepository,
 } from "../../src/modules/patients/patients.repository";
@@ -12,13 +13,17 @@ class InMemoryPatientsRepository implements PatientsRepository {
 
     async createPatient(data: CreatePatientInput): Promise<Patient> {
         const now = new Date().toISOString();
-        return {
+        const patient = {
             id: "019c1a3e-e425-7000-8bda-cdfec32c7f01",
             userId: data.userId,
             isActive: data.isActive ?? true,
             createdAt: now,
             updatedAt: now,
         };
+
+        this.patients[patient.id] = patient;
+
+        return patient;
     }
 
     async getPatientByUserId(userId: string): Promise<Patient | null> {
@@ -28,6 +33,44 @@ class InMemoryPatientsRepository implements PatientsRepository {
     async getPatientById(patientId: string): Promise<Patient | null> {
         return this.patients[patientId] ?? null;
     }
+
+    async createPatientFullCreate(_data: CreatePatientFullCreateInput): Promise<PatientFullDataByUser> {
+        throw new Error("Not implemented");
+    }
+
+    async getPatientFullDataByUserId(userId: string): Promise<PatientFullDataByUser | null> {
+        const patient = Object.values(this.patients).find((entry) => entry.userId === userId);
+
+        if (!patient) {
+            return null;
+        }
+
+        return {
+            id: patient.id,
+            isActive: patient.isActive,
+            users: {
+                id: patient.userId,
+                name: "Test User",
+                socialName: null,
+                email: "test@example.com",
+                phone: "11999999999",
+                cpf: "12345678900",
+                birthdate: "2026-02-01T17:27:35.202Z",
+                sex: null,
+                isActive: true,
+            },
+        };
+    }
+
+    async findUserByEmail(_email: string): Promise<{ id: string } | null> {
+        return null;
+    }
+
+    async findUserByCpf(_cpf: string): Promise<{ id: string } | null> {
+        return null;
+    }
+
+    async applyFullUpdate(): Promise<void> {}
 }
 
 describe("PatientsService", () => {
@@ -61,8 +104,10 @@ describe("PatientsService", () => {
                 userId: "019c1a3e-e425-7000-8bda-cdfec32c8fed",
                 isActive: true,
             }),
-        ).rejects.toEqual(
-            new DomainError("PATIENT_ALREADY_EXISTS", "Patient already exists for this user"),
-        );
+        ).rejects.toMatchObject({
+            name: "DomainError",
+            code: "PATIENT_ALREADY_EXISTS",
+            message: "Paciente já existe para este usuário",
+        });
     });
 });

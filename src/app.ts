@@ -7,6 +7,10 @@ import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
 import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
+import { professionalUnitsRoutes } from "./modules/professional-units/professional-units.routes.js";
+import { ProfessionalUnitsRepository } from "./modules/professional-units/professional-units.repository.js";
+import { rolesRoutes } from "./modules/roles/roles.routes.js";
+import { RolesRepository } from "./modules/roles/roles.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
 import type { PatientsRepository } from "./modules/patients/patients.repository.js";
 // specialties routes removed
@@ -20,8 +24,6 @@ import { adminUpmRoutes } from "./modules/admin/admin-upm.routes.js";
 import { createSessionRoutes } from "./modules/session/session.routes.js";
 import { authPasswordResetRoutes } from "./modules/auth/auth-password-reset.routes.js";
 import { renewSessionCookies } from "./http/plugins/session-helpers.js";
-import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
-import { schedulesRoutes } from "./modules/schedules/schedules.routes.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -31,7 +33,9 @@ type BuildAppOptions = {
     db: DatabaseClient;
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
+    professionalUnitsRepository?: ProfessionalUnitsRepository;
     patientsRepository: PatientsRepository;
+    rolesRepository?: RolesRepository;
     unitsRepository?: UnitsRepository;
     hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
     authPlugin: ElysiaPlugin;
@@ -42,7 +46,9 @@ export async function buildApp({
     db,
     usersRepository,
     patientsRepository,
+    rolesRepository,
     professionalsRepository,
+    professionalUnitsRepository,
     unitsRepository,
     hasUserAccessToUnitChecker,
     authPlugin,
@@ -75,12 +81,24 @@ export async function buildApp({
                             description: "Operations about professionals",
                         },
                         {
+                            name: "Professional Units",
+                            description: "Operations about links between professionals and units",
+                        },
+                        {
                             name: "Patients",
                             description: "Operations about patients",
                         },
                         {
-                            name: "Appointments",
-                            description: "Appointment scheduling, availability and agenda operations",
+                            name: "Roles",
+                            description: "Operations about professional roles",
+                        },
+                        {
+                            name: "Session Management",
+                            description: "Operations about session unit selection and lookup",
+                        },
+                        {
+                            name: "Auth",
+                            description: "Password reset operations",
                         },
                         {
                             name: "Better Auth",
@@ -121,7 +139,7 @@ export async function buildApp({
         .use(systemRoutes())
         .use(usersRoutes({ usersRepository }))
         .use(patientsRoutes({ patientsRepository }))
-        .use(appointmentsRoutes({ db }));
+        .use(rolesRoutes({ rolesRepository: rolesRepository ?? new RolesRepository(db) }));
 
     const resolvedHasUserAccessToUnitChecker =
         hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
@@ -137,7 +155,14 @@ export async function buildApp({
         )
         : configuredAppBase;
 
-    const configuredAppWithAdmin = configuredAppWithUnits.use(
+    const configuredAppWithProfessionalUnits = configuredAppWithUnits.use(
+        professionalUnitsRoutes({
+            professionalUnitsRepository: professionalUnitsRepository ?? new ProfessionalUnitsRepository(db),
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+        }),
+    );
+
+    const configuredAppWithAdmin = configuredAppWithProfessionalUnits.use(
         adminUnitsRoutes({
             db,
         }),
@@ -158,9 +183,5 @@ export async function buildApp({
         }),
     );
 
-    const configuredAppWithSchedules = configuredAppWithProfessionals.use(
-        schedulesRoutes({ db }),
-    );
-
-    return configuredAppWithSchedules;
+    return configuredAppWithProfessionals;
 }

@@ -28,7 +28,10 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
         return professional;
     }
 
-    async createWithUnit(data: CreateProfessionalInput, unitId: string): Promise<ProfessionalProfile> {
+    async createWithUnit(
+        data: CreateProfessionalInput,
+        unitId: string,
+    ): Promise<{ professional: ProfessionalProfile; professionalUnitId: string }> {
         const professional: ProfessionalProfile = {
             id: "prof-unit-1",
             userId: data.userId,
@@ -43,33 +46,15 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
             this.professionalsByUnit[unitId] = [];
         }
         this.professionalsByUnit[unitId].push("prof-unit-1");
-        return professional;
+
+        return {
+            professional,
+            professionalUnitId: "professional-unit-1",
+        };
     }
 
     async findById(professionalId: string): Promise<ProfessionalProfile | null> {
         return this.professionals[professionalId] ?? null;
-    }
-
-    async findDetailById(professionalId: string): Promise<any | null> {
-        const professional = this.professionals[professionalId];
-        if (!professional) return null;
-
-        return {
-            ...professional,
-            cpf: undefined,
-            birthdate: undefined,
-            unit: null,
-            users: [
-                {
-                    id: professional.userId,
-                    name: professional.name,
-                    email: professional.email,
-                    phone: undefined,
-                    cpf: undefined,
-                    birthdate: undefined,
-                },
-            ],
-        };
     }
 
     async findByIdAndUnit(professionalId: string, unitId: string): Promise<ProfessionalProfile | null> {
@@ -95,6 +80,25 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
             ],
         };
     }
+
+    async findProfessionalUnitByIdAndUnit(
+        professionalUnitId: string,
+        unitId: string,
+    ): Promise<{ id: string } | null> {
+        return null;
+    }
+
+    async hasActiveRole(roleId: string): Promise<boolean> {
+        return false;
+    }
+
+    async findProfessionalUnitRoleByIdAndUnit(
+        professionalUnitRoleId: string,
+        unitId: string,
+    ): Promise<any | null> {
+        return null;
+    }
+    
 
     async list(): Promise<ProfessionalProfile[]> {
         return Object.values(this.professionals);
@@ -157,8 +161,9 @@ describe("ProfessionalsService", () => {
             email: "joao@alfamed.com",
         });
 
-        expect(result.name).toBe("Dr. João");
-        expect(result.email).toBe("joao@alfamed.com");
+        expect(result.professional.name).toBe("Dr. João");
+        expect(result.professional.email).toBe("joao@alfamed.com");
+        expect(result.professionalUnitId).toBe("professional-unit-1");
     });
 
     it("deve lançar erro ao criar profissional sem acesso à unidade", async () => {

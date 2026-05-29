@@ -10,11 +10,6 @@ export const createProfessionalSchema = z.object({
     isActive: z.boolean().optional(),
 }).strict();
 
-export const createProfessionalForUserSchema = z.object({
-    userId: z.string().uuid(),
-    isActive: z.boolean().optional(),
-}).strict();
-
 export const updateProfessionalSchema = z.object({
     userId: z.string().uuid().optional(),
     isActive: z.boolean().optional(),
@@ -38,11 +33,14 @@ export const professionalProfileSchema = z.object({
     updatedAt: z.string().datetime(),
 });
 
-export const professionalRoleProfileSchema = z.object({
-    id: z.string().uuid(),
-    description: z.string(),
-    key: z.string(),
+export const professionalWithUnitProfileSchema = professionalProfileSchema.extend({
+    professionalUnitId: z.string().uuid(),
 });
+
+
+
+
+
 
 export const professionalsErrorSchema = z.object({
     message: z.string(),

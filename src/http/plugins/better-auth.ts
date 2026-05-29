@@ -97,9 +97,6 @@ export const betterAuthPlugin = new Elysia({ name: "better-auth" })
             async resolve({ status, request: { headers } }) {
                 const session = await auth.api.getSession({
                     headers,
-                    query: {
-                        disableCookieCache: true,
-                    },
                 })
 
                 if (!session) {

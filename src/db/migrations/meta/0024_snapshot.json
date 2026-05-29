@@ -1,6 +1,6 @@
 {
-  "id": "2f5af30d-c733-4336-961b-0cc33fe03402",
-  "prevId": "ecb5f58d-6484-4326-bafc-f464306237ad",
+  "id": "4f1e9d23-cc93-4039-9ecd-33eb3e4d365e",
+  "prevId": "2f5af30d-c733-4336-961b-0cc33fe03402",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1862,8 +1862,7 @@
         },
         "sex": {
           "name": "sex",
-          "type": "sex",
-          "typeSchema": "public",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -2068,16 +2067,7 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {
-    "public.sex": {
-      "name": "sex",
-      "schema": "public",
-      "values": [
-        "M",
-        "F"
-      ]
-    }
-  },
+  "enums": {},
   "schemas": {},
   "sequences": {},
   "roles": {},
