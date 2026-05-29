@@ -138,6 +138,7 @@ export class AppointmentsRepository {
                 patientId: appointments.patientId,
                 startAt: appointments.startAt,
                 endAt: appointments.endAt,
+                reason: appointments.reason,
             })
             .from(appointments)
             .innerJoin(professionalUnits, eq(professionalUnits.id, appointments.professionalUnitId))
@@ -320,11 +321,22 @@ export class AppointmentsRepository {
     }
 
     async createAppointment(input: CreateAppointmentInput, unitId: string) {
+        if (!input.professionalId) {
+            throw new Error("Invalid professionalId");
+        }
+
+        if (!input.startAt) {
+            throw new Error("Invalid startAt");
+        }
+
         const professionalUnit = await this.findProfessionalUnitByProfessionalIdAndUnitId(input.professionalId, unitId);
 
         if (!professionalUnit) {
             throw new Error("Professional not found for selected unit");
         }
+
+        const normalizedStart = new Date(input.startAt);
+        const normalizedEnd = input.endAt ? new Date(input.endAt) : new Date(normalizedStart.getTime() + 60 * 60 * 1000);
 
         // Check for patient overlapping appointments (any professional)
         const [patientConflict] = await this.db
@@ -334,8 +346,8 @@ export class AppointmentsRepository {
                 and(
                     eq(appointments.patientId, input.patientId),
                     eq(appointments.isActive, true),
-                    lt(appointments.startAt, new Date(input.endAt)),
-                    gt(appointments.endAt, new Date(input.startAt)),
+                    lt(appointments.startAt, normalizedEnd),
+                    gt(appointments.endAt, normalizedStart),
                 ),
             )
             .limit(1);
@@ -353,8 +365,8 @@ export class AppointmentsRepository {
                 and(
                     eq(professionalUnits.professionalId, input.professionalId),
                     eq(appointments.isActive, true),
-                    lt(appointments.startAt, new Date(input.endAt)),
-                    gt(appointments.endAt, new Date(input.startAt)),
+                    lt(appointments.startAt, normalizedEnd),
+                    gt(appointments.endAt, normalizedStart),
                 ),
             )
             .limit(1);
@@ -366,9 +378,9 @@ export class AppointmentsRepository {
         const availability = await this.checkAvailability(
             {
                 professionalId: input.professionalId,
-                date: input.startAt.slice(0, 10),
-                startAt: input.startAt,
-                endAt: input.endAt,
+                date: normalizedStart.toISOString().slice(0, 10),
+                startAt: normalizedStart.toISOString(),
+                endAt: normalizedEnd.toISOString(),
             },
             unitId,
         );
@@ -397,9 +409,10 @@ export class AppointmentsRepository {
             .values({
                 patientId: input.patientId,
                 professionalUnitId: professionalUnit.professionalUnitId,
-                startAt: new Date(input.startAt),
-                endAt: new Date(input.endAt),
+                startAt: normalizedStart,
+                endAt: normalizedEnd,
                 statusId,
+                reason: input.reason ?? null,
             })
             .returning({
                 id: appointments.id,
@@ -407,6 +420,7 @@ export class AppointmentsRepository {
                 professionalUnitId: appointments.professionalUnitId,
                 startAt: appointments.startAt,
                 endAt: appointments.endAt,
+                reason: appointments.reason,
             });
 
         return created;
@@ -422,6 +436,7 @@ export class AppointmentsRepository {
                     startAt: appointments.startAt,
                     endAt: appointments.endAt,
                     professionalId: professionalUnits.professionalId,
+                    reason: appointments.reason,
                 })
                 .from(appointments)
                 .innerJoin(professionalUnits, eq(professionalUnits.id, appointments.professionalUnitId))
@@ -443,6 +458,7 @@ export class AppointmentsRepository {
                 startAt: appointment.startAt,
                 endAt: appointment.endAt,
                 professionalId: appointment.professionalId,
+                reason: appointment.reason ?? null,
             };
         } catch (error) {
             console.error(`[getAppointmentById] Error for ${appointmentId}:`, error);
@@ -503,6 +519,7 @@ export class AppointmentsRepository {
                 professionalUnitId: appointments.professionalUnitId,
                 startAt: appointments.startAt,
                 endAt: appointments.endAt,
+                reason: appointments.reason,
             });
 
         return updated;

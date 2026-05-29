@@ -172,6 +172,7 @@ export const appointmentsRoutes = ({ db }: AppointmentsRoutesOptions) => {
                         professionalUnitId: t.String({ format: "uuid" }),
                         startAt: t.Date(),
                         endAt: t.Date(),
+                        reason: t.Union([t.String(), t.Null()]),
                     }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     400: t.Union([
@@ -202,7 +203,7 @@ export const appointmentsRoutes = ({ db }: AppointmentsRoutesOptions) => {
                 try {
                     console.log("[appointments.routes] GET /:id params:", params);
                     console.log("[appointments.routes] GET /:id unitId:", unitId);
-                    
+
                     const appointment = await appointmentsRepository.getAppointmentById(params.id, unitId);
 
                     if (!appointment) {
@@ -219,6 +220,7 @@ export const appointmentsRoutes = ({ db }: AppointmentsRoutesOptions) => {
                         startAt: appointment.startAt,
                         endAt: appointment.endAt,
                         professionalId: appointment.professionalId,
+                        reason: appointment.reason ?? null,
                     });
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -240,7 +242,7 @@ export const appointmentsRoutes = ({ db }: AppointmentsRoutesOptions) => {
                         professionalUnitId: t.String({ format: "uuid" }),
                         startAt: t.Date(),
                         endAt: t.Date(),
-                        reason: t.Optional(t.String()),
+                        reason: t.Union([t.String(), t.Null()]),
                         professionalId: t.String({ format: "uuid" }),
                     }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
@@ -305,6 +307,7 @@ export const appointmentsRoutes = ({ db }: AppointmentsRoutesOptions) => {
                         professionalUnitId: t.String({ format: "uuid" }),
                         startAt: t.Date(),
                         endAt: t.Date(),
+                        reason: t.Union([t.String(), t.Null()]),
                     }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),

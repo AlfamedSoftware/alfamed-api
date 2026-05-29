@@ -8,6 +8,7 @@ import { SchedulesRepository } from "./schedules.repository.js";
 type DatabaseClient = typeof dbType;
 
 const scheduleItemSchema = z.object({
+    id: z.string().uuid().optional(),
     dayOfWeek: z.number().min(0).max(6),
     startTime: z.string(),
     endTime: z.string(),

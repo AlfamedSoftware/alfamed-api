@@ -22,7 +22,7 @@ export class ProfessionalUnitsService {
     constructor(
         private readonly professionalUnitsRepository: ProfessionalUnitsRepository,
         private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
-    ) {}
+    ) { }
 
     async createProfessionalUnit(
         requestUserId: string,
@@ -281,6 +281,8 @@ export class ProfessionalUnitsService {
             professionalUnitRoleChanges.roleId = data.roleId;
         }
 
+        const patientId = data.patientId ?? target.patient.id;
+
         const patientChanges: FullUpdateChanges["patientChanges"] = {};
         if (data.patientStatus !== undefined && data.patientStatus !== target.patient.isActive) {
             patientChanges.isActive = data.patientStatus;
@@ -305,7 +307,7 @@ export class ProfessionalUnitsService {
                 professionalId: data.professionalId,
                 professionalUnitId: data.professionalUnitId,
                 professionalUnitRoleId: data.professionalUnitRoleId,
-                patientId: data.patientId,
+                patientId,
                 userChanges,
                 professionalChanges,
                 professionalUnitChanges,

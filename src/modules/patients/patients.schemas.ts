@@ -40,6 +40,17 @@ export const patientProfileSchema = z.object({
     updatedAt: z.string().datetime(),
 });
 
+export const patientListItemSchema = z.object({
+    // allow non-UUID ids because some test fixtures use string ids like 'pat_1'
+    id: z.string().min(1),
+    userId: z.string().min(1),
+    name: z.string().min(1),
+    email: z.string().email().nullable(),
+    cpf: z.string().nullable(),
+    phone: z.string().nullable(),
+    isActive: z.boolean(),
+});
+
 export const patientFullDataByUserSchema = z.object({
     id: z.string().uuid(),
     isActive: z.boolean(),

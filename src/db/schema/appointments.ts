@@ -14,6 +14,7 @@ export const appointments = pgTable("appointments", {
         .references(() => professionalUnits.id, { onDelete: "cascade" }),
     startAt: timestamp("start_at", { mode: "date" }).notNull(),
     endAt: timestamp("end_at", { mode: "date" }).notNull(),
+    reason: text("reason"),
     statusId: text("status_id")
         .notNull()
         .references(() => appointmentsStatus.id, { onDelete: "restrict" }),
