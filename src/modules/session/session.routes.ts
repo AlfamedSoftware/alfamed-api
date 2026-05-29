@@ -32,7 +32,7 @@ interface UnitOption {
         id: string;
         description: string;
         key: string;
-    };
+    }[];
 }
 
 interface SelectUnitResponse {
@@ -137,7 +137,7 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                 const unitsAsObjects = units.map((unit) => ({
                     id: unit.id,
                     name: unit.name,
-                    roles: unit.roles[0],
+                    roles: unit.roles,
                 }));
 
                 return context.status(200, {
@@ -157,11 +157,13 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                             t.Object({
                                 id: t.String({ format: "uuid" }),
                                 name: t.String(),
-                                roles: t.Object({
-                                    id: t.String({ format: "uuid" }),
-                                    description: t.String(),
-                                    key: t.String(),
-                                }),
+                                roles: t.Array(
+                                    t.Object({
+                                        id: t.String({ format: "uuid" }),
+                                        description: t.String(),
+                                        key: t.String(),
+                                    }),
+                                ),
                             }),
                         ),
                     }),
@@ -312,4 +314,4 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                 },
             },
         );
-    };
+};

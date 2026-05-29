@@ -17,6 +17,7 @@ export type Patient = z.infer<typeof patientProfileSchema>;
 export type PatientFullDataByUser = z.infer<typeof patientFullDataByUserSchema>;
 export type CreatePatientInput = z.infer<typeof createPatientForUserSchema>;
 export type CreatePatientFullCreateInput = z.infer<typeof createPatientFullCreateSchema>;
+export type PatientListItem = z.infer<typeof import("./patients.schemas.js").patientListItemSchema>;
 
 type DatabaseClient = typeof dbType;
 
@@ -26,6 +27,7 @@ export class PatientsRepository {
     readonly getPatientByUserId: (userId: string) => Promise<Patient | null>;
     readonly getPatientById: (patientId: string) => Promise<Patient | null>;
     readonly getPatientFullDataByUserId: (userId: string) => Promise<PatientFullDataByUser | null>;
+    readonly listPatients: () => Promise<PatientListItem[]>;
     readonly findUserByEmail: (email: string) => Promise<{ id: string } | null>;
     readonly findUserByCpf: (cpf: string) => Promise<{ id: string } | null>;
     readonly applyFullUpdate: (args: {
@@ -193,6 +195,34 @@ export class PatientsRepository {
                 .limit(1);
 
             return result ? toProfile(result) : null;
+        };
+
+        this.listPatients = async () => {
+            const rows = await db
+                .select({
+                    id: patients.id,
+                    userId: patients.userId,
+                    isActive: patients.isActive,
+                    userName: users.name,
+                    userEmail: users.email,
+                    userCpf: users.cpf,
+                    userPhone: users.phone,
+                })
+                .from(patients)
+                .innerJoin(users, eq(patients.userId, users.id));
+
+            return rows.map((r) =>
+            // parse/normalize to the expected list item shape
+            ({
+                id: r.id,
+                userId: r.userId,
+                name: r.userName,
+                email: r.userEmail ?? null,
+                cpf: r.userCpf ?? null,
+                phone: r.userPhone ?? null,
+                isActive: r.isActive,
+            }),
+            );
         };
 
         this.getPatientFullDataByUserId = async (userId: string) => {

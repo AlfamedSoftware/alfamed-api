@@ -49,7 +49,7 @@ export const professionalUnitFullUpdateSchema = z
         professionalUnitId: z.string().uuid(),
         professionalUnitRoleId: z.string().uuid(),
         roleId: z.string().uuid(),
-        patientId: z.string().uuid(),
+        patientId: z.string().uuid().optional(),
         name: z.string().optional(),
         socialName: z.union([z.string(), z.null()]).optional(),
         email: z.string().email().optional(),

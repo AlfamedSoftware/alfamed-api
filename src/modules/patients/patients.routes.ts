@@ -20,6 +20,47 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
     const patientsService = new PatientsService(patientsRepository);
 
     return new Elysia({ name: "patients-routes", prefix: "/patients" })
+        .get(
+            "/",
+            async (context) => {
+                const { status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) return status(401, { message: "Não autorizado" });
+
+                try {
+                    const list = await patientsService.list();
+                    return status(200, list);
+                } catch (error) {
+                    console.error("[patients.routes] Error listing patients:", error);
+                    return status(500, { message: "Erro interno do servidor" });
+                }
+            },
+            {
+                auth: true,
+                detail: {
+                    summary: "List patients",
+                    description: "Returns a list of patients with basic user info.",
+                    tags: ["Patients"],
+                },
+                response: {
+                    200: t.Array(
+                        t.Object({
+                            // accept generic string ids because fixtures may use non-UUID values
+                            id: t.String(),
+                            userId: t.String(),
+                            name: t.String(),
+                            email: t.String(),
+                            cpf: t.String(),
+                            phone: t.String(),
+                            isActive: t.Boolean(),
+                        }),
+                    ),
+                    401: t.Object({ message: t.Literal("Não autorizado") }),
+                    500: t.Object({ message: t.String() }),
+                },
+            },
+        )
         .post(
             "/full-create",
             async (context) => {

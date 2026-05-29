@@ -9,7 +9,7 @@ import type { z } from "zod";
 import { patientFullUpdateSchema } from "./patients.schemas.js";
 
 export class PatientsService {
-    constructor(private readonly patientsRepository: PatientsRepository) {}
+    constructor(private readonly patientsRepository: PatientsRepository) { }
 
     async createPatient(data: CreatePatientInput) {
         const existingPatient = await this.patientsRepository.getPatientByUserId(data.userId);
@@ -19,6 +19,10 @@ export class PatientsService {
         }
 
         return this.patientsRepository.createPatient(data);
+    }
+
+    async list() {
+        return this.patientsRepository.listPatients();
     }
 
     async getPatientById(patientId: string) {
