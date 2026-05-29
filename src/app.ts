@@ -13,6 +13,8 @@ import { rolesRoutes } from "./modules/roles/roles.routes.js";
 import { RolesRepository } from "./modules/roles/roles.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
 import type { PatientsRepository } from "./modules/patients/patients.repository.js";
+import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
+import { schedulesRoutes } from "./modules/schedules/schedules.routes.js";
 // specialties routes removed
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
@@ -139,7 +141,8 @@ export async function buildApp({
         .use(systemRoutes())
         .use(usersRoutes({ usersRepository }))
         .use(patientsRoutes({ patientsRepository }))
-        .use(rolesRoutes({ rolesRepository: rolesRepository ?? new RolesRepository(db) }));
+        .use(rolesRoutes({ rolesRepository: rolesRepository ?? new RolesRepository(db) }))
+        .use(appointmentsRoutes({ db }));
 
     const resolvedHasUserAccessToUnitChecker =
         hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
@@ -182,6 +185,9 @@ export async function buildApp({
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
         }),
     );
+
+    // Register schedules routes (depend on db directly)
+    configuredAppWithProfessionals.use(schedulesRoutes({ db }));
 
     return configuredAppWithProfessionals;
 }
