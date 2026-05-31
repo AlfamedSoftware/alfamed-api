@@ -183,6 +183,13 @@
       "when": 1779231421140,
       "tag": "0025_procedures_unit_fk_and_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1780268894741,
+      "tag": "0026_add_reason_to_appointments",
+      "breakpoints": true
     }
   ]
 }
