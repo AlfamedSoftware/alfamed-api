@@ -9,6 +9,8 @@ import { professionalsRoutes } from "./modules/professionals/professionals.route
 import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
 import { proceduresRoutes } from "./modules/procedures/procedures.routes.js";
 import { ProceduresRepository } from "./modules/procedures/procedures.repository.js";
+import { specialtiesRoutes } from "./modules/specialties/specialties.routes.js";
+import { SpecialtiesRepository } from "./modules/specialties/specialties.repository.js";
 import { professionalUnitsRoutes } from "./modules/professional-units/professional-units.routes.js";
 import { ProfessionalUnitsRepository } from "./modules/professional-units/professional-units.repository.js";
 import { rolesRoutes } from "./modules/roles/roles.routes.js";
@@ -17,7 +19,6 @@ import { patientsRoutes } from "./modules/patients/patients.routes.js";
 import type { PatientsRepository } from "./modules/patients/patients.repository.js";
 import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
 import { schedulesRoutes } from "./modules/schedules/schedules.routes.js";
-// specialties routes removed
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
 // appointments routes removed
@@ -38,6 +39,7 @@ type BuildAppOptions = {
     usersRepository: UsersRepository;
     professionalsRepository?: ProfessionalsRepository;
     proceduresRepository?: ProceduresRepository;
+    specialtiesRepository?: SpecialtiesRepository;
     professionalUnitsRepository?: ProfessionalUnitsRepository;
     patientsRepository: PatientsRepository;
     rolesRepository?: RolesRepository;
@@ -54,6 +56,7 @@ export async function buildApp({
     rolesRepository,
     professionalsRepository,
     proceduresRepository,
+    specialtiesRepository,
     professionalUnitsRepository,
     unitsRepository,
     hasUserAccessToUnitChecker,
@@ -91,6 +94,10 @@ export async function buildApp({
                             description: "Operations about procedures",
                         },
                         {
+                            name: "Specialties",
+                            description: "Operations about specialties",
+                        },
+                        {
                             name: "Professional Units",
                             description: "Operations about links between professionals and units",
                         },
@@ -114,7 +121,6 @@ export async function buildApp({
                             name: "Better Auth",
                             description: "Authentication and session operations",
                         },
-                        // Removed specialties and appointments tags (modules no longer present)
                         {
                             name: "Admin",
                             description: "Internal administration operations",
@@ -173,7 +179,14 @@ export async function buildApp({
         }),
     );
 
-    const configuredAppWithProfessionalUnits = configuredAppWithProcedures.use(
+    const configuredAppWithSpecialties = configuredAppWithProcedures.use(
+        specialtiesRoutes({
+            specialtiesRepository: specialtiesRepository ?? new SpecialtiesRepository(db),
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+        }),
+    );
+
+    const configuredAppWithProfessionalUnits = configuredAppWithSpecialties.use(
         professionalUnitsRoutes({
             professionalUnitsRepository: professionalUnitsRepository ?? new ProfessionalUnitsRepository(db),
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
