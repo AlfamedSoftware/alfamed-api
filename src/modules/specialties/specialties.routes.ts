@@ -54,7 +54,7 @@ export const specialtiesRoutes = ({
                     }
 
                     if (isDomainError(error, "SPECIALTY_NAME_ALREADY_EXISTS")) {
-                        return status(409, { message: "Specialty name already exists" });
+                        return status(409, { message: "Essa especialidade já está cadastrada nessa unidade" });
                     }
 
                     return status(500, { message: "Internal server error" });
@@ -73,7 +73,7 @@ export const specialtiesRoutes = ({
                     400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
-                    409: t.Object({ message: t.Literal("Specialty name already exists") }),
+                    409: t.Object({ message: t.Literal("Essa especialidade já está cadastrada nessa unidade") }),
                     500: specialtiesErrorSchema,
                 },
             },
@@ -219,7 +219,7 @@ export const specialtiesRoutes = ({
                     }
 
                     if (isDomainError(error, "SPECIALTY_NAME_ALREADY_EXISTS")) {
-                        return status(409, { message: "Specialty name already exists" });
+                        return status(409, { message: "Essa especialidade já está cadastrada nessa unidade" });
                     }
 
                     return status(500, { message: "Internal server error" });
@@ -239,7 +239,7 @@ export const specialtiesRoutes = ({
                     400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Specialty not found") }),
-                    409: t.Object({ message: t.Literal("Specialty name already exists") }),
+                    409: t.Object({ message: t.Literal("Essa especialidade já está cadastrada nessa unidade") }),
                     500: specialtiesErrorSchema,
                 },
             },

@@ -29,7 +29,7 @@ export class SpecialtiesService {
         );
 
         if (existing) {
-            throw new DomainError("SPECIALTY_NAME_ALREADY_EXISTS", "Specialty name already exists");
+            throw new DomainError("SPECIALTY_NAME_ALREADY_EXISTS", "Essa especialidade já está cadastrada nessa unidade");
         }
     }
 
