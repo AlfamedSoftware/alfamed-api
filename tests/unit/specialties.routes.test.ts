@@ -194,7 +194,7 @@ describe("Specialties routes", () => {
         const body = await response.json();
 
         expect(response.status).toBe(409);
-        expect(body).toMatchObject({ message: "Specialty name already exists" });
+        expect(body).toMatchObject({ message: "Essa especialidade já está cadastrada nessa unidade" });
     });
 
     it("GET /specialties/list-specialties-by-unit/:unitId deve retornar lista", async () => {
