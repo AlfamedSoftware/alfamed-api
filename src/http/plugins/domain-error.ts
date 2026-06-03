@@ -22,6 +22,7 @@ export type DomainErrorCode =
     | "STATUS_NOT_FOUND"
     | "UNIT_HAS_LINKED_PROFESSIONALS"
     | "UPM_USER_NOT_FOUND"
+    | "SPECIALTY_NAME_ALREADY_EXISTS"
     | "PROCEDURE_CODE_ALREADY_EXISTS";
 
 export class DomainError extends Error {
