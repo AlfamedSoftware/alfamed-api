@@ -29,7 +29,7 @@ export class ProceduresService {
         );
 
         if (existing) {
-            throw new DomainError("PROCEDURE_CODE_ALREADY_EXISTS", "Procedure code already exists");
+            throw new DomainError("PROCEDURE_CODE_ALREADY_EXISTS", "O código do procedimento já está cadastrado nessa unidade");
         }
     }
 

@@ -54,7 +54,7 @@ export const proceduresRoutes = ({
                     }
 
                     if (isDomainError(error, "PROCEDURE_CODE_ALREADY_EXISTS")) {
-                        return status(409, { message: "Procedure code already exists" });
+                        return status(409, { message: "O código do procedimento já está cadastrado nessa unidade" });
                     }
 
                     return status(500, { message: "Internal server error" });
@@ -73,7 +73,7 @@ export const proceduresRoutes = ({
                     400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
-                    409: t.Object({ message: t.Literal("Procedure code already exists") }),
+                    409: t.Object({ message: t.Literal("O código do procedimento já está cadastrado nessa unidade") }),
                     500: proceduresErrorSchema,
                 },
             },
@@ -222,7 +222,7 @@ export const proceduresRoutes = ({
                     }
 
                     if (isDomainError(error, "PROCEDURE_CODE_ALREADY_EXISTS")) {
-                        return status(409, { message: "Procedure code already exists" });
+                        return status(409, { message: "O código do procedimento já está cadastrado nessa unidade" });
                     }
 
                     return status(500, { message: "Internal server error" });
@@ -242,7 +242,7 @@ export const proceduresRoutes = ({
                     400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Procedure not found") }),
-                    409: t.Object({ message: t.Literal("Procedure code already exists") }),
+                    409: t.Object({ message: t.Literal("O código do procedimento já está cadastrado nessa unidade") }),
                     500: proceduresErrorSchema,
                 },
             },

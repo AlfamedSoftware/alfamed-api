@@ -219,7 +219,7 @@ describe("Procedures routes", () => {
         const body = await response.json();
 
         expect(response.status).toBe(409);
-        expect(body).toMatchObject({ message: "Procedure code already exists" });
+        expect(body).toMatchObject({ message: "O código do procedimento já está cadastrado nessa unidade" });
     });
 
     it("GET /procedures/list-procedures-by-unit/:unitId deve retornar lista", async () => {
