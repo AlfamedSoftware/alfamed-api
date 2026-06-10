@@ -61,11 +61,11 @@ function getSelectedCookieValue(request: Request, cookieName: string): string | 
 }
 
 export function getUnitIdFromRequest(request: Request): string | null {
-    return getSelectedCookieValue(request, selectedUnitCookieName);
+    return request.headers.get("x-unit-id") ?? getSelectedCookieValue(request, selectedUnitCookieName);
 }
 
 export function getProfessionalUnitIdFromRequest(request: Request): string | null {
-    return getSelectedCookieValue(request, selectedProfessionalUnitCookieName);
+    return request.headers.get("x-professional-unit-id") ?? getSelectedCookieValue(request, selectedProfessionalUnitCookieName);
 }
 
 export function createUnitAccessChecker(db: DatabaseClient) {
