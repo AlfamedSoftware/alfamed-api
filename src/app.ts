@@ -13,6 +13,7 @@ import { specialtiesRoutes } from "./modules/specialties/specialties.routes.js";
 import { SpecialtiesRepository } from "./modules/specialties/specialties.repository.js";
 import { professionalUnitsRoutes } from "./modules/professional-units/professional-units.routes.js";
 import { ProfessionalUnitsRepository } from "./modules/professional-units/professional-units.repository.js";
+import { professionalUnitSpecialtiesRoutes } from "./modules/professional-unit-specialties/professional-unit-specialties.routes.js";
 import { rolesRoutes } from "./modules/roles/roles.routes.js";
 import { RolesRepository } from "./modules/roles/roles.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
@@ -100,6 +101,10 @@ export async function buildApp({
                         {
                             name: "Professional Units",
                             description: "Operations about links between professionals and units",
+                        },
+                        {
+                            name: "Professional Unit Specialties",
+                            description: "Operations about links between professionals and specialties",
                         },
                         {
                             name: "Patients",
@@ -191,7 +196,7 @@ export async function buildApp({
             professionalUnitsRepository: professionalUnitsRepository ?? new ProfessionalUnitsRepository(db),
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
         }),
-    );
+    ).use(professionalUnitSpecialtiesRoutes);
 
     const configuredAppWithAdmin = configuredAppWithProfessionalUnits.use(
         adminUnitsRoutes({
