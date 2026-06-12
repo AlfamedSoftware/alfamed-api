@@ -8,6 +8,14 @@ export const createProfessionalUnitSchema = z
     })
     .strict();
 
+export const createProfessionalUnitByUserCpfSchema = z
+    .object({
+        cpf: z.string().min(1),
+        isActive: z.boolean().optional(),
+        roleId: z.string().uuid().optional(),
+    })
+    .strict();
+
 export const createProfessionalUnitFullCreateSchema = z
     .object({
         name: z.string().min(1),
@@ -49,7 +57,7 @@ export const professionalUnitFullUpdateSchema = z
         professionalUnitId: z.string().uuid(),
         professionalUnitRoleId: z.string().uuid(),
         roleId: z.string().uuid(),
-        patientId: z.string().uuid().optional(),
+        patientId: z.string().uuid(),
         name: z.string().optional(),
         socialName: z.union([z.string(), z.null()]).optional(),
         email: z.string().email().optional(),
