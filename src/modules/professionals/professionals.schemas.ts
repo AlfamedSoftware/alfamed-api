@@ -4,14 +4,13 @@ const cpfPattern = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
 const phonePattern = /^\(\d{2}\) \d{4,5}-\d{4}$/;
 const crmPattern = /^[A-Z]{2}\d{4,6}$/;
 
+export const professionalByUserCpfQuerySchema = z.object({
+    cpf: z.string().min(1),
+});
+
 export const createProfessionalSchema = z.object({
     name: z.string().optional(),
     email: z.string().email().optional(),
-    isActive: z.boolean().optional(),
-}).strict();
-
-export const createProfessionalForUserSchema = z.object({
-    userId: z.string().uuid(),
     isActive: z.boolean().optional(),
 }).strict();
 
@@ -42,40 +41,25 @@ export const professionalWithUnitProfileSchema = professionalProfileSchema.exten
     professionalUnitId: z.string().uuid(),
 });
 
-export const professionalRoleProfileSchema = z.object({
-    id: z.string().uuid(),
-    description: z.string(),
-    key: z.string(),
-});
-
-export const professionalUnitRoleProfileSchema = z.object({
-    id: z.string().uuid(),
-    professionalUnitId: z.string().uuid(),
-    roleId: z.string().uuid(),
+export const professionalUnitProfileSchema = z.object({
+    id: z.string(),
+    professionalId: z.string(),
+    unitId: z.string(),
     isActive: z.boolean(),
-    role: professionalRoleProfileSchema,
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
 });
 
-export const linkProfessionalUnitRoleSchema = z
-    .object({
-        professionalUnitId: z.string().uuid(),
-        roleId: z.string().uuid(),
-        isActive: z.boolean().optional(),
+export const professionalByUserCpfResponseSchema = professionalProfileSchema
+    .extend({
+        professionalUnit: professionalUnitProfileSchema.nullable().optional(),
     })
-    .strict();
+    .partial();
 
-export const updateProfessionalUnitRoleSchema = z
-    .object({
-        professionalUnitRoleId: z.string().uuid(),
-        roleId: z.string().uuid().optional(),
-        isActive: z.boolean().optional(),
-    })
-    .strict()
-    .refine((data) => data.roleId !== undefined || data.isActive !== undefined, {
-        message: "Informe roleId ou isActive para atualizar",
-    });
+
+
+
+
 
 export const professionalsErrorSchema = z.object({
     message: z.string(),

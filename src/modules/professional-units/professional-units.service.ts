@@ -2,6 +2,7 @@ import { DomainError } from "../../http/plugins/domain-error.js";
 import { assertUserHasUnitAccess } from "../../http/plugins/unit-access.js";
 import { hash } from "bcryptjs";
 import type {
+    CreateProfessionalUnitByUserCpfInput,
     CreateProfessionalUnitInput,
     FullUpdateChanges,
     ProfileUpdateChanges,
@@ -22,7 +23,7 @@ export class ProfessionalUnitsService {
     constructor(
         private readonly professionalUnitsRepository: ProfessionalUnitsRepository,
         private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
-    ) {}
+    ) { }
 
     async createProfessionalUnit(
         requestUserId: string,
@@ -56,6 +57,47 @@ export class ProfessionalUnitsService {
         await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         return this.professionalUnitsRepository.createFullCreate(unitId, data);
+    }
+
+    async createProfessionalUnitByUserCpf(
+        requestUserId: string,
+        unitId: string,
+        data: CreateProfessionalUnitByUserCpfInput,
+    ) {
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
+
+        const normalizedCpf = data.cpf.trim();
+        const professional = await this.professionalUnitsRepository.findProfessionalByUserCpf(normalizedCpf);
+
+        if (!professional) {
+            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
+        }
+
+        const existingProfessionalUnit = await this.professionalUnitsRepository.findByProfessionalIdAndUnitId(
+            professional.id,
+            unitId,
+        );
+
+        if (existingProfessionalUnit) {
+            throw new DomainError("PROFESSIONAL_UNIT_ALREADY_EXISTS", "Professional unit already exists");
+        }
+
+        if (data.roleId) {
+            const roleExists = await this.professionalUnitsRepository.roleExists(data.roleId);
+
+            if (!roleExists) {
+                throw new DomainError("ROLE_NOT_FOUND", "Role not found");
+            }
+        }
+
+        return this.professionalUnitsRepository.createWithOptionalRole(
+            {
+                professionalId: professional.id,
+                unitId,
+                isActive: data.isActive,
+            },
+            data.roleId,
+        );
     }
 
     async getProfessionalUnitById(
@@ -96,10 +138,14 @@ export class ProfessionalUnitsService {
         return professionalUnit;
     }
 
-    async listProfessionalUnitFullDataByUnit(requestUserId: string, unitId: string) {
+    async listProfessionalUnitFullDataByUnit(
+        requestUserId: string,
+        unitId: string,
+        filters: { isActive?: boolean; roleKey?: string } = {},
+    ) {
         await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
-        return this.professionalUnitsRepository.listFullDataByUnit(unitId);
+        return this.professionalUnitsRepository.listFullDataByUnit(unitId, filters);
     }
 
     async profileUpdate(
@@ -281,6 +327,8 @@ export class ProfessionalUnitsService {
             professionalUnitRoleChanges.roleId = data.roleId;
         }
 
+        const patientId = data.patientId;
+
         const patientChanges: FullUpdateChanges["patientChanges"] = {};
         if (data.patientStatus !== undefined && data.patientStatus !== target.patient.isActive) {
             patientChanges.isActive = data.patientStatus;
@@ -305,7 +353,7 @@ export class ProfessionalUnitsService {
                 professionalId: data.professionalId,
                 professionalUnitId: data.professionalUnitId,
                 professionalUnitRoleId: data.professionalUnitRoleId,
-                patientId: data.patientId,
+                patientId,
                 userChanges,
                 professionalChanges,
                 professionalUnitChanges,

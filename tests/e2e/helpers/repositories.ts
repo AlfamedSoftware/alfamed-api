@@ -1,13 +1,20 @@
 import type { UserProfile, UsersRepository } from "../../../src/modules/users/users.repository";
 import type {
     CreateProfessionalInput,
-    LinkProfessionalUnitRoleInput,
     ProfessionalProfile,
-    ProfessionalUnitRoleProfile,
     ProfessionalsRepository,
-    UpdateProfessionalUnitRoleInput,
     UpdateProfessionalInput,
 } from "../../../src/modules/professionals/professionals.repository";
+
+type ProfessionalUnitRoleProfile = {
+    id: string;
+    professionalUnitId: string;
+    roleId: string;
+    isActive: boolean;
+    role: { id: string; description: string; key: string };
+    createdAt: string;
+    updatedAt: string;
+};
 import type {
     CreateUnitInput,
     UnitProfile,
@@ -16,6 +23,8 @@ import type {
 } from "../../../src/modules/units/units.repository";
 import type {
     CreatePatientInput,
+    CreatePatientFullCreateInput,
+    PatientFullDataByUser,
     Patient,
     PatientsRepository,
 } from "../../../src/modules/patients/patients.repository";
@@ -41,10 +50,15 @@ export class InMemoryUsersRepository implements UsersRepository {
 
 export class InMemoryPatientsRepository implements PatientsRepository {
     private readonly patients: Record<string, Patient>;
+    private readonly users: Record<string, PatientFullDataByUser["users"]>;
     private sequence = 1;
 
-    constructor(initialPatients: Record<string, Patient> = {}) {
+    constructor(
+        initialPatients: Record<string, Patient> = {},
+        initialUsers: Record<string, PatientFullDataByUser["users"]> = {},
+    ) {
         this.patients = { ...initialPatients };
+        this.users = { ...initialUsers };
     }
 
     async createPatient(data: CreatePatientInput): Promise<Patient> {
@@ -77,6 +91,129 @@ export class InMemoryPatientsRepository implements PatientsRepository {
 
     async getPatientById(patientId: string): Promise<Patient | null> {
         return this.patients[patientId] ?? null;
+    }
+
+    async createPatientFullCreate(data: CreatePatientFullCreateInput): Promise<PatientFullDataByUser> {
+        await this.ensureFullCreateUniqueness(data);
+
+        const now = new Date().toISOString();
+        const userId = `019c1a3e-e425-7000-8bda-cdfec32d8f${String(this.sequence).padStart(2, "0")}`;
+        const patientId = `019c1a3e-e425-7000-8bda-cdfec32d9f${String(this.sequence).padStart(2, "0")}`;
+        this.sequence += 1;
+
+        const user = {
+            id: userId,
+            name: data.name,
+            socialName: data.socialName?.trim() || null,
+            email: data.email.trim().toLowerCase(),
+            phone: data.phone.trim(),
+            cpf: data.cpf.trim(),
+            birthdate: new Date(data.birthdate).toISOString(),
+            sex: data.sex,
+            isActive: true,
+        };
+
+        this.users[userId] = user;
+
+        const patient: Patient = {
+            id: patientId,
+            userId,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        this.patients[patientId] = patient;
+
+        return {
+            id: patient.id,
+            isActive: patient.isActive,
+            users: user,
+        };
+    }
+
+    
+
+    async findUserByEmail(email: string): Promise<{ id: string } | null> {
+        for (const [id, user] of Object.entries(this.users)) {
+            if (user.email === email) return { id };
+        }
+
+        return null;
+    }
+
+    async findUserByCpf(cpf: string): Promise<{ id: string } | null> {
+        for (const [id, user] of Object.entries(this.users)) {
+            if (user.cpf === cpf) return { id };
+        }
+
+        return null;
+    }
+
+    async applyFullUpdate({
+        userId,
+        patientId,
+        userChanges,
+        patientChanges,
+    }: {
+        userId: string;
+        patientId: string;
+        userChanges: Record<string, unknown>;
+        patientChanges: Record<string, unknown>;
+    }): Promise<void> {
+        const user = this.users[userId];
+
+        if (user) {
+            for (const [k, v] of Object.entries(userChanges)) {
+                // @ts-ignore
+                user[k] = v as any;
+            }
+        }
+
+        const patient = this.patients[patientId];
+
+        if (patient) {
+            if (typeof patientChanges.isActive !== "undefined") {
+                patient.isActive = patientChanges.isActive as boolean;
+            }
+            patient.updatedAt = new Date().toISOString();
+        }
+    }
+
+    async getPatientFullDataByUserId(userId: string): Promise<PatientFullDataByUser | null> {
+        const patient = await this.getPatientByUserId(userId);
+
+        if (!patient) {
+            return null;
+        }
+
+        const user = this.users[userId];
+
+        if (!user) {
+            return null;
+        }
+
+        return {
+            id: patient.id,
+            isActive: patient.isActive,
+            users: user,
+        };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    private async ensureFullCreateUniqueness(data: CreatePatientFullCreateInput) {
+        const normalizedEmail = data.email.trim().toLowerCase();
+        const normalizedCpf = data.cpf.trim();
+
+        const byEmail = await this.findUserByEmail(normalizedEmail);
+        if (byEmail) {
+            throw new DomainError("EMAIL_ALREADY_EXISTS", "Email already exists");
+        }
+
+        const byCpf = await this.findUserByCpf(normalizedCpf);
+        if (byCpf) {
+            throw new DomainError("CPF_ALREADY_EXISTS", "CPF already exists");
+        }
     }
 }
 
@@ -702,6 +839,10 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
             : null;
     }
 
+    async findByUserCpf(_cpf: string): Promise<ProfessionalProfile | null> {
+        return null;
+    }
+
     async findDetailById(professionalId: string): Promise<any | null> {
         const professional = this.professionals[professionalId];
 
@@ -782,6 +923,37 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
         return { id: professionalUnit.id };
     }
 
+    async findProfessionalUnitByProfessionalAndUnit(
+        professionalId: string,
+        unitId: string,
+    ): Promise<{
+        id: string;
+        professionalId: string;
+        unitId: string;
+        isActive: boolean;
+        createdAt: string;
+        updatedAt: string;
+    } | null> {
+        const professionalUnit = Object.values(this.professionalUnitsById).find(
+            (pu) => pu.professionalId === professionalId && pu.unitId === unitId,
+        );
+
+        if (!professionalUnit) {
+            return null;
+        }
+
+        const now = new Date().toISOString();
+
+        return {
+            id: professionalUnit.id,
+            professionalId: professionalUnit.professionalId,
+            unitId: professionalUnit.unitId,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+        };
+    }
+
     async hasActiveRole(roleId: string): Promise<boolean> {
         return this.roles[roleId]?.isActive === true;
     }
@@ -799,90 +971,4 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
 
         return link;
     }
-
-    async linkProfessionalUnitRole(data: LinkProfessionalUnitRoleInput): Promise<ProfessionalUnitRoleProfile> {
-        const existingLink = Object.values(this.professionalUnitRoles).find(
-            (link) => link.professionalUnitId === data.professionalUnitId && link.roleId === data.roleId,
-        );
-        const role = this.roles[data.roleId];
-
-        if (!role) {
-            throw new DomainError("ROLE_NOT_FOUND", "Role not found");
-        }
-
-        const now = new Date().toISOString();
-
-        if (existingLink) {
-            const updated = {
-                ...existingLink,
-                isActive: data.isActive ?? true,
-                updatedAt: now,
-            };
-            this.professionalUnitRoles[updated.id] = updated;
-            return updated;
-        }
-
-        const id = `019c1a3e-e425-7000-8bda-cdfec32d1f${String(this.roleSequence).padStart(2, "0")}`;
-        this.roleSequence += 1;
-
-        const link: ProfessionalUnitRoleProfile = {
-            id,
-            professionalUnitId: data.professionalUnitId,
-            roleId: data.roleId,
-            isActive: data.isActive ?? true,
-            role: {
-                id: role.id,
-                description: role.description,
-                key: role.key,
-            },
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        this.professionalUnitRoles[id] = link;
-        return link;
-    }
-
-    async updateProfessionalUnitRole(
-        professionalUnitRoleId: string,
-        data: Omit<UpdateProfessionalUnitRoleInput, "professionalUnitRoleId">,
-    ): Promise<ProfessionalUnitRoleProfile | null> {
-        const current = this.professionalUnitRoles[professionalUnitRoleId];
-
-        if (!current) {
-            return null;
-        }
-
-        const role = data.roleId ? this.roles[data.roleId] : current.role;
-
-        if (!role) {
-            throw new DomainError("ROLE_NOT_FOUND", "Role not found");
-        }
-
-        const updated: ProfessionalUnitRoleProfile = {
-            ...current,
-            roleId: role.id,
-            isActive: data.isActive ?? current.isActive,
-            role: {
-                id: role.id,
-                description: role.description,
-                key: role.key,
-            },
-            updatedAt: new Date().toISOString(),
-        };
-
-        this.professionalUnitRoles[professionalUnitRoleId] = updated;
-        return updated;
-    }
 }
-
-type InMemoryRequestContext = {
-    id: string;
-    appointmentId: string;
-    status: string;
-    type: string;
-    patientUserId: string;
-    unitId: string;
-    professionalId: string;
-    scheduleId: string;
-};

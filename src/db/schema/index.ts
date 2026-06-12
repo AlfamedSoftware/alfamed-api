@@ -9,6 +9,7 @@ export * from "./roles.js";
 export * from "./professional-unit-roles.js";
 export * from "./professional-unit-specialties.js";
 export * from "./professional-units.js";
+export * from "./professional-availability-blocks.js";
 export * from "./units.js";
 export * from "./schedules.js";
 export * from "./procedures.js";

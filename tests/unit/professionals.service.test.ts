@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 import { ProfessionalsService } from "../../src/modules/professionals/professionals.service";
 import type {
     CreateProfessionalInput,
-    LinkProfessionalUnitRoleInput,
     ProfessionalProfile,
     ProfessionalsRepository,
     UpdateProfessionalInput,
-    UpdateProfessionalUnitRoleInput,
 } from "../../src/modules/professionals/professionals.repository";
 import { DomainError } from "../../src/http/plugins/domain-error";
 
@@ -66,6 +64,10 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
         return unitsProfs.includes(professionalId) ? professional : null;
     }
 
+    async findByUserCpf(_cpf: string): Promise<ProfessionalProfile | null> {
+        return null;
+    }
+
     async findDetailById(professionalId: string): Promise<any | null> {
         const professional = this.professionals[professionalId];
 
@@ -90,6 +92,20 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
         return null;
     }
 
+    async findProfessionalUnitByProfessionalAndUnit(
+        professionalId: string,
+        unitId: string,
+    ): Promise<{
+        id: string;
+        professionalId: string;
+        unitId: string;
+        isActive: boolean;
+        createdAt: string;
+        updatedAt: string;
+    } | null> {
+        return null;
+    }
+
     async hasActiveRole(roleId: string): Promise<boolean> {
         return false;
     }
@@ -100,29 +116,7 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
     ): Promise<any | null> {
         return null;
     }
-
-    async linkProfessionalUnitRole(data: LinkProfessionalUnitRoleInput): Promise<any> {
-        return {
-            id: "professional-unit-role-1",
-            professionalUnitId: data.professionalUnitId,
-            roleId: data.roleId,
-            isActive: data.isActive ?? true,
-            role: {
-                id: data.roleId,
-                description: "Role",
-                key: "role",
-            },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-    }
-
-    async updateProfessionalUnitRole(
-        professionalUnitRoleId: string,
-        data: Omit<UpdateProfessionalUnitRoleInput, "professionalUnitRoleId">,
-    ): Promise<any | null> {
-        return null;
-    }
+    
 
     async list(): Promise<ProfessionalProfile[]> {
         return Object.values(this.professionals);
