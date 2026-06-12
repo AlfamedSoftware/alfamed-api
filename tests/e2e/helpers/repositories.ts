@@ -839,6 +839,10 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
             : null;
     }
 
+    async findByUserCpf(_cpf: string): Promise<ProfessionalProfile | null> {
+        return null;
+    }
+
     async findDetailById(professionalId: string): Promise<any | null> {
         const professional = this.professionals[professionalId];
 
@@ -917,6 +921,37 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
         }
 
         return { id: professionalUnit.id };
+    }
+
+    async findProfessionalUnitByProfessionalAndUnit(
+        professionalId: string,
+        unitId: string,
+    ): Promise<{
+        id: string;
+        professionalId: string;
+        unitId: string;
+        isActive: boolean;
+        createdAt: string;
+        updatedAt: string;
+    } | null> {
+        const professionalUnit = Object.values(this.professionalUnitsById).find(
+            (pu) => pu.professionalId === professionalId && pu.unitId === unitId,
+        );
+
+        if (!professionalUnit) {
+            return null;
+        }
+
+        const now = new Date().toISOString();
+
+        return {
+            id: professionalUnit.id,
+            professionalId: professionalUnit.professionalId,
+            unitId: professionalUnit.unitId,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+        };
     }
 
     async hasActiveRole(roleId: string): Promise<boolean> {

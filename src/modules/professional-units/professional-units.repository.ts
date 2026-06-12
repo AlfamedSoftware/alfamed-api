@@ -12,6 +12,7 @@ import { users } from "../../db/schema/users.js";
 import { DomainError } from "../../http/plugins/domain-error.js";
 import {
     createProfessionalUnitFullCreateSchema,
+    createProfessionalUnitByUserCpfSchema,
     createProfessionalUnitSchema,
     professionalUnitFullDataByUnitListSchema,
     professionalUnitFullDataByUnitSchema,
@@ -20,6 +21,7 @@ import {
 } from "./professional-units.schemas.js";
 
 export type CreateProfessionalUnitInput = z.infer<typeof createProfessionalUnitSchema>;
+export type CreateProfessionalUnitByUserCpfInput = z.infer<typeof createProfessionalUnitByUserCpfSchema>;
 export type CreateProfessionalUnitFullCreateInput = z.infer<typeof createProfessionalUnitFullCreateSchema>;
 export type ProfessionalUnitProfile = z.infer<typeof professionalUnitProfileSchema>;
 export type ProfessionalUnitFullData = z.infer<typeof professionalUnitFullDataSchema>;
@@ -56,6 +58,10 @@ type DatabaseClient = typeof dbType;
 
 export class ProfessionalUnitsRepository {
     readonly create: (data: CreateProfessionalUnitInput) => Promise<ProfessionalUnitProfile>;
+    readonly createWithOptionalRole: (
+        data: CreateProfessionalUnitInput,
+        roleId?: string,
+    ) => Promise<ProfessionalUnitProfile>;
     readonly findByIdAndUnit: (
         professionalUnitId: string,
         unitId: string,
@@ -64,11 +70,15 @@ export class ProfessionalUnitsRepository {
         professionalUnitId: string,
         unitId: string,
     ) => Promise<ProfessionalUnitFullData | null>;
-    readonly listFullDataByUnit: (unitId: string) => Promise<ProfessionalUnitFullDataByUnit[]>;
+    readonly listFullDataByUnit: (
+        unitId: string,
+        filters?: { isActive?: boolean; roleKey?: string },
+    ) => Promise<ProfessionalUnitFullDataByUnit[]>;
     readonly findByProfessionalIdAndUnitId: (
         professionalId: string,
         unitId: string,
     ) => Promise<ProfessionalUnitProfile | null>;
+    readonly findProfessionalByUserCpf: (cpf: string) => Promise<{ id: string } | null>;
     readonly createFullCreate: (
         unitId: string,
         data: CreateProfessionalUnitFullCreateInput,
@@ -194,6 +204,51 @@ export class ProfessionalUnitsRepository {
             return toProfile(result);
         };
 
+        this.createWithOptionalRole = async (data, roleId) => {
+            const result = await db.transaction(async (tx) => {
+                const [createdProfessionalUnit] = await tx
+                    .insert(professionalUnits)
+                    .values({
+                        professionalId: data.professionalId,
+                        unitId: data.unitId,
+                        isActive: data.isActive,
+                    })
+                    .returning({
+                        id: professionalUnits.id,
+                        professionalId: professionalUnits.professionalId,
+                        unitId: professionalUnits.unitId,
+                        isActive: professionalUnits.isActive,
+                        createdAt: professionalUnits.createdAt,
+                        updatedAt: professionalUnits.updatedAt,
+                    });
+
+                if (!createdProfessionalUnit) {
+                    throw new Error("Unable to create professional unit");
+                }
+
+                if (roleId) {
+                    const [createdProfessionalUnitRole] = await tx
+                        .insert(professionalUnitRoles)
+                        .values({
+                            professionalUnitId: createdProfessionalUnit.id,
+                            roleId,
+                            isActive: true,
+                        })
+                        .returning({
+                            id: professionalUnitRoles.id,
+                        });
+
+                    if (!createdProfessionalUnitRole) {
+                        throw new Error("Unable to create professional unit role");
+                    }
+                }
+
+                return createdProfessionalUnit;
+            });
+
+            return toProfile(result);
+        };
+
         this.findByIdAndUnit = async (professionalUnitId, unitId) => {
             const [result] = await db
                 .select({
@@ -299,8 +354,14 @@ export class ProfessionalUnitsRepository {
             });
         };
 
-        this.listFullDataByUnit = async (unitId) => {
-            const baseRows = await db
+        this.listFullDataByUnit = async (unitId, filters = {}) => {
+            const whereConditions = [eq(professionalUnits.unitId, unitId)];
+
+            if (filters.isActive !== undefined) {
+                whereConditions.push(eq(professionalUnits.isActive, filters.isActive));
+            }
+
+            const baseQuery = db
                 .select({
                     id: professionalUnits.id,
                     isActive: professionalUnits.isActive,
@@ -319,9 +380,20 @@ export class ProfessionalUnitsRepository {
                 })
                 .from(professionalUnits)
                 .innerJoin(professionals, eq(professionalUnits.professionalId, professionals.id))
-                .innerJoin(users, eq(professionals.userId, users.id))
-                .where(eq(professionalUnits.unitId, unitId))
-                .orderBy(asc(users.name), asc(users.cpf));
+                .innerJoin(users, eq(professionals.userId, users.id));
+
+            let baseRows;
+            if (filters.roleKey !== undefined) {
+                baseRows = await baseQuery
+                    .innerJoin(professionalUnitRoles, eq(professionalUnits.id, professionalUnitRoles.professionalUnitId))
+                    .innerJoin(roles, eq(professionalUnitRoles.roleId, roles.id))
+                    .where(and(...whereConditions, eq(roles.key, filters.roleKey)))
+                    .orderBy(asc(users.name), asc(users.cpf));
+            } else {
+                baseRows = await baseQuery
+                    .where(and(...whereConditions))
+                    .orderBy(asc(users.name), asc(users.cpf));
+            }
 
             const results = await Promise.all(
                 baseRows.map(async (base) => {
@@ -384,6 +456,17 @@ export class ProfessionalUnitsRepository {
                 .limit(1);
 
             return result ? toProfile(result) : null;
+        };
+
+        this.findProfessionalByUserCpf = async (cpf) => {
+            const [result] = await db
+                .select({ id: professionals.id })
+                .from(professionals)
+                .innerJoin(users, eq(professionals.userId, users.id))
+                .where(eq(users.cpf, cpf))
+                .limit(1);
+
+            return result ?? null;
         };
 
         this.findUserByEmail = async (email) => {

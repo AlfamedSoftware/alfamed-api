@@ -64,6 +64,10 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
         return unitsProfs.includes(professionalId) ? professional : null;
     }
 
+    async findByUserCpf(_cpf: string): Promise<ProfessionalProfile | null> {
+        return null;
+    }
+
     async findDetailById(professionalId: string): Promise<any | null> {
         const professional = this.professionals[professionalId];
 
@@ -85,6 +89,20 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
         professionalUnitId: string,
         unitId: string,
     ): Promise<{ id: string } | null> {
+        return null;
+    }
+
+    async findProfessionalUnitByProfessionalAndUnit(
+        professionalId: string,
+        unitId: string,
+    ): Promise<{
+        id: string;
+        professionalId: string;
+        unitId: string;
+        isActive: boolean;
+        createdAt: string;
+        updatedAt: string;
+    } | null> {
         return null;
     }
 

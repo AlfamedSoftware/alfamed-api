@@ -46,6 +46,27 @@ export class ProfessionalsService {
         return this.professionalsRepository.listByUnit(unitId);
     }
 
+    async getProfessionalByUserCpf(requestUserId: string, unitId: string, cpf: string) {
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
+
+        const normalizedCpf = cpf.trim();
+        const professional = await this.professionalsRepository.findByUserCpf(normalizedCpf);
+
+        if (!professional) {
+            return {};
+        }
+
+        const professionalUnit = await this.professionalsRepository.findProfessionalUnitByProfessionalAndUnit(
+            professional.id,
+            unitId,
+        );
+
+        return {
+            ...professional,
+            professionalUnit: professionalUnit ?? null,
+        };
+    }
+
     async updateProfessional(
         requestUserId: string,
         professionalId: string,

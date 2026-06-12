@@ -23,6 +23,7 @@ export class ProfessionalsRepository {
     readonly findById: (professionalId: string) => Promise<ProfessionalProfile | null>;
     readonly findDetailById: (professionalId: string) => Promise<any | null>;
     readonly findByIdAndUnit: (professionalId: string, unitId: string) => Promise<ProfessionalProfile | null>;
+    readonly findByUserCpf: (cpf: string) => Promise<ProfessionalProfile | null>;
     readonly list: () => Promise<ProfessionalProfile[]>;
     readonly listByUnit: (unitId: string) => Promise<ProfessionalProfile[]>;
     readonly update: (professionalId: string, data: UpdateProfessionalInput) => Promise<ProfessionalProfile | null>;
@@ -32,6 +33,17 @@ export class ProfessionalsRepository {
         professionalUnitId: string,
         unitId: string,
     ) => Promise<{ id: string } | null>;
+    readonly findProfessionalUnitByProfessionalAndUnit: (
+        professionalId: string,
+        unitId: string,
+    ) => Promise<{
+        id: string;
+        professionalId: string;
+        unitId: string;
+        isActive: boolean;
+        createdAt: string;
+        updatedAt: string;
+    } | null>;
     readonly hasActiveRole: (roleId: string) => Promise<boolean>;
     
 
@@ -140,6 +152,31 @@ export class ProfessionalsRepository {
                 .innerJoin(users, eq(users.id, professionals.userId))
                 .innerJoin(professionalUnits, eq(professionals.id, professionalUnits.professionalId))
                 .where(and(eq(professionals.id, professionalId), eq(professionalUnits.unitId, unitId)))
+                .limit(1);
+
+            if (!result) {
+                return null;
+            }
+
+            return toProfile(result);
+        };
+
+        this.findByUserCpf = async (cpf) => {
+            const [result] = await db
+                .select({
+                    id: professionals.id,
+                    userId: professionals.userId,
+                    name: users.name,
+                    email: users.email,
+                    crm: professionals.crm,
+                    phone: users.phone,
+                    isActive: professionals.isActive,
+                    createdAt: professionals.createdAt,
+                    updatedAt: professionals.updatedAt,
+                })
+                .from(professionals)
+                .innerJoin(users, eq(users.id, professionals.userId))
+                .where(eq(users.cpf, cpf))
                 .limit(1);
 
             if (!result) {
@@ -329,6 +366,35 @@ export class ProfessionalsRepository {
                 .limit(1);
 
             return result ?? null;
+        };
+
+        this.findProfessionalUnitByProfessionalAndUnit = async (professionalId, unitId) => {
+            const [result] = await db
+                .select({
+                    id: professionalUnits.id,
+                    professionalId: professionalUnits.professionalId,
+                    unitId: professionalUnits.unitId,
+                    isActive: professionalUnits.isActive,
+                    createdAt: professionalUnits.createdAt,
+                    updatedAt: professionalUnits.updatedAt,
+                })
+                .from(professionalUnits)
+                .where(and(
+                    eq(professionalUnits.professionalId, professionalId),
+                    eq(professionalUnits.unitId, unitId),
+                ))
+                .limit(1);
+
+            if (!result) return null;
+
+            return {
+                id: result.id,
+                professionalId: result.professionalId,
+                unitId: result.unitId,
+                isActive: result.isActive,
+                createdAt: result.createdAt.toISOString(),
+                updatedAt: result.updatedAt.toISOString(),
+            };
         };
 
         this.hasActiveRole = async (roleId) => {

@@ -5,6 +5,7 @@ import { getUnitIdFromRequest } from "../../http/plugins/unit-context.js";
 import type { ProfessionalUnitsRepository } from "./professional-units.repository.js";
 import { ProfessionalUnitsService } from "./professional-units.service.js";
 import {
+    createProfessionalUnitByUserCpfSchema,
     createProfessionalUnitFullCreateSchema,
     createProfessionalUnitSchema,
     professionalUnitFullUpdateSchema,
@@ -75,6 +76,75 @@ export const professionalUnitsRoutes = ({
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
+                    409: t.Object({ message: t.Literal("Professional unit already exists") }),
+                    500: professionalUnitsErrorSchema,
+                },
+            },
+        )
+        .post(
+            "/create-by-user-cpf",
+            async (context) => {
+                const { body, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                const unitId = getUnitIdFromRequest(context.request);
+
+                if (!unitId) {
+                    return status(400, { message: unitSelectionRequiredMessage });
+                }
+
+                try {
+                    const professionalUnit = await professionalUnitsService.createProfessionalUnitByUserCpf(
+                        userId,
+                        unitId,
+                        body,
+                    );
+
+                    return status(201, professionalUnit);
+                } catch (error) {
+                    if (isDomainError(error, "FORBIDDEN")) {
+                        return status(403, { message: "Forbidden" });
+                    }
+
+                    if (isDomainError(error, "PROFESSIONAL_NOT_FOUND")) {
+                        return status(404, { message: "Professional not found" });
+                    }
+
+                    if (isDomainError(error, "ROLE_NOT_FOUND")) {
+                        return status(404, { message: "Role not found" });
+                    }
+
+                    if (isDomainError(error, "PROFESSIONAL_UNIT_ALREADY_EXISTS")) {
+                        return status(409, { message: "Professional unit already exists" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                body: createProfessionalUnitByUserCpfSchema,
+                detail: {
+                    summary: "Create professional unit by user CPF",
+                    description:
+                        "Creates a professional unit for an existing professional identified by user CPF. The unit is taken from the request context. Optionally creates a professional unit role when roleId is provided.",
+                    tags: ["Professional Units"],
+                },
+                response: {
+                    201: professionalUnitProfileSchema,
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
+                    404: t.Object({
+                        message: t.Union([
+                            t.Literal("Professional not found"),
+                            t.Literal("Role not found"),
+                        ]),
+                    }),
                     409: t.Object({ message: t.Literal("Professional unit already exists") }),
                     500: professionalUnitsErrorSchema,
                 },
@@ -152,7 +222,7 @@ export const professionalUnitsRoutes = ({
         .get(
             "/list-professional-unit-full-data-by-unit/:unitId",
             async (context) => {
-                const { params, status } = context;
+                const { params, query, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
 
                 if (!userId) {
@@ -163,6 +233,7 @@ export const professionalUnitsRoutes = ({
                     const professionalUnits = await professionalUnitsService.listProfessionalUnitFullDataByUnit(
                         userId,
                         params.unitId,
+                        { isActive: query.isActive, roleKey: query.roleKey },
                     );
 
                     return status(200, professionalUnits);
@@ -179,10 +250,14 @@ export const professionalUnitsRoutes = ({
                 params: t.Object({
                     unitId: t.String({ format: "uuid" }),
                 }),
+                query: t.Object({
+                    isActive: t.Optional(t.BooleanString()),
+                    roleKey: t.Optional(t.String()),
+                }),
                 detail: {
                     summary: "List professional unit full data by unit",
                     description:
-                        "Returns professional unit full data for professionals linked to the specified unit.",
+                        "Returns professional unit full data for professionals linked to the specified unit, optionally filtered by professional unit active status.",
                     tags: ["Professional Units"],
                 },
                 response: {
