@@ -10,6 +10,7 @@ type DatabaseClient = typeof dbType;
 
 export class UsersRepository {
     readonly getUserById: (userId: string) => Promise<UserProfile | null>;
+    readonly findByCpf: (cpf: string) => Promise<{ id: string } | null>;
 
     constructor(db: DatabaseClient) {
         this.getUserById = async (userId: string) => {
@@ -54,6 +55,16 @@ export class UsersRepository {
                 updatedAt: result.updatedAt.toISOString(),
                 twoFactorEnabled: result.twoFactorEnabled,
             });
+        };
+
+        this.findByCpf = async (cpf: string) => {
+            const [result] = await db
+                .select({ id: users.id })
+                .from(users)
+                .where(eq(users.cpf, cpf))
+                .limit(1);
+
+            return result ?? null;
         };
     }
 }

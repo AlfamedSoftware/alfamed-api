@@ -50,11 +50,12 @@ export const professionalUnitProfileSchema = z.object({
     updatedAt: z.string().datetime(),
 });
 
-export const professionalByUserCpfResponseSchema = professionalProfileSchema
-    .extend({
-        professionalUnit: professionalUnitProfileSchema.nullable().optional(),
-    })
-    .partial();
+export const professionalByUserCpfResponseSchema = z.object({
+    userId: z.string().uuid(),
+    professionalId: z.string().uuid().or(z.literal("")),
+    patientId: z.string().uuid().or(z.literal("")),
+    professionalUnitId: z.string().uuid().or(z.literal("")),
+}).or(z.object({}));
 
 
 

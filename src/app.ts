@@ -6,7 +6,7 @@ import { TRUSTED_ORIGINS } from "./config/session.js";
 import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
-import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
+import { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
 import { proceduresRoutes } from "./modules/procedures/procedures.routes.js";
 import { ProceduresRepository } from "./modules/procedures/procedures.repository.js";
 import { specialtiesRoutes } from "./modules/specialties/specialties.routes.js";
@@ -194,6 +194,9 @@ export async function buildApp({
     const configuredAppWithProfessionalUnits = configuredAppWithSpecialties.use(
         professionalUnitsRoutes({
             professionalUnitsRepository: professionalUnitsRepository ?? new ProfessionalUnitsRepository(db),
+            patientsRepository,
+            professionalsRepository: professionalsRepository ?? new ProfessionalsRepository(db),
+            usersRepository,
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
         }),
     ).use(professionalUnitSpecialtiesRoutes);
@@ -215,6 +218,8 @@ export async function buildApp({
     const configuredAppWithProfessionals = configuredAppWithAdmin.use(
         professionalsRoutes({
             professionalsRepository,
+            usersRepository,
+            patientsRepository,
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
         }),
     );
