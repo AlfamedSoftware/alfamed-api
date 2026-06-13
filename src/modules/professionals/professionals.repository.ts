@@ -24,6 +24,7 @@ export class ProfessionalsRepository {
     readonly findDetailById: (professionalId: string) => Promise<any | null>;
     readonly findByIdAndUnit: (professionalId: string, unitId: string) => Promise<ProfessionalProfile | null>;
     readonly findByUserCpf: (cpf: string) => Promise<ProfessionalProfile | null>;
+    readonly findByUserId: (userId: string) => Promise<ProfessionalProfile | null>;
     readonly list: () => Promise<ProfessionalProfile[]>;
     readonly listByUnit: (unitId: string) => Promise<ProfessionalProfile[]>;
     readonly update: (professionalId: string, data: UpdateProfessionalInput) => Promise<ProfessionalProfile | null>;
@@ -177,6 +178,31 @@ export class ProfessionalsRepository {
                 .from(professionals)
                 .innerJoin(users, eq(users.id, professionals.userId))
                 .where(eq(users.cpf, cpf))
+                .limit(1);
+
+            if (!result) {
+                return null;
+            }
+
+            return toProfile(result);
+        };
+
+        this.findByUserId = async (userId) => {
+            const [result] = await db
+                .select({
+                    id: professionals.id,
+                    userId: professionals.userId,
+                    name: users.name,
+                    email: users.email,
+                    crm: professionals.crm,
+                    phone: users.phone,
+                    isActive: professionals.isActive,
+                    createdAt: professionals.createdAt,
+                    updatedAt: professionals.updatedAt,
+                })
+                .from(professionals)
+                .innerJoin(users, eq(users.id, professionals.userId))
+                .where(eq(professionals.userId, userId))
                 .limit(1);
 
             if (!result) {

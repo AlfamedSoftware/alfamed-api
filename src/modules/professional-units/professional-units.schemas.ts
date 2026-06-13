@@ -13,6 +13,8 @@ export const createProfessionalUnitByUserCpfSchema = z
         cpf: z.string().min(1),
         isActive: z.boolean().optional(),
         roleId: z.string().uuid().optional(),
+        patientExists: z.boolean(),
+        professionalExists: z.boolean(),
     })
     .strict();
 

@@ -3,6 +3,9 @@ import { isDomainError } from "../../http/plugins/domain-error.js";
 import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
 import { getUnitIdFromRequest } from "../../http/plugins/unit-context.js";
 import type { ProfessionalUnitsRepository } from "./professional-units.repository.js";
+import type { PatientsRepository } from "../patients/patients.repository.js";
+import type { ProfessionalsRepository } from "../professionals/professionals.repository.js";
+import type { UsersRepository } from "../users/users.repository.js";
 import { ProfessionalUnitsService } from "./professional-units.service.js";
 import {
     createProfessionalUnitByUserCpfSchema,
@@ -20,15 +23,24 @@ const unitSelectionRequiredMessage = "Selecione uma unidade para continuar";
 
 type ProfessionalUnitsRoutesOptions = {
     professionalUnitsRepository: ProfessionalUnitsRepository;
+    patientsRepository: PatientsRepository;
+    professionalsRepository: ProfessionalsRepository;
+    usersRepository: UsersRepository;
     hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>;
 };
 
 export const professionalUnitsRoutes = ({
     professionalUnitsRepository,
+    patientsRepository,
+    professionalsRepository,
+    usersRepository,
     hasUserAccessToUnitChecker,
 }: ProfessionalUnitsRoutesOptions) => {
     const professionalUnitsService = new ProfessionalUnitsService(
         professionalUnitsRepository,
+        patientsRepository,
+        professionalsRepository,
+        usersRepository,
         hasUserAccessToUnitChecker,
     );
 

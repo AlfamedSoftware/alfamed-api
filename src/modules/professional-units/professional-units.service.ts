@@ -8,6 +8,9 @@ import type {
     ProfileUpdateChanges,
     ProfessionalUnitsRepository,
 } from "./professional-units.repository.js";
+import type { PatientsRepository } from "../patients/patients.repository.js";
+import type { ProfessionalsRepository } from "../professionals/professionals.repository.js";
+import type { UsersRepository } from "../users/users.repository.js";
 import {
     createProfessionalUnitFullCreateSchema,
     professionalUnitFullUpdateSchema,
@@ -22,6 +25,9 @@ type FullCreateInput = z.infer<typeof createProfessionalUnitFullCreateSchema>;
 export class ProfessionalUnitsService {
     constructor(
         private readonly professionalUnitsRepository: ProfessionalUnitsRepository,
+        private readonly patientsRepository: PatientsRepository,
+        private readonly professionalsRepository: ProfessionalsRepository,
+        private readonly usersRepository: UsersRepository,
         private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
     ) { }
 
@@ -67,14 +73,43 @@ export class ProfessionalUnitsService {
         await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         const normalizedCpf = data.cpf.trim();
-        const professional = await this.professionalUnitsRepository.findProfessionalByUserCpf(normalizedCpf);
+        const user = await this.usersRepository.findByCpf(normalizedCpf);
 
-        if (!professional) {
-            throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
+        if (!user) {
+            throw new DomainError("USER_NOT_FOUND", "User not found");
+        }
+
+        // Criar patient se não existir
+        if (!data.patientExists) {
+            const existingPatient = await this.patientsRepository.getPatientByUserId(user.id);
+            if (!existingPatient) {
+                await this.patientsRepository.createPatient({ userId: user.id, isActive: true });
+            }
+        }
+
+        // Criar professional se não existir
+        let professionalId: string;
+        if (!data.professionalExists) {
+            const existingProfessional = await this.professionalsRepository.findByUserId(user.id);
+            if (!existingProfessional) {
+                const createdProfessional = await this.professionalsRepository.create({
+                    userId: user.id,
+                    isActive: true,
+                });
+                professionalId = createdProfessional.id;
+            } else {
+                professionalId = existingProfessional.id;
+            }
+        } else {
+            const professional = await this.professionalUnitsRepository.findProfessionalByUserCpf(normalizedCpf);
+            if (!professional) {
+                throw new DomainError("PROFESSIONAL_NOT_FOUND", "Professional not found");
+            }
+            professionalId = professional.id;
         }
 
         const existingProfessionalUnit = await this.professionalUnitsRepository.findByProfessionalIdAndUnitId(
-            professional.id,
+            professionalId,
             unitId,
         );
 
@@ -92,7 +127,7 @@ export class ProfessionalUnitsService {
 
         return this.professionalUnitsRepository.createWithOptionalRole(
             {
-                professionalId: professional.id,
+                professionalId,
                 unitId,
                 isActive: data.isActive,
             },

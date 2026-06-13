@@ -5,6 +5,8 @@ import { getUnitIdFromRequest } from "../../http/plugins/unit-context.js";
 import { isDomainError } from "../../http/plugins/domain-error.js";
 import { isUniqueConstraintError } from "../../http/plugins/db-errors.js";
 import type { ProfessionalsRepository } from "./professionals.repository.js";
+import type { UsersRepository } from "../users/users.repository.js";
+import type { PatientsRepository } from "../patients/patients.repository.js";
 import { ProfessionalsService } from "./professionals.service.js";
 import {
     createProfessionalSchema,
@@ -22,15 +24,21 @@ const professionalUnitSelectionRequiredMessage = "Selecione um vínculo profissi
 
 type ProfessionalsRoutesOptions = {
     professionalsRepository: ProfessionalsRepository;
+    usersRepository: UsersRepository;
+    patientsRepository: PatientsRepository;
     hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>;
 };
 
 export const professionalsRoutes = ({
     professionalsRepository,
+    usersRepository,
+    patientsRepository,
     hasUserAccessToUnitChecker,
 }: ProfessionalsRoutesOptions) => {
     const professionalsService = new ProfessionalsService(
         professionalsRepository,
+        usersRepository,
+        patientsRepository,
         hasUserAccessToUnitChecker,
     );
     const resolveRequestScope = async (context: { request: Request; user?: { id?: string } }) => {
