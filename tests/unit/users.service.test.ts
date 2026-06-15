@@ -8,6 +8,11 @@ class InMemoryUsersRepository implements UsersRepository {
     async getUserById(userId: string): Promise<UserProfile | null> {
         return this.users[userId] ?? null;
     }
+
+    async findByCpf(cpf: string): Promise<{ id: string } | null> {
+        const user = Object.values(this.users).find(u => u.cpf === cpf);
+        return user ? { id: user.id } : null;
+    }
 }
 
 describe("UsersService", () => {
