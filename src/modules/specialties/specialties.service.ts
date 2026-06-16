@@ -8,10 +8,11 @@ export class SpecialtiesService {
         private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
     ) {}
 
-    async listSpecialtiesByUnit(userId: string, unitId: string) {
-        await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
+    async listSpecialtiesByUnit(unitId: string, filters?: { isActive?: boolean }) {
+        //Removido, mobile não valida se unidade está logada
+        //await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
 
-        return this.specialtiesRepository.listByUnitId(unitId);
+        return this.specialtiesRepository.listByUnitId(unitId, filters);
     }
 
     async getSpecialtyById(userId: string, unitId: string, specialtyId: string) {

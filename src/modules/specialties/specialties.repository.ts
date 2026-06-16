@@ -77,7 +77,11 @@ export class SpecialtiesRepository {
         });
     }
 
-    async listByUnitId(unitId: string): Promise<SpecialtyProfile[]> {
+    async listByUnitId(unitId: string, filters?: { isActive?: boolean }): Promise<SpecialtyProfile[]> {
+        const whereClause = filters?.isActive !== undefined
+            ? and(eq(specialties.unitId, unitId), eq(specialties.isActive, filters.isActive))
+            : eq(specialties.unitId, unitId);
+
         const rows = await this.db
             .select({
                 id: specialties.id,
@@ -88,7 +92,7 @@ export class SpecialtiesRepository {
                 updatedAt: specialties.updatedAt,
             })
             .from(specialties)
-            .where(eq(specialties.unitId, unitId))
+            .where(whereClause)
             .orderBy(asc(specialties.name));
 
         return rows.map((row) =>

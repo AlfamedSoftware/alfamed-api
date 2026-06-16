@@ -1,12 +1,15 @@
 import { eq, and } from "drizzle-orm"
-import { db } from "../../db/client.js"
+import type { db as dbType } from "../../db/client.js"
 import { professionalUnitSpecialties } from "../../db/schema/professional-unit-specialties.js"
 import { specialties } from "../../db/schema/specialties.js"
+import { DomainError } from "../../http/plugins/domain-error.js"
 import type { ProfessionalUnitSpecialty } from "./professional-unit-specialties.schemas.js"
 
 export class ProfessionalUnitSpecialtiesRepository {
+    constructor(private db: typeof dbType) {}
+
     async listByProfessionalUnit(professionalUnitId: string): Promise<ProfessionalUnitSpecialty[]> {
-        const results = await db
+        const results = await this.db
             .select({
                 id: professionalUnitSpecialties.id,
                 professionalUnitId: professionalUnitSpecialties.professionalUnitId,
@@ -32,7 +35,7 @@ export class ProfessionalUnitSpecialtiesRepository {
     }
 
     async create(data: { professionalUnitId: string; specialtyId: string }): Promise<ProfessionalUnitSpecialty> {
-        const existing = await db
+        const existing = await this.db
             .select()
             .from(professionalUnitSpecialties)
             .where(
@@ -46,13 +49,13 @@ export class ProfessionalUnitSpecialtiesRepository {
         if (existing.length > 0) {
             const existingRecord = existing[0]
             if (existingRecord.isActive) {
-                throw new Error("Professional unit specialty already exists and is active")
+                throw new DomainError("PROFESSIONAL_UNIT_SPECIALTY_ALREADY_EXISTS", "Especialidade já cadastrada para essa unidade profissional")
             }
             // Reativar o registro existente
             return this.update({ id: existingRecord.id, isActive: true })
         }
 
-        const [result] = await db
+        const [result] = await this.db
             .insert(professionalUnitSpecialties)
             .values({
                 professionalUnitId: data.professionalUnitId,
@@ -67,7 +70,7 @@ export class ProfessionalUnitSpecialtiesRepository {
     }
 
     async update(data: { id: string; isActive?: boolean }): Promise<ProfessionalUnitSpecialty> {
-        await db
+        await this.db
             .update(professionalUnitSpecialties)
             .set({
                 ...(data.isActive !== undefined && { isActive: data.isActive }),
@@ -75,7 +78,7 @@ export class ProfessionalUnitSpecialtiesRepository {
             })
             .where(eq(professionalUnitSpecialties.id, data.id))
 
-        const [result] = await db
+        const [result] = await this.db
             .select()
             .from(professionalUnitSpecialties)
             .where(eq(professionalUnitSpecialties.id, data.id))

@@ -66,6 +66,7 @@ export class UnitsRepository {
     readonly create: (data: CreateUnitInput) => Promise<UnitProfile>;
     readonly createForUser: (userId: string, data: CreateUnitInput) => Promise<UnitProfile>;
     readonly findById: (unitId: string) => Promise<UnitProfile | null>;
+    readonly list: (filters?: { isActive?: boolean }) => Promise<UnitProfile[]>;
     readonly listByUserId: (userId: string) => Promise<UnitProfile[]>;
     readonly listAccessibleUnitsByProfessional: (userId: string) => Promise<AccessibleUnit[]>;
     readonly update: (unitId: string, data: UpdateUnitInput) => Promise<UnitProfile | null>;
@@ -209,6 +210,30 @@ export class UnitsRepository {
             }
 
             return toProfile(result);
+        };
+
+        this.list = async (filters) => {
+            const whereClause = filters?.isActive !== undefined ? eq(units.isActive, filters.isActive) : undefined;
+
+            const results = await db
+                .select({
+                    id: units.id,
+                    name: units.name,
+                    cnpj: units.cnpj,
+                    address: units.address,
+                    city: units.city,
+                    state: units.state,
+                    phone: units.phone,
+                    email: units.email,
+                    ownerUserId: units.ownerUserId,
+                    isActive: units.isActive,
+                    createdAt: units.createdAt,
+                    updatedAt: units.updatedAt,
+                })
+                .from(units)
+                .where(whereClause);
+
+            return results.map((result) => toProfile(result));
         };
 
         this.listByUserId = async (userId) => {

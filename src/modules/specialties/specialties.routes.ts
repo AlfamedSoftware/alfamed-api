@@ -81,20 +81,24 @@ export const specialtiesRoutes = ({
         .get(
             "/list-specialties-by-unit/:unitId",
             async (context) => {
-                const { params, status } = context;
+                const { params, query, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
                 const selectedUnitId = getUnitIdFromRequest(context.request);
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
-
+                
                 if (!selectedUnitId) {
                     return status(400, { message: unitSelectionRequiredMessage });
                 }
 
                 try {
-                    const specialties = await specialtiesService.listSpecialtiesByUnit(userId, params.unitId);
+                    const filters: { isActive?: boolean } = {};
+                    if (query.isActive !== undefined) {
+                        filters.isActive = query.isActive;
+                    }
+                    const specialties = await specialtiesService.listSpecialtiesByUnit(params.unitId, filters);
 
                     return status(200, specialties);
                 } catch (error) {
@@ -110,9 +114,12 @@ export const specialtiesRoutes = ({
                 params: t.Object({
                     unitId: t.String({ format: "uuid" }),
                 }),
+                query: t.Object({
+                    isActive: t.Optional(t.Boolean()),
+                }),
                 detail: {
                     summary: "List specialties by unit",
-                    description: "Returns the specialties for a specified unit.",
+                    description: "Returns the specialties for a specified unit with optional isActive filter.",
                     tags: ["Specialties"],
                 },
                 response: {

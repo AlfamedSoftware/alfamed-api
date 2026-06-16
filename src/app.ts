@@ -14,6 +14,7 @@ import { SpecialtiesRepository } from "./modules/specialties/specialties.reposit
 import { professionalUnitsRoutes } from "./modules/professional-units/professional-units.routes.js";
 import { ProfessionalUnitsRepository } from "./modules/professional-units/professional-units.repository.js";
 import { professionalUnitSpecialtiesRoutes } from "./modules/professional-unit-specialties/professional-unit-specialties.routes.js";
+import { ProfessionalUnitSpecialtiesRepository } from "./modules/professional-unit-specialties/professional-unit-specialties.repository.js";
 import { rolesRoutes } from "./modules/roles/roles.routes.js";
 import { RolesRepository } from "./modules/roles/roles.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
@@ -42,6 +43,7 @@ type BuildAppOptions = {
     proceduresRepository?: ProceduresRepository;
     specialtiesRepository?: SpecialtiesRepository;
     professionalUnitsRepository?: ProfessionalUnitsRepository;
+    professionalUnitSpecialtiesRepository?: ProfessionalUnitSpecialtiesRepository;
     patientsRepository: PatientsRepository;
     rolesRepository?: RolesRepository;
     unitsRepository?: UnitsRepository;
@@ -59,6 +61,7 @@ export async function buildApp({
     proceduresRepository,
     specialtiesRepository,
     professionalUnitsRepository,
+    professionalUnitSpecialtiesRepository,
     unitsRepository,
     hasUserAccessToUnitChecker,
     authPlugin,
@@ -199,7 +202,12 @@ export async function buildApp({
             usersRepository,
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
         }),
-    ).use(professionalUnitSpecialtiesRoutes);
+    ).use(
+        professionalUnitSpecialtiesRoutes({
+            professionalUnitSpecialtiesRepository: professionalUnitSpecialtiesRepository ?? new ProfessionalUnitSpecialtiesRepository(db),
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+        }),
+    );
 
     const configuredAppWithAdmin = configuredAppWithProfessionalUnits.use(
         adminUnitsRoutes({
