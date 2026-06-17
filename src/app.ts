@@ -6,13 +6,15 @@ import { TRUSTED_ORIGINS } from "./config/session.js";
 import { usersRoutes } from "./modules/users/users.routes.js";
 import type { UsersRepository } from "./modules/users/users.repository.js";
 import { professionalsRoutes } from "./modules/professionals/professionals.routes.js";
-import type { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
+import { ProfessionalsRepository } from "./modules/professionals/professionals.repository.js";
 import { proceduresRoutes } from "./modules/procedures/procedures.routes.js";
 import { ProceduresRepository } from "./modules/procedures/procedures.repository.js";
 import { specialtiesRoutes } from "./modules/specialties/specialties.routes.js";
 import { SpecialtiesRepository } from "./modules/specialties/specialties.repository.js";
 import { professionalUnitsRoutes } from "./modules/professional-units/professional-units.routes.js";
 import { ProfessionalUnitsRepository } from "./modules/professional-units/professional-units.repository.js";
+import { professionalUnitSpecialtiesRoutes } from "./modules/professional-unit-specialties/professional-unit-specialties.routes.js";
+import { ProfessionalUnitSpecialtiesRepository } from "./modules/professional-unit-specialties/professional-unit-specialties.repository.js";
 import { rolesRoutes } from "./modules/roles/roles.routes.js";
 import { RolesRepository } from "./modules/roles/roles.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
@@ -42,6 +44,7 @@ type BuildAppOptions = {
     proceduresRepository?: ProceduresRepository;
     specialtiesRepository?: SpecialtiesRepository;
     professionalUnitsRepository?: ProfessionalUnitsRepository;
+    professionalUnitSpecialtiesRepository?: ProfessionalUnitSpecialtiesRepository;
     patientsRepository: PatientsRepository;
     rolesRepository?: RolesRepository;
     unitsRepository?: UnitsRepository;
@@ -59,6 +62,7 @@ export async function buildApp({
     proceduresRepository,
     specialtiesRepository,
     professionalUnitsRepository,
+    professionalUnitSpecialtiesRepository,
     unitsRepository,
     hasUserAccessToUnitChecker,
     authPlugin,
@@ -101,6 +105,10 @@ export async function buildApp({
                         {
                             name: "Professional Units",
                             description: "Operations about links between professionals and units",
+                        },
+                        {
+                            name: "Professional Unit Specialties",
+                            description: "Operations about links between professionals and specialties",
                         },
                         {
                             name: "Patients",
@@ -195,6 +203,14 @@ export async function buildApp({
     const configuredAppWithProfessionalUnits = configuredAppWithSpecialties.use(
         professionalUnitsRoutes({
             professionalUnitsRepository: professionalUnitsRepository ?? new ProfessionalUnitsRepository(db),
+            patientsRepository,
+            professionalsRepository: professionalsRepository ?? new ProfessionalsRepository(db),
+            usersRepository,
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+        }),
+    ).use(
+        professionalUnitSpecialtiesRoutes({
+            professionalUnitSpecialtiesRepository: professionalUnitSpecialtiesRepository ?? new ProfessionalUnitSpecialtiesRepository(db),
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
         }),
     );
@@ -216,6 +232,8 @@ export async function buildApp({
     const configuredAppWithProfessionals = configuredAppWithAdmin.use(
         professionalsRoutes({
             professionalsRepository,
+            usersRepository,
+            patientsRepository,
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
         }),
     );

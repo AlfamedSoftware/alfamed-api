@@ -64,6 +64,14 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
         return unitsProfs.includes(professionalId) ? professional : null;
     }
 
+    async findByUserCpf(_cpf: string): Promise<ProfessionalProfile | null> {
+        return null;
+    }
+
+    async findByUserId(_userId: string): Promise<ProfessionalProfile | null> {
+        return null;
+    }
+
     async findDetailById(professionalId: string): Promise<any | null> {
         const professional = this.professionals[professionalId];
 
@@ -85,6 +93,20 @@ class InMemoryProfessionalsRepository implements ProfessionalsRepository {
         professionalUnitId: string,
         unitId: string,
     ): Promise<{ id: string } | null> {
+        return null;
+    }
+
+    async findProfessionalUnitByProfessionalAndUnit(
+        professionalId: string,
+        unitId: string,
+    ): Promise<{
+        id: string;
+        professionalId: string;
+        unitId: string;
+        isActive: boolean;
+        createdAt: string;
+        updatedAt: string;
+    } | null> {
         return null;
     }
 
@@ -151,9 +173,17 @@ describe("ProfessionalsService", () => {
         return userId === "user-1" && unitId === "unit-1";
     };
 
+    const mockUsersRepository = {
+        findByCpf: async () => null,
+    } as any;
+
+    const mockPatientsRepository = {
+        getPatientByUserId: async () => null,
+    } as any;
+
     it("deve criar um profissional com acesso à unidade", async () => {
         const repository = new InMemoryProfessionalsRepository();
-        const service = new ProfessionalsService(repository, hasUserAccessToUnitChecker);
+        const service = new ProfessionalsService(repository, mockUsersRepository, mockPatientsRepository, hasUserAccessToUnitChecker);
 
         const result = await service.createProfessional("user-1", "unit-1", {
             userId: "user-2",
@@ -168,7 +198,7 @@ describe("ProfessionalsService", () => {
 
     it("deve lançar erro ao criar profissional sem acesso à unidade", async () => {
         const repository = new InMemoryProfessionalsRepository();
-        const service = new ProfessionalsService(repository, hasUserAccessToUnitChecker);
+        const service = new ProfessionalsService(repository, mockUsersRepository, mockPatientsRepository, hasUserAccessToUnitChecker);
 
         await expect(
             service.createProfessional("user-2", "unit-2", {
@@ -193,7 +223,7 @@ describe("ProfessionalsService", () => {
             },
         };
         const repository = new InMemoryProfessionalsRepository(professionals, professionalsByUnit);
-        const service = new ProfessionalsService(repository, hasUserAccessToUnitChecker);
+        const service = new ProfessionalsService(repository, mockUsersRepository, mockPatientsRepository, hasUserAccessToUnitChecker);
 
         const result = await service.getProfessionalById("user-1", "prof-unit-1", "unit-1");
 
@@ -203,7 +233,7 @@ describe("ProfessionalsService", () => {
 
     it("deve lançar erro ao buscar profissional inexistente", async () => {
         const repository = new InMemoryProfessionalsRepository();
-        const service = new ProfessionalsService(repository, hasUserAccessToUnitChecker);
+        const service = new ProfessionalsService(repository, mockUsersRepository, mockPatientsRepository, hasUserAccessToUnitChecker);
 
         await expect(service.getProfessionalById("user-1", "missing", "unit-1")).rejects.toThrow(
             DomainError,
@@ -224,7 +254,7 @@ describe("ProfessionalsService", () => {
             },
         };
         const repository = new InMemoryProfessionalsRepository(professionals, professionalsByUnit);
-        const service = new ProfessionalsService(repository, hasUserAccessToUnitChecker);
+        const service = new ProfessionalsService(repository, mockUsersRepository, mockPatientsRepository, hasUserAccessToUnitChecker);
 
         const result = await service.listProfessionals("user-1", "unit-1");
 
@@ -246,7 +276,7 @@ describe("ProfessionalsService", () => {
             },
         };
         const repository = new InMemoryProfessionalsRepository(professionals, professionalsByUnit);
-        const service = new ProfessionalsService(repository, hasUserAccessToUnitChecker);
+        const service = new ProfessionalsService(repository, mockUsersRepository, mockPatientsRepository, hasUserAccessToUnitChecker);
 
         const result = await service.updateProfessional("user-1", "prof-unit-1", "unit-1", {
             name: "Dr. João Silva",
@@ -257,7 +287,7 @@ describe("ProfessionalsService", () => {
 
     it("deve lançar erro ao atualizar profissional inexistente", async () => {
         const repository = new InMemoryProfessionalsRepository();
-        const service = new ProfessionalsService(repository, hasUserAccessToUnitChecker);
+        const service = new ProfessionalsService(repository, mockUsersRepository, mockPatientsRepository, hasUserAccessToUnitChecker);
 
         await expect(
             service.updateProfessional("user-1", "missing", "unit-1", { name: "Dr. Test" }),

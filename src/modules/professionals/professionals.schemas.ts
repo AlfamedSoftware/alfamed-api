@@ -4,6 +4,10 @@ const cpfPattern = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
 const phonePattern = /^\(\d{2}\) \d{4,5}-\d{4}$/;
 const crmPattern = /^[A-Z]{2}\d{4,6}$/;
 
+export const professionalByUserCpfQuerySchema = z.object({
+    cpf: z.string().min(1),
+});
+
 export const createProfessionalSchema = z.object({
     name: z.string().optional(),
     email: z.string().email().optional(),
@@ -36,6 +40,22 @@ export const professionalProfileSchema = z.object({
 export const professionalWithUnitProfileSchema = professionalProfileSchema.extend({
     professionalUnitId: z.string().uuid(),
 });
+
+export const professionalUnitProfileSchema = z.object({
+    id: z.string(),
+    professionalId: z.string(),
+    unitId: z.string(),
+    isActive: z.boolean(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+});
+
+export const professionalByUserCpfResponseSchema = z.object({
+    userId: z.string().uuid(),
+    professionalId: z.string().uuid().or(z.literal("")),
+    patientId: z.string().uuid().or(z.literal("")),
+    professionalUnitId: z.string().uuid().or(z.literal("")),
+}).or(z.object({}));
 
 
 

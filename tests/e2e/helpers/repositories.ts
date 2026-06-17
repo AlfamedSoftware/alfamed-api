@@ -46,6 +46,13 @@ export class InMemoryUsersRepository implements UsersRepository {
     async getUserById(userId: string): Promise<UserProfile | null> {
         return this.users[userId] ?? null;
     }
+
+    async findByCpf(cpf: string): Promise<{ id: string } | null> {
+        for (const [id, user] of Object.entries(this.users)) {
+            if (user.cpf === cpf) return { id };
+        }
+        return null;
+    }
 }
 
 export class InMemoryPatientsRepository implements PatientsRepository {
@@ -200,6 +207,29 @@ export class InMemoryPatientsRepository implements PatientsRepository {
         };
     }
 
+    async listPatients(): Promise<Array<{
+        id: string;
+        userId: string;
+        name: string;
+        email: string | null;
+        cpf: string | null;
+        phone: string | null;
+        isActive: boolean;
+    }>> {
+        return Object.values(this.patients).map((patient) => {
+            const user = this.users[(patient as Patient & { userId: string }).userId];
+            return {
+                id: patient.id,
+                userId: (patient as Patient & { userId: string }).userId,
+                name: user?.name ?? "",
+                email: user?.email ?? null,
+                cpf: user?.cpf ?? null,
+                phone: user?.phone ?? null,
+                isActive: patient.isActive,
+            };
+        });
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     private async ensureFullCreateUniqueness(data: CreatePatientFullCreateInput) {
         const normalizedEmail = data.email.trim().toLowerCase();
@@ -250,6 +280,14 @@ export class InMemoryProfessionalUnitsRepository implements ProfessionalUnitsRep
         this.professionalUnits[id] = professionalUnit;
         this.professionals.add(data.professionalId);
 
+        return professionalUnit;
+    }
+
+    async createWithOptionalRole(
+        data: CreateProfessionalUnitLinkInput,
+        roleId?: string,
+    ): Promise<ProfessionalUnitLinkProfile> {
+        const professionalUnit = await this.create(data);
         return professionalUnit;
     }
 
@@ -412,6 +450,16 @@ export class InMemoryProfessionalUnitsRepository implements ProfessionalUnitsRep
         for (const fullData of Object.values(this.fullDataByProfessionalUnitId)) {
             if (fullData.users?.cpf === cpf && fullData.users?.id) {
                 return { id: fullData.users.id };
+            }
+        }
+
+        return null;
+    }
+
+    async findProfessionalByUserCpf(cpf: string): Promise<{ id: string } | null> {
+        for (const fullData of Object.values(this.fullDataByProfessionalUnitId)) {
+            if (fullData.users?.cpf === cpf && fullData.professionals?.id) {
+                return { id: fullData.professionals.id };
             }
         }
 
@@ -839,6 +887,14 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
             : null;
     }
 
+    async findByUserCpf(_cpf: string): Promise<ProfessionalProfile | null> {
+        return null;
+    }
+
+    async findByUserId(_userId: string): Promise<ProfessionalProfile | null> {
+        return null;
+    }
+
     async findDetailById(professionalId: string): Promise<any | null> {
         const professional = this.professionals[professionalId];
 
@@ -917,6 +973,37 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
         }
 
         return { id: professionalUnit.id };
+    }
+
+    async findProfessionalUnitByProfessionalAndUnit(
+        professionalId: string,
+        unitId: string,
+    ): Promise<{
+        id: string;
+        professionalId: string;
+        unitId: string;
+        isActive: boolean;
+        createdAt: string;
+        updatedAt: string;
+    } | null> {
+        const professionalUnit = Object.values(this.professionalUnitsById).find(
+            (pu) => pu.professionalId === professionalId && pu.unitId === unitId,
+        );
+
+        if (!professionalUnit) {
+            return null;
+        }
+
+        const now = new Date().toISOString();
+
+        return {
+            id: professionalUnit.id,
+            professionalId: professionalUnit.professionalId,
+            unitId: professionalUnit.unitId,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+        };
     }
 
     async hasActiveRole(roleId: string): Promise<boolean> {

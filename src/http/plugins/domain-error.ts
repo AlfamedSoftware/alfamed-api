@@ -23,7 +23,8 @@ export type DomainErrorCode =
     | "UNIT_HAS_LINKED_PROFESSIONALS"
     | "UPM_USER_NOT_FOUND"
     | "SPECIALTY_NAME_ALREADY_EXISTS"
-    | "PROCEDURE_CODE_ALREADY_EXISTS";
+    | "PROCEDURE_CODE_ALREADY_EXISTS"
+    | "PROFESSIONAL_UNIT_SPECIALTY_ALREADY_EXISTS";
 
 export class DomainError extends Error {
     constructor(
