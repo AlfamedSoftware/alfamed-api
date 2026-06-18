@@ -178,7 +178,8 @@ export class ProfessionalUnitsService {
         unitId: string,
         filters: { isActive?: boolean; roleKey?: string } = {},
     ) {
-        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
+        //Removido para permitir acesso via mobile
+        //await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
 
         return this.professionalUnitsRepository.listFullDataByUnit(unitId, filters);
     }
