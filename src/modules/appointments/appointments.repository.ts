@@ -1,4 +1,4 @@
-import { and, eq, gt, gte, inArray, lt, ne, or } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, ne, or } from "drizzle-orm";
 import type { db as dbType } from "../../db/client.js";
 import { appointments } from "../../db/schema/appointments.js";
 import { appointmentsStatus } from "../../db/schema/appointments-status.js";
@@ -9,75 +9,12 @@ import { patients } from "../../db/schema/patients.js";
 import { schedules } from "../../db/schema/schedules.js";
 import { users } from "../../db/schema/users.js";
 import type { AppointmentEvent, AvailabilityQuery, CalendarEventsQuery, CreateAppointmentInput } from "./appointments.schemas.js";
+import { CLINIC_TZ, type Interval, createLocalDateTime, mergeIntervals, subtractIntervals } from "./appointments.utils.js";
 
 type DatabaseClient = typeof dbType;
 
-type Interval = {
-    start: Date;
-    end: Date;
-};
-
-const CLINIC_TZ = "-03:00";
-
 function normalizeIso(value: Date | string) {
     return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
-}
-
-function createLocalDateTime(date: string, time: string) {
-    return new Date(`${date}T${time}${CLINIC_TZ}`);
-}
-
-function overlaps(left: Interval, right: Interval) {
-    return left.start < right.end && right.start < left.end;
-}
-
-function mergeIntervals(intervals: Interval[]) {
-    const sorted = [...intervals].sort((left, right) => left.start.getTime() - right.start.getTime());
-    const merged: Interval[] = [];
-
-    for (const interval of sorted) {
-        const last = merged[merged.length - 1];
-
-        if (!last || interval.start > last.end) {
-            merged.push({ start: new Date(interval.start), end: new Date(interval.end) });
-            continue;
-        }
-
-        if (interval.end > last.end) {
-            last.end = new Date(interval.end);
-        }
-    }
-
-    return merged;
-}
-
-function subtractIntervals(base: Interval, blocks: Interval[]) {
-    const sorted = [...blocks]
-        .filter((block) => overlaps(base, block))
-        .sort((left, right) => left.start.getTime() - right.start.getTime());
-
-    const free: Interval[] = [];
-    let cursor = new Date(base.start);
-
-    for (const block of sorted) {
-        if (block.start > cursor) {
-            free.push({ start: new Date(cursor), end: new Date(Math.min(block.start.getTime(), base.end.getTime())) });
-        }
-
-        if (block.end > cursor) {
-            cursor = new Date(Math.max(cursor.getTime(), block.end.getTime()));
-        }
-
-        if (cursor >= base.end) {
-            break;
-        }
-    }
-
-    if (cursor < base.end) {
-        free.push({ start: new Date(cursor), end: new Date(base.end) });
-    }
-
-    return free.filter((interval) => interval.end > interval.start);
 }
 
 export class AppointmentsRepository {
@@ -337,6 +274,13 @@ export class AppointmentsRepository {
 
         const normalizedStart = new Date(input.startAt);
         const normalizedEnd = input.endAt ? new Date(input.endAt) : new Date(normalizedStart.getTime() + 60 * 60 * 1000);
+        const date = normalizedStart.toISOString().slice(0, 10);
+        const specialtyId = await this.findCoveringScheduleSpecialtyId(
+            professionalUnit.professionalUnitId,
+            date,
+            normalizedStart,
+            normalizedEnd,
+        );
 
         // Check for patient overlapping appointments (any professional)
         const [patientConflict] = await this.db
@@ -378,7 +322,7 @@ export class AppointmentsRepository {
         const availability = await this.checkAvailability(
             {
                 professionalId: input.professionalId,
-                date: normalizedStart.toISOString().slice(0, 10),
+                date,
                 startAt: normalizedStart.toISOString(),
                 endAt: normalizedEnd.toISOString(),
             },
@@ -409,6 +353,7 @@ export class AppointmentsRepository {
             .values({
                 patientId: input.patientId,
                 professionalUnitId: professionalUnit.professionalUnitId,
+                specialtyId,
                 startAt: normalizedStart,
                 endAt: normalizedEnd,
                 statusId,
@@ -424,6 +369,37 @@ export class AppointmentsRepository {
             });
 
         return created;
+    }
+
+    private async findCoveringScheduleSpecialtyId(
+        professionalUnitId: string,
+        date: string,
+        startAt: Date,
+        endAt: Date,
+    ) {
+        const dayOfWeek = new Date(`${date}T00:00:00${CLINIC_TZ}`).getDay();
+        const rows = await this.db
+            .select({
+                specialtyId: schedules.specialtyId,
+                startTime: schedules.startTime,
+                endTime: schedules.endTime,
+            })
+            .from(schedules)
+            .where(
+                and(
+                    eq(schedules.professionalUnitId, professionalUnitId),
+                    eq(schedules.dayOfWeek, dayOfWeek),
+                    eq(schedules.isActive, true),
+                ),
+            );
+
+        const coveringSchedule = rows.find((row) => {
+            const scheduleStart = createLocalDateTime(date, row.startTime);
+            const scheduleEnd = createLocalDateTime(date, row.endTime);
+            return startAt >= scheduleStart && endAt <= scheduleEnd;
+        });
+
+        return coveringSchedule?.specialtyId ?? null;
     }
 
     async getAppointmentById(appointmentId: string, unitId: string) {

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "appointments_professional_unit_id_start_at_active_uq" ON "appointments" USING btree ("professional_unit_id","start_at") WHERE "appointments"."is_active" = true;

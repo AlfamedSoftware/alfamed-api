@@ -7,6 +7,7 @@ type DatabaseClient = typeof dbType;
 
 export type ScheduleRow = {
     id?: string;
+    specialtyId?: string | null;
     dayOfWeek: number;
     startTime: string; // HH:MM:SS
     endTime: string; // HH:MM:SS
@@ -34,6 +35,7 @@ export class SchedulesRepository {
         const rows = await this.db
             .select({
                 id: schedules.id,
+                specialtyId: schedules.specialtyId,
                 dayOfWeek: schedules.dayOfWeek,
                 startTime: schedules.startTime,
                 endTime: schedules.endTime,
@@ -45,6 +47,7 @@ export class SchedulesRepository {
 
         return rows.map((r) => ({
             id: r.id,
+            specialtyId: r.specialtyId ?? null,
             dayOfWeek: r.dayOfWeek,
             startTime: r.startTime,
             endTime: r.endTime,
@@ -76,6 +79,7 @@ export class SchedulesRepository {
                 await tx
                     .update(schedules)
                     .set({
+                        specialtyId: item.specialtyId ?? null,
                         dayOfWeek: item.dayOfWeek,
                         startTime: item.startTime,
                         endTime: item.endTime,
@@ -91,6 +95,7 @@ export class SchedulesRepository {
                 await tx.insert(schedules).values(
                     newItems.map((item) => ({
                         professionalUnitId,
+                        specialtyId: item.specialtyId ?? null,
                         dayOfWeek: item.dayOfWeek,
                         startTime: item.startTime,
                         endTime: item.endTime,
@@ -111,6 +116,7 @@ export class SchedulesRepository {
             const rows = await tx
                 .select({
                     id: schedules.id,
+                    specialtyId: schedules.specialtyId,
                     dayOfWeek: schedules.dayOfWeek,
                     startTime: schedules.startTime,
                     endTime: schedules.endTime,
@@ -123,6 +129,7 @@ export class SchedulesRepository {
 
             return rows.map((r) => ({
                 id: r.id,
+                specialtyId: r.specialtyId ?? null,
                 dayOfWeek: r.dayOfWeek,
                 startTime: r.startTime,
                 endTime: r.endTime,

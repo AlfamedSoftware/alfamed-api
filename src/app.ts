@@ -20,7 +20,10 @@ import { RolesRepository } from "./modules/roles/roles.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
 import type { PatientsRepository } from "./modules/patients/patients.repository.js";
 import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
+import { attendanceRoutes } from "./modules/attendance/attendance.routes.js";
 import { schedulesRoutes } from "./modules/schedules/schedules.routes.js";
+import { patientAppointmentsRoutes } from "./modules/patient-appointments/patient-appointments.routes.js";
+import type { IPatientAppointmentsRepository } from "./modules/patient-appointments/patient-appointments.repository.js";
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
 // appointments routes removed
@@ -47,6 +50,7 @@ type BuildAppOptions = {
     patientsRepository: PatientsRepository;
     rolesRepository?: RolesRepository;
     unitsRepository?: UnitsRepository;
+    patientAppointmentsRepository?: IPatientAppointmentsRepository;
     hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
     authPlugin: ElysiaPlugin;
     withDocs?: boolean;
@@ -63,6 +67,7 @@ export async function buildApp({
     professionalUnitsRepository,
     professionalUnitSpecialtiesRepository,
     unitsRepository,
+    patientAppointmentsRepository,
     hasUserAccessToUnitChecker,
     authPlugin,
     withDocs = true,
@@ -133,6 +138,10 @@ export async function buildApp({
                             name: "Admin",
                             description: "Internal administration operations",
                         },
+                        {
+                            name: "Attendance",
+                            description: "Medical attendance workflow",
+                        },
                     ],
                     components: await OpenAPI.components,
                     paths: await OpenAPI.getPaths(),
@@ -156,7 +165,7 @@ export async function buildApp({
                 origin: TRUSTED_ORIGINS,
                 methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 credentials: true,
-                allowedHeaders: ["Content-Type", "Authorization"],
+                allowedHeaders: ["Content-Type", "Authorization", "x-unit-id", "x-professional-unit-id"],
             }),
         )
         .use(createSessionRoutes(db))
@@ -164,7 +173,9 @@ export async function buildApp({
         .use(usersRoutes({ usersRepository }))
         .use(patientsRoutes({ patientsRepository }))
         .use(rolesRoutes({ rolesRepository: rolesRepository ?? new RolesRepository(db) }))
-        .use(appointmentsRoutes({ db }));
+        .use(appointmentsRoutes({ db }))
+        .use(attendanceRoutes({ db }))
+        .use(patientAppointmentsRoutes({ db, patientAppointmentsRepository }));
 
     const resolvedHasUserAccessToUnitChecker =
         hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
