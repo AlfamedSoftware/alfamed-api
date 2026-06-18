@@ -83,15 +83,16 @@ export const specialtiesRoutes = ({
             async (context) => {
                 const { params, query, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const selectedUnitId = getUnitIdFromRequest(context.request);
+                //const selectedUnitId = getUnitIdFromRequest(context.request);
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
                 
-                if (!selectedUnitId) {
-                    return status(400, { message: unitSelectionRequiredMessage });
-                }
+                //Removido para liberar acesso ao mobile
+                //if (!selectedUnitId) {
+                //    return status(400, { message: unitSelectionRequiredMessage });
+                //}
 
                 try {
                     const filters: { isActive?: boolean } = {};
