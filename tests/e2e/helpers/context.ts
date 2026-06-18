@@ -6,6 +6,7 @@ import type { ProfessionalsRepository } from "../../../src/modules/professionals
 import type { ProfessionalUnitsRepository } from "../../../src/modules/professional-units/professional-units.repository";
 import type { PatientsRepository } from "../../../src/modules/patients/patients.repository";
 import type { UnitsRepository } from "../../../src/modules/units/units.repository";
+import type { IPatientAppointmentsRepository } from "../../../src/modules/patient-appointments/patient-appointments.repository";
 // Specialties and Appointments modules removed; not required for e2e context
 import { InMemoryPatientsRepository } from "./repositories";
 
@@ -71,6 +72,7 @@ type BuildE2EAppOptions = {
     professionalUnitsRepository?: ProfessionalUnitsRepository;
     patientsRepository?: PatientsRepository;
     unitsRepository?: UnitsRepository;
+    patientAppointmentsRepository?: IPatientAppointmentsRepository;
     accessMap?: AllowedUnitsByUser;
     authPlugin?: any;
 };
@@ -81,6 +83,7 @@ export const buildE2EApp = async ({
     professionalUnitsRepository,
     patientsRepository = new InMemoryPatientsRepository(),
     unitsRepository,
+    patientAppointmentsRepository,
     accessMap = {},
     authPlugin = fakeAuthPlugin,
 }: BuildE2EAppOptions) =>
@@ -93,5 +96,6 @@ export const buildE2EApp = async ({
         professionalUnitsRepository,
         patientsRepository,
         unitsRepository,
+        patientAppointmentsRepository,
         hasUserAccessToUnitChecker: createHasUserAccessToUnitChecker(accessMap),
         });

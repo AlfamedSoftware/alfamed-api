@@ -9,6 +9,7 @@ type DatabaseClient = typeof dbType;
 
 const scheduleItemSchema = z.object({
     id: z.string().uuid().optional(),
+    specialtyId: z.string().uuid().nullable().optional(),
     dayOfWeek: z.number().min(0).max(6),
     startTime: z.string(),
     endTime: z.string(),
@@ -38,6 +39,7 @@ export const schedulesRoutes = ({ db }: { db: DatabaseClient }) => {
                     const rows = await repo.listByProfessionalAndUnit(params.id, unitId);
                     return status(200, rows.map((r) => ({
                         id: r.id,
+                        specialtyId: r.specialtyId ?? null,
                         dayOfWeek: r.dayOfWeek,
                         startTime: r.startTime,
                         endTime: r.endTime,
@@ -61,6 +63,7 @@ export const schedulesRoutes = ({ db }: { db: DatabaseClient }) => {
                     200: t.Array(
                         t.Object({
                             id: t.String({ format: "uuid" }),
+                            specialtyId: t.Union([t.String({ format: "uuid" }), t.Null()]),
                             dayOfWeek: t.Number(),
                             startTime: t.String(),
                             endTime: t.String(),
@@ -109,6 +112,7 @@ export const schedulesRoutes = ({ db }: { db: DatabaseClient }) => {
                     200: t.Array(
                         t.Object({
                             id: t.String({ format: "uuid" }),
+                            specialtyId: t.Union([t.String({ format: "uuid" }), t.Null()]),
                             dayOfWeek: t.Number(),
                             startTime: t.String(),
                             endTime: t.String(),

@@ -1024,3 +1024,141 @@ export class InMemoryProfessionalsRepository implements ProfessionalsRepository 
         return link;
     }
 }
+
+import type { IPatientAppointmentsRepository, ScheduleRow, TimeRange, CreatedAppointment, CreateAppointmentData } from "../../../src/modules/patient-appointments/patient-appointments.repository";
+import { DomainError } from "../../../src/http/plugins/domain-error";
+
+type InMemoryProfessionalUnit = {
+    id: string;
+    professionalId: string;
+    unitId: string;
+    professionalIsActive: boolean;
+    puIsActive: boolean;
+    unitIsActive: boolean;
+};
+
+type InMemorySchedule = ScheduleRow & { dayOfWeek: number };
+
+type InMemoryAppointmentRecord = {
+    id: string;
+    patientId: string;
+    professionalUnitId: string;
+    startAt: Date;
+    endAt: Date;
+    reason: string | null;
+    isActive: boolean;
+};
+
+export class InMemoryPatientAppointmentsRepository implements IPatientAppointmentsRepository {
+    private patientsByUserId: Map<string, string> = new Map();
+    private professionalUnits: Map<string, InMemoryProfessionalUnit> = new Map();
+    private schedules: Map<string, InMemorySchedule[]> = new Map();
+    private appointments: InMemoryAppointmentRecord[] = [];
+    private blocks: (TimeRange & { professionalUnitId: string })[] = [];
+
+    seedPatient(userId: string, patientId: string) {
+        this.patientsByUserId.set(userId, patientId);
+    }
+
+    seedProfessionalUnit(pu: InMemoryProfessionalUnit) {
+        this.professionalUnits.set(pu.id, pu);
+    }
+
+    seedSchedule(professionalUnitId: string, schedule: InMemorySchedule) {
+        const existing = this.schedules.get(professionalUnitId) ?? [];
+        this.schedules.set(professionalUnitId, [...existing, schedule]);
+    }
+
+    seedAppointment(appt: InMemoryAppointmentRecord) {
+        this.appointments.push(appt);
+    }
+
+    seedBlock(block: TimeRange & { professionalUnitId: string }) {
+        this.blocks.push(block);
+    }
+
+    async findPatientIdByUserId(userId: string): Promise<string | null> {
+        return this.patientsByUserId.get(userId) ?? null;
+    }
+
+    async findActiveProfessionalUnit(professionalId: string, unitId: string): Promise<{ professionalUnitId: string } | null> {
+        for (const pu of this.professionalUnits.values()) {
+            if (
+                pu.professionalId === professionalId &&
+                pu.unitId === unitId &&
+                pu.professionalIsActive &&
+                pu.puIsActive &&
+                pu.unitIsActive
+            ) {
+                return { professionalUnitId: pu.id };
+            }
+        }
+        return null;
+    }
+
+    async getSchedulesForDay(professionalUnitId: string, dayOfWeek: number): Promise<ScheduleRow[]> {
+        const all = this.schedules.get(professionalUnitId) ?? [];
+        return all.filter((s) => s.dayOfWeek === dayOfWeek);
+    }
+
+    async getAppointmentsForDay(professionalUnitId: string, dayStart: Date, dayEnd: Date): Promise<TimeRange[]> {
+        return this.appointments
+            .filter(
+                (a) =>
+                    a.professionalUnitId === professionalUnitId &&
+                    a.isActive &&
+                    a.startAt < dayEnd &&
+                    a.endAt > dayStart,
+            )
+            .map((a) => ({ startAt: a.startAt, endAt: a.endAt }));
+    }
+
+    async getBlocksForDay(professionalUnitId: string, dayStart: Date, dayEnd: Date): Promise<TimeRange[]> {
+        return this.blocks
+            .filter(
+                (b) =>
+                    b.professionalUnitId === professionalUnitId &&
+                    b.startAt < dayEnd &&
+                    b.endAt > dayStart,
+            )
+            .map((b) => ({ startAt: b.startAt, endAt: b.endAt }));
+    }
+
+    async createAppointment(input: CreateAppointmentData): Promise<CreatedAppointment> {
+        const duplicate = this.appointments.find(
+            (a) =>
+                a.professionalUnitId === input.professionalUnitId &&
+                a.isActive &&
+                a.startAt.getTime() === input.startAt.getTime(),
+        );
+
+        if (duplicate) {
+            throw new DomainError("NO_SLOTS_AVAILABLE", "Horário não disponível");
+        }
+
+        const id = crypto.randomUUID();
+        const record: InMemoryAppointmentRecord = {
+            id,
+            patientId: input.patientId,
+            professionalUnitId: input.professionalUnitId,
+            startAt: input.startAt,
+            endAt: input.endAt,
+            reason: input.reason ?? null,
+            isActive: true,
+        };
+        this.appointments.push(record);
+
+        return {
+            id,
+            patientId: input.patientId,
+            professionalUnitId: input.professionalUnitId,
+            startAt: input.startAt,
+            endAt: input.endAt,
+            reason: input.reason ?? null,
+        };
+    }
+
+    async findOrCreateScheduledStatus(): Promise<string> {
+        return "status-scheduled";
+    }
+}

@@ -5,8 +5,10 @@ import { appointmentsStatus } from "../../db/schema/appointments-status.js";
 import { patients } from "../../db/schema/patients.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionalUnitSpecialties } from "../../db/schema/professional-unit-specialties.js";
+import { schedules } from "../../db/schema/schedules.js";
 import { specialties } from "../../db/schema/specialties.js";
 import { users } from "../../db/schema/users.js";
+import { createLocalDateTime } from "../appointments/appointments.utils.js";
 import type { AttendanceSchedulesQuery } from "./attendance.schemas.js";
 
 type DatabaseClient = typeof dbType;
@@ -36,6 +38,22 @@ function normalizeStatus(status: string | null | undefined) {
     if (lower === "cancelado") return "cancelled";
 
     return lower;
+}
+
+type ScheduleSpecialtyRule = {
+    specialtyId: string | null;
+    startTime: string;
+    endTime: string;
+};
+
+function findScheduleSpecialtyId(rules: ScheduleSpecialtyRule[], date: string, startAt: Date, endAt: Date) {
+    const matchingRule = rules.find((rule) => {
+        const scheduleStart = createLocalDateTime(date, rule.startTime);
+        const scheduleEnd = createLocalDateTime(date, rule.endTime);
+        return startAt >= scheduleStart && endAt <= scheduleEnd;
+    });
+
+    return matchingRule?.specialtyId ?? null;
 }
 
 export class AttendanceRepository {
@@ -86,9 +104,26 @@ export class AttendanceRepository {
             .orderBy(specialties.name);
 
         const { start, end } = dayRange(query.date);
+        const dayOfWeek = new Date(`${query.date}T00:00:00${CLINIC_TZ}`).getDay();
+        const scheduleRules = await this.db
+            .select({
+                specialtyId: schedules.specialtyId,
+                startTime: schedules.startTime,
+                endTime: schedules.endTime,
+            })
+            .from(schedules)
+            .where(
+                and(
+                    eq(schedules.professionalUnitId, professionalUnitId),
+                    eq(schedules.dayOfWeek, dayOfWeek),
+                    eq(schedules.isActive, true),
+                ),
+            );
+
         const scheduleRows = await this.db
             .select({
                 id: appointments.id,
+                specialtyId: appointments.specialtyId,
                 startAt: appointments.startAt,
                 endAt: appointments.endAt,
                 status: appointmentsStatus.name,
@@ -112,49 +147,57 @@ export class AttendanceRepository {
             )
             .orderBy(appointments.startAt);
 
-        const schedules = scheduleRows.map((row) => ({
-            id: row.id,
-            startAt: toIso(row.startAt),
-            endAt: toIso(row.endAt),
-            status: normalizeStatus(row.status),
+        const schedulesBySpecialty = new Map<string, {
+            id: string;
+            startAt: string;
+            endAt: string;
+            status: string;
             patient: {
-                id: row.patientId,
-                name: row.patientName,
-                birthDate: toIso(row.birthDate),
-                gender: row.gender ?? null,
-            },
-        }));
+                id: string;
+                name: string;
+                birthDate: string;
+                gender: string | null;
+            };
+        }[]>();
+
+        for (const row of scheduleRows) {
+            const startAt = new Date(row.startAt);
+            const endAt = new Date(row.endAt);
+            const specialtyId = row.specialtyId ?? findScheduleSpecialtyId(scheduleRules, query.date, startAt, endAt);
+
+            if (!specialtyId) continue;
+            if (query.specialtyId && specialtyId !== query.specialtyId) continue;
+
+            const schedulesForSpecialty = schedulesBySpecialty.get(specialtyId) ?? [];
+            schedulesForSpecialty.push({
+                id: row.id,
+                startAt: toIso(row.startAt),
+                endAt: toIso(row.endAt),
+                status: normalizeStatus(row.status),
+                patient: {
+                    id: row.patientId,
+                    name: row.patientName,
+                    birthDate: toIso(row.birthDate),
+                    gender: row.gender ?? null,
+                },
+            });
+            schedulesBySpecialty.set(specialtyId, schedulesForSpecialty);
+        }
 
         return {
             specialties: specialtyRows.map((specialty) => ({
                 id: specialty.id,
                 name: specialty.name,
-                schedules,
+                schedules: schedulesBySpecialty.get(specialty.id) ?? [],
             })),
         };
     }
 
     async getScheduleDetails(scheduleId: string, unitId: string, professionalUnitId: string) {
-        const [specialtyRow] = await this.db
-            .select({
-                id: specialties.id,
-                name: specialties.name,
-            })
-            .from(professionalUnitSpecialties)
-            .innerJoin(specialties, eq(specialties.id, professionalUnitSpecialties.specialtyId))
-            .where(
-                and(
-                    eq(professionalUnitSpecialties.professionalUnitId, professionalUnitId),
-                    eq(professionalUnitSpecialties.isActive, true),
-                    eq(specialties.isActive, true),
-                ),
-            )
-            .orderBy(specialties.name)
-            .limit(1);
-
         const [row] = await this.db
             .select({
                 id: appointments.id,
+                specialtyId: appointments.specialtyId,
                 startAt: appointments.startAt,
                 endAt: appointments.endAt,
                 status: appointmentsStatus.name,
@@ -182,7 +225,43 @@ export class AttendanceRepository {
             )
             .limit(1);
 
-        if (!row || !specialtyRow) {
+        if (!row) {
+            return null;
+        }
+
+        const date = toIso(row.startAt).slice(0, 10);
+        const dayOfWeek = new Date(`${date}T00:00:00${CLINIC_TZ}`).getDay();
+        const scheduleRules = await this.db
+            .select({
+                specialtyId: schedules.specialtyId,
+                startTime: schedules.startTime,
+                endTime: schedules.endTime,
+            })
+            .from(schedules)
+            .where(
+                and(
+                    eq(schedules.professionalUnitId, professionalUnitId),
+                    eq(schedules.dayOfWeek, dayOfWeek),
+                    eq(schedules.isActive, true),
+                ),
+            );
+
+        const specialtyId = row.specialtyId ?? findScheduleSpecialtyId(scheduleRules, date, new Date(row.startAt), new Date(row.endAt));
+
+        if (!specialtyId) {
+            return null;
+        }
+
+        const [specialtyRow] = await this.db
+            .select({
+                id: specialties.id,
+                name: specialties.name,
+            })
+            .from(specialties)
+            .where(and(eq(specialties.id, specialtyId), eq(specialties.isActive, true)))
+            .limit(1);
+
+        if (!specialtyRow) {
             return null;
         }
 
