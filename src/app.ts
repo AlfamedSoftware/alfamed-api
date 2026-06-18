@@ -23,7 +23,6 @@ import { appointmentsRoutes } from "./modules/appointments/appointments.routes.j
 import { schedulesRoutes } from "./modules/schedules/schedules.routes.js";
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
-// appointments routes removed
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
 import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";

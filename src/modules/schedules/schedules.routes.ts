@@ -1,163 +1,66 @@
 import { Elysia, t } from "elysia";
-import { z } from "zod";
-import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
-import { getUnitIdFromRequest } from "../../http/plugins/unit-context.js";
-import type { db as dbType } from "../../db/client.js";
 import { SchedulesRepository } from "./schedules.repository.js";
+import { SchedulesService } from "./schedules.service.js";
+import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
+import type { db as dbType } from "../../db/client.js";
+import {
+    listFullAvailableScheduleSlotsSchema,
+    schedulesErrorSchema,
+} from "./schedules.schemas.js";
 
 type DatabaseClient = typeof dbType;
 
-const scheduleItemSchema = z.object({
-    id: z.string().uuid().optional(),
-    dayOfWeek: z.number().min(0).max(6),
-    startTime: z.string(),
-    endTime: z.string(),
-    appointmentDurationMinutes: z.number().int().min(1),
-    isActive: z.boolean().optional(),
-});
+type SchedulesRoutesOptions = {
+    db: DatabaseClient;
+};
 
-const replaceSchedulesSchema = z.object({
-    schedules: z.array(scheduleItemSchema),
-});
+export const schedulesRoutes = ({ db }: SchedulesRoutesOptions) => {
+    const schedulesRepository = new SchedulesRepository(db);
+    const schedulesService = new SchedulesService(schedulesRepository);
 
-export const schedulesRoutes = ({ db }: { db: DatabaseClient }) => {
-    const repo = new SchedulesRepository(db);
-
-    return new Elysia({ name: "schedules-routes", prefix: "/professionals" })
+    return new Elysia({ name: "schedules-routes", prefix: "/schedules" })
         .get(
-            "/:id/schedules",
+            "/list-full-available-schedule-slots",
             async (context) => {
-                const { params, status } = context;
+                const { query, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const unitId = getUnitIdFromRequest(context.request);
 
-                if (!userId) return status(401, { message: "Unauthorized" });
-                if (!unitId) return status(400, { message: "Selecione uma clínica para continuar" });
+                if (!userId) {
+                    return status(401, { message: "Não autorizado" });
+                }
 
                 try {
-                    const rows = await repo.listByProfessionalAndUnit(params.id, unitId);
-                    return status(200, rows.map((r) => ({
-                        id: r.id,
-                        dayOfWeek: r.dayOfWeek,
-                        startTime: r.startTime,
-                        endTime: r.endTime,
-                        appointmentDurationMinutes: r.appointmentDurationMinutes,
-                        isActive: r.isActive,
-                    })));
+                    const result = await schedulesService.listFullAvailableScheduleSlots({
+                        date: query.date,
+                        professionalUnitId: query.professionalUnitId,
+                        specialtyId: query.specialtyId,
+                        isActive: query.isActive,
+                        isAvailable: query.isAvailable,
+                    });
+                    return status(200, result);
                 } catch (error) {
-                    console.error("[schedules.routes] Error listing schedules:", error);
-                    return status(500, { message: "Internal server error" });
+                    console.error("[schedules.routes] Error listing available schedule slots:", error);
+                    return status(500, { message: "Erro interno do servidor" });
                 }
             },
             {
                 auth: true,
-                params: t.Object({ id: t.String({ format: "uuid" }) }),
+                query: t.Object({
+                    date: t.String(),
+                    professionalUnitId: t.Optional(t.String()),
+                    specialtyId: t.Optional(t.String()),
+                    isActive: t.Optional(t.Boolean()),
+                    isAvailable: t.Optional(t.Boolean()),
+                }),
                 detail: {
-                    summary: "List professional schedules",
-                    description: "Returns schedules for the given professional within the selected unit.",
-                    tags: ["Professionals"],
+                    summary: "List full available schedule slots",
+                    description: "Returns available schedule slots with full data including users, professional units, and specialties.",
+                    tags: ["Schedules"],
                 },
                 response: {
-                    200: t.Array(
-                        t.Object({
-                            id: t.String({ format: "uuid" }),
-                            dayOfWeek: t.Number(),
-                            startTime: t.String(),
-                            endTime: t.String(),
-                            appointmentDurationMinutes: t.Number(),
-                            isActive: t.Boolean(),
-                        }),
-                    ),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
-                    500: t.Object({ message: t.String() }),
-                },
-            },
-        )
-        .put(
-            "/:id/schedules",
-            async (context) => {
-                const { params, body, status } = context;
-                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const unitId = getUnitIdFromRequest(context.request);
-
-                if (!userId) return status(401, { message: "Unauthorized" });
-                if (!unitId) return status(400, { message: "Selecione uma clínica para continuar" });
-
-                try {
-                    const parsed = replaceSchedulesSchema.parse(body);
-                    const saved = await repo.replaceForProfessionalAndUnit(params.id, unitId, parsed.schedules as any);
-                    return status(200, saved);
-                } catch (error) {
-                    console.error("[schedules.routes] Error replacing schedules:", error);
-                    if (error instanceof Error && error.message === "PROFESSIONAL_UNIT_NOT_FOUND") {
-                        return status(404, { message: "Professional unit not found" });
-                    }
-                    return status(500, { message: "Internal server error" });
-                }
-            },
-            {
-                auth: true,
-                params: t.Object({ id: t.String({ format: "uuid" }) }),
-                body: z.any(),
-                detail: {
-                    summary: "Replace professional schedules",
-                    description: "Replace all schedules for the professional in the selected unit.",
-                    tags: ["Professionals"],
-                },
-                response: {
-                    200: t.Array(
-                        t.Object({
-                            id: t.String({ format: "uuid" }),
-                            dayOfWeek: t.Number(),
-                            startTime: t.String(),
-                            endTime: t.String(),
-                            appointmentDurationMinutes: t.Number(),
-                            isActive: t.Boolean(),
-                        }),
-                    ),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
-                    404: t.Object({ message: t.Literal("Professional unit not found") }),
-                    500: t.Object({ message: t.String() }),
-                },
-            },
-        )
-        .delete(
-            "/:id/schedules/:scheduleId",
-            async (context) => {
-                const { params, status } = context;
-                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const unitId = getUnitIdFromRequest(context.request);
-
-                if (!userId) return status(401, { message: "Unauthorized" });
-                if (!unitId) return status(400, { message: "Selecione uma clínica para continuar" });
-
-                try {
-                    await repo.deleteById(params.id, unitId, params.scheduleId);
-                    return status(204);
-                } catch (error) {
-                    console.error("[schedules.routes] Error deleting schedule:", error);
-                    if (error instanceof Error && error.message === "PROFESSIONAL_UNIT_NOT_FOUND") {
-                        return status(404, { message: "Professional unit not found" });
-                    }
-                    return status(500, { message: "Internal server error" });
-                }
-            },
-            {
-                auth: true,
-                params: t.Object({ id: t.String({ format: "uuid" }), scheduleId: t.String({ format: "uuid" }) }),
-                detail: {
-                    summary: "Delete schedule",
-                    description: "Deletes a schedule for the professional in the selected unit.",
-                    tags: ["Professionals"],
-                },
-                response: {
-                    204: t.Undefined(),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
-                    404: t.Object({ message: t.Literal("Professional unit not found") }),
-                    500: t.Object({ message: t.String() }),
+                    200: listFullAvailableScheduleSlotsSchema,
+                    401: t.Object({ message: t.Literal("Não autorizado") }),
+                    500: schedulesErrorSchema,
                 },
             },
         );

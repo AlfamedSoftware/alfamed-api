@@ -185,7 +185,7 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
         .get(
             "/patient-full-data-by-user/:userId",
             async (context) => {
-                const { params, status } = context;
+                const { params, query, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
 
                 if (!userId) {
@@ -197,7 +197,7 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 }
 
                 try {
-                    const patient = await patientsService.getPatientFullDataByUserId(params.userId);
+                    const patient = await patientsService.getPatientFullDataByUserId(params.userId, query.isActive);
                     return status(200, patient);
                 } catch (error) {
                     if (isDomainError(error, "PATIENT_NOT_FOUND")) {
@@ -212,6 +212,9 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 params: t.Object({
                     userId: t.String({ format: "uuid" }),
                 }),
+                query: t.Object({
+                    isActive: t.Optional(t.Boolean()),
+                }),
                 detail: {
                     summary: "Get patient full data by user",
                     description: "Returns the patient and related user data for the specified user.",
@@ -221,6 +224,48 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     200: patientFullDataByUserSchema,
                     401: t.Object({ message: t.Literal("Não autorizado") }),
                     403: t.Object({ message: t.Literal("Acesso negado") }),
+                    404: t.Object({ message: t.Literal("Paciente não encontrado") }),
+                    500: patientsErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/patient-full-data-by-user-cpf/:cpf",
+            async (context) => {
+                const { params, query, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Não autorizado" });
+                }
+
+                try {
+                    const patient = await patientsService.getPatientFullDataByCpf(params.cpf, query.isActive);
+                    return status(200, patient);
+                } catch (error) {
+                    if (isDomainError(error, "PATIENT_NOT_FOUND")) {
+                        return status(404, { message: "Paciente não encontrado" });
+                    }
+
+                    return status(500, { message: "Erro interno do servidor" });
+                }
+            },
+            {
+                auth: true,
+                params: t.Object({
+                    cpf: t.String(),
+                }),
+                query: t.Object({
+                    isActive: t.Optional(t.Boolean()),
+                }),
+                detail: {
+                    summary: "Get patient full data by user CPF",
+                    description: "Returns the patient and related user data for the specified user CPF.",
+                    tags: ["Patients"],
+                },
+                response: {
+                    200: patientFullDataByUserSchema,
+                    401: t.Object({ message: t.Literal("Não autorizado") }),
                     404: t.Object({ message: t.Literal("Paciente não encontrado") }),
                     500: patientsErrorSchema,
                 },

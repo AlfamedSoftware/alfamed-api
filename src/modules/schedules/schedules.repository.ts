@@ -1,141 +1,200 @@
+import { and, eq } from "drizzle-orm";
+import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { schedules } from "../../db/schema/schedules.js";
+import { scheduleSlots } from "../../db/schema/schedule-slots.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
-import { and, eq, inArray } from "drizzle-orm";
+import { professionals } from "../../db/schema/professionals.js";
+import { users } from "../../db/schema/users.js";
+import { specialties } from "../../db/schema/specialties.js";
+import { scheduleFullDataSchema } from "./schedules.schemas.js";
 
 type DatabaseClient = typeof dbType;
 
-export type ScheduleRow = {
-    id?: string;
-    dayOfWeek: number;
-    startTime: string; // HH:MM:SS
-    endTime: string; // HH:MM:SS
-    appointmentDurationMinutes: number;
+export type ListFullAvailableScheduleSlotsFilters = {
+    date: string;
+    professionalUnitId?: string;
+    specialtyId?: string;
     isActive?: boolean;
-}
+    isAvailable?: boolean;
+};
 
 export class SchedulesRepository {
-    constructor(private db: DatabaseClient) { }
+    constructor(private readonly db: DatabaseClient) { }
 
-    private async findProfessionalUnitId(professionalId: string, unitId: string) {
-        const [row] = await this.db
-            .select({ id: professionalUnits.id })
-            .from(professionalUnits)
-            .where(and(eq(professionalUnits.professionalId, professionalId), eq(professionalUnits.unitId, unitId)))
-            .limit(1);
+    async listFullAvailableScheduleSlots(filters: ListFullAvailableScheduleSlotsFilters) {
+        const whereConditions = [eq(schedules.date, filters.date)];
 
-        return row?.id ?? null;
-    }
+        if (filters.professionalUnitId) {
+            whereConditions.push(eq(schedules.professionalUnitId, filters.professionalUnitId));
+        }
 
-    async listByProfessionalAndUnit(professionalId: string, unitId: string) {
-        const professionalUnitId = await this.findProfessionalUnitId(professionalId, unitId);
-        if (!professionalUnitId) return [];
+        if (filters.specialtyId) {
+            whereConditions.push(eq(schedules.specialtyId, filters.specialtyId));
+        }
 
-        const rows = await this.db
+        if (typeof filters.isActive === 'boolean') {
+            whereConditions.push(eq(schedules.isActive, filters.isActive));
+        } else {
+            whereConditions.push(eq(schedules.isActive, true));
+        }
+
+        const scheduleRows = await this.db
             .select({
                 id: schedules.id,
-                dayOfWeek: schedules.dayOfWeek,
+                slots: schedules.slots,
+                emptySlots: schedules.emptySlots,
+                allocatedSlots: schedules.allocatedSlots,
+                date: schedules.date,
                 startTime: schedules.startTime,
                 endTime: schedules.endTime,
-                appointmentDurationMinutes: schedules.appointmentDurationMinutes,
+                durationMinutes: schedules.durationMinutes,
                 isActive: schedules.isActive,
+                professionalUnitId: schedules.professionalUnitId,
+                specialtyId: schedules.specialtyId,
             })
             .from(schedules)
-            .where(eq(schedules.professionalUnitId, professionalUnitId));
+            .where(and(...whereConditions));
 
-        return rows.map((r) => ({
-            id: r.id,
-            dayOfWeek: r.dayOfWeek,
-            startTime: r.startTime,
-            endTime: r.endTime,
-            appointmentDurationMinutes: r.appointmentDurationMinutes,
-            isActive: r.isActive,
-        }));
-    }
+        if (scheduleRows.length === 0) {
+            return [];
+        }
 
-    async replaceForProfessionalAndUnit(professionalId: string, unitId: string, items: ScheduleRow[]) {
-        const professionalUnitId = await this.findProfessionalUnitId(professionalId, unitId);
-        if (!professionalUnitId) throw new Error("PROFESSIONAL_UNIT_NOT_FOUND");
+        const results = await Promise.all(
+            scheduleRows.map(async (schedule) => {
+                // Get professional unit data
+                const [professionalUnit] = await this.db
+                    .select({
+                        id: professionalUnits.id,
+                        professionalId: professionalUnits.professionalId,
+                        isActive: professionalUnits.isActive,
+                    })
+                    .from(professionalUnits)
+                    .where(and(
+                        eq(professionalUnits.id, schedule.professionalUnitId),
+                        eq(professionalUnits.isActive, true)
+                    ))
+                    .limit(1);
 
-        return this.db.transaction(async (tx) => {
-            const existingRows = await tx
-                .select({ id: schedules.id })
-                .from(schedules)
-                .where(eq(schedules.professionalUnitId, professionalUnitId));
-
-            const existingIds = new Set(existingRows.map((row) => row.id));
-            const inputIds = new Set(items.map((item) => item.id).filter((id): id is string => Boolean(id)));
-
-            for (const item of items) {
-                if (!item.id) continue;
-
-                if (!existingIds.has(item.id)) {
-                    throw new Error("SCHEDULE_NOT_FOUND");
+                if (!professionalUnit) {
+                    return null;
                 }
 
-                await tx
-                    .update(schedules)
-                    .set({
-                        dayOfWeek: item.dayOfWeek,
-                        startTime: item.startTime,
-                        endTime: item.endTime,
-                        appointmentDurationMinutes: item.appointmentDurationMinutes,
-                        isActive: item.isActive ?? true,
+                // Get professional data
+                const [professional] = await this.db
+                    .select({
+                        userId: professionals.userId,
                     })
-                    .where(and(eq(schedules.professionalUnitId, professionalUnitId), eq(schedules.id, item.id)));
-            }
+                    .from(professionals)
+                    .where(and(
+                        eq(professionals.id, professionalUnit.professionalId),
+                        eq(professionals.isActive, true)
+                    ))
+                    .limit(1);
 
-            const newItems = items.filter((item) => !item.id);
+                if (!professional) {
+                    return null;
+                }
 
-            if (newItems.length > 0) {
-                await tx.insert(schedules).values(
-                    newItems.map((item) => ({
-                        professionalUnitId,
-                        dayOfWeek: item.dayOfWeek,
-                        startTime: item.startTime,
-                        endTime: item.endTime,
-                        appointmentDurationMinutes: item.appointmentDurationMinutes,
-                        isActive: item.isActive ?? true,
-                    })),
-                );
-            }
+                // Get user data
+                const [user] = await this.db
+                    .select({
+                        id: users.id,
+                        name: users.name,
+                        socialName: users.socialName,
+                        email: users.email,
+                        phone: users.phone,
+                        cpf: users.cpf,
+                        birthdate: users.birthdate,
+                        sex: users.sex,
+                        isActive: users.isActive,
+                    })
+                    .from(users)
+                    .where(and(
+                        eq(users.id, professional.userId),
+                        eq(users.isActive, true)
+                    ))
+                    .limit(1);
 
-            const removedIds = [...existingIds].filter((id) => !inputIds.has(id));
+                if (!user) {
+                    return null;
+                }
 
-            if (removedIds.length > 0) {
-                await tx
-                    .delete(schedules)
-                    .where(and(eq(schedules.professionalUnitId, professionalUnitId), inArray(schedules.id, removedIds)));
-            }
+                // Get specialty data
+                const [specialty] = await this.db
+                    .select({
+                        id: specialties.id,
+                        name: specialties.name,
+                        isActive: specialties.isActive,
+                    })
+                    .from(specialties)
+                    .where(and(
+                        eq(specialties.id, schedule.specialtyId),
+                        eq(specialties.isActive, true)
+                    ))
+                    .limit(1);
 
-            const rows = await tx
-                .select({
-                    id: schedules.id,
-                    dayOfWeek: schedules.dayOfWeek,
-                    startTime: schedules.startTime,
-                    endTime: schedules.endTime,
-                    appointmentDurationMinutes: schedules.appointmentDurationMinutes,
-                    isActive: schedules.isActive,
-                })
-                .from(schedules)
-                .where(eq(schedules.professionalUnitId, professionalUnitId))
-                .orderBy(schedules.dayOfWeek, schedules.startTime, schedules.endTime, schedules.id);
+                if (!specialty) {
+                    return null;
+                }
 
-            return rows.map((r) => ({
-                id: r.id,
-                dayOfWeek: r.dayOfWeek,
-                startTime: r.startTime,
-                endTime: r.endTime,
-                appointmentDurationMinutes: r.appointmentDurationMinutes,
-                isActive: r.isActive,
-            }));
-        });
-    }
+                // Get schedule slots with filters
+                const slotConditions = [eq(scheduleSlots.scheduleId, schedule.id)];
+                if (typeof filters.isAvailable === 'boolean') {
+                    slotConditions.push(eq(scheduleSlots.isAvailable, filters.isAvailable));
+                }
+                if (typeof filters.isActive === 'boolean') {
+                    slotConditions.push(eq(scheduleSlots.isActive, filters.isActive));
+                } else {
+                    slotConditions.push(eq(scheduleSlots.isActive, true));
+                }
 
-    async deleteById(professionalId: string, unitId: string, scheduleId: string) {
-        const professionalUnitId = await this.findProfessionalUnitId(professionalId, unitId);
-        if (!professionalUnitId) throw new Error("PROFESSIONAL_UNIT_NOT_FOUND");
+                const slots = await this.db
+                    .select({
+                        id: scheduleSlots.id,
+                        startTime: scheduleSlots.startTime,
+                        endTime: scheduleSlots.endTime,
+                        isAvailable: scheduleSlots.isAvailable,
+                        isActive: scheduleSlots.isActive,
+                    })
+                    .from(scheduleSlots)
+                    .where(and(...slotConditions));
 
-        await this.db.delete(schedules).where(eq(schedules.professionalUnitId, professionalUnitId)).where(eq(schedules.id, scheduleId));
+                return scheduleFullDataSchema.parse({
+                    id: schedule.id,
+                    slots: schedule.slots,
+                    emptySlots: schedule.emptySlots,
+                    allocatedSlots: schedule.allocatedSlots,
+                    date: schedule.date,
+                    startTime: schedule.startTime,
+                    endTime: schedule.endTime,
+                    durationMinutes: schedule.durationMinutes,
+                    isActive: schedule.isActive,
+                    users: {
+                        id: user.id,
+                        name: user.name,
+                        socialName: user.socialName ?? "",
+                        email: user.email,
+                        phone: user.phone ?? "",
+                        cpf: user.cpf ?? "",
+                        birthdate: user.birthdate.toISOString(),
+                        sex: user.sex ?? "",
+                        isActive: user.isActive,
+                    },
+                    professional_unit: {
+                        id: professionalUnit.id,
+                        isActive: professionalUnit.isActive,
+                    },
+                    schedule_slots: slots,
+                    specialties: {
+                        id: specialty.id,
+                        name: specialty.name,
+                        isActive: specialty.isActive,
+                    },
+                });
+            })
+        );
+
+        return results.filter((r): r is z.infer<typeof scheduleFullDataSchema> => r !== null);
     }
 }

@@ -97,8 +97,18 @@ export class PatientsService {
         return updated;
     }
 
-    async getPatientFullDataByUserId(userId: string) {
-        const patient = await this.patientsRepository.getPatientFullDataByUserId(userId);
+    async getPatientFullDataByUserId(userId: string, isActive?: boolean) {
+        const patient = await this.patientsRepository.getPatientFullDataByUserId(userId, isActive);
+
+        if (!patient) {
+            throw new DomainError("PATIENT_NOT_FOUND", "Paciente não encontrado");
+        }
+
+        return patient;
+    }
+
+    async getPatientFullDataByCpf(cpf: string, isActive?: boolean) {
+        const patient = await this.patientsRepository.getPatientFullDataByCpf(cpf, isActive);
 
         if (!patient) {
             throw new DomainError("PATIENT_NOT_FOUND", "Paciente não encontrado");

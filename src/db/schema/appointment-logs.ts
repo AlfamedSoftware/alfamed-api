@@ -4,7 +4,7 @@ import { appointments } from "./appointments.js";
 import { users } from "./users.js";
 import { appointmentsStatus } from "./appointments-status.js";
 
-export const appointmentStatusLogs = pgTable("appointment_status_logs", {
+export const appointmentLogs = pgTable("appointment_logs", {
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     appointmentId: text("appointment_id")
         .notNull()
