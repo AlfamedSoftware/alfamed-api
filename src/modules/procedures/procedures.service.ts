@@ -8,10 +8,10 @@ export class ProceduresService {
         private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
     ) {}
 
-    async listProceduresByUnit(userId: string, unitId: string) {
+    async listProceduresByUnit(userId: string, unitId: string, specialtyId?: string, isActive?: boolean) {
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
 
-        return this.proceduresRepository.listByUnitId(unitId);
+        return this.proceduresRepository.listByUnitId(unitId, specialtyId, isActive);
     }
 
     async getProcedureById(userId: string, unitId: string, procedureId: string) {
@@ -34,6 +34,8 @@ export class ProceduresService {
     }
 
     async createProcedureForUnit(userId: string, unitId: string, data: {
+        specialtyId?: string | null;
+        type: number;
         description: string;
         observation?: string | null;
         code: string;
@@ -49,6 +51,8 @@ export class ProceduresService {
             .replace(/,/g, "."); // brazilian decimal comma -> dot
 
         const payload = {
+            specialtyId: data.specialtyId,
+            type: data.type,
             description: data.description,
             observation: data.observation,
             code: data.code.trim(),
@@ -60,6 +64,8 @@ export class ProceduresService {
     }
 
     async updateProcedureForUnit(userId: string, unitId: string, procedureId: string, data: {
+        specialtyId?: string | null;
+        type?: number;
         description?: string;
         observation?: string | null;
         code?: string;
@@ -83,6 +89,8 @@ export class ProceduresService {
             : undefined;
 
         const payload = {
+            ...(typeof data.specialtyId !== "undefined" ? { specialtyId: data.specialtyId } : {}),
+            ...(typeof data.type !== "undefined" ? { type: data.type } : {}),
             ...(typeof data.description !== "undefined" ? { description: data.description } : {}),
             ...(typeof data.observation !== "undefined" ? { observation: data.observation } : {}),
             ...(typeof data.code !== "undefined" ? { code: data.code.trim() } : {}),
