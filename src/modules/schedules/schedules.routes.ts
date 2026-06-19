@@ -21,7 +21,7 @@ export const schedulesRoutes = ({ db }: SchedulesRoutesOptions) => {
 
     return new Elysia({ name: "schedules-routes", prefix: "/schedules" })
         .get(
-            "/list-full-available-schedule-slots",
+            "/list-full-schedule-slots",
             async (context) => {
                 const { query, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
