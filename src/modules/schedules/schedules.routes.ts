@@ -6,6 +6,7 @@ import type { db as dbType } from "../../db/client.js";
 import {
     listFullAvailableScheduleSlotsSchema,
     schedulesErrorSchema,
+    fullSlotDetailSchema,
 } from "./schedules.schemas.js";
 
 type DatabaseClient = typeof dbType;
@@ -60,6 +61,45 @@ export const schedulesRoutes = ({ db }: SchedulesRoutesOptions) => {
                 response: {
                     200: listFullAvailableScheduleSlotsSchema,
                     401: t.Object({ message: t.Literal("Não autorizado") }),
+                    500: schedulesErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/full-slot/:id",
+            async (context) => {
+                const { params, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Não autorizado" });
+                }
+
+                try {
+                    const result = await schedulesService.getFullSlotDetailById(params.id);
+                    return status(200, result);
+                } catch (error) {
+                    console.error("[schedules.routes] Error getting full slot detail:", error);
+                    if (error instanceof Error && error.message === "Vaga não encontrada") {
+                        return status(404, { message: "Vaga não encontrada" });
+                    }
+                    return status(500, { message: "Erro interno do servidor" });
+                }
+            },
+            {
+                auth: true,
+                params: t.Object({
+                    id: t.String(),
+                }),
+                detail: {
+                    summary: "Get full slot detail",
+                    description: "Returns complete slot information with schedule, user, professional unit, unit, and specialty data.",
+                    tags: ["Schedules"],
+                },
+                response: {
+                    200: fullSlotDetailSchema,
+                    401: t.Object({ message: t.Literal("Não autorizado") }),
+                    404: t.Object({ message: t.Literal("Vaga não encontrada") }),
                     500: schedulesErrorSchema,
                 },
             },

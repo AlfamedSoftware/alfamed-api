@@ -9,4 +9,12 @@ export class SchedulesService {
     async listFullAvailableScheduleSlots(filters: ListFullAvailableScheduleSlotsFilters) {
         return this.schedulesRepository.listFullAvailableScheduleSlots(filters);
     }
+
+    async getFullSlotDetailById(slotId: string) {
+        const slot = await this.schedulesRepository.getFullSlotDetailById(slotId);
+        if (!slot) {
+            throw new Error("Vaga não encontrada");
+        }
+        return slot;
+    }
 }

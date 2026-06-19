@@ -83,16 +83,10 @@ export const specialtiesRoutes = ({
             async (context) => {
                 const { params, query, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const selectedUnitId = getUnitIdFromRequest(context.request);
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
-                
-                //Liberar para o mobile
-                //if (!selectedUnitId) {
-                //    return status(400, { message: unitSelectionRequiredMessage });
-                //}
 
                 try {
                     const filters: { isActive?: boolean } = {};
@@ -126,7 +120,6 @@ export const specialtiesRoutes = ({
                 response: {
                     200: specialtiesListSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     500: specialtiesErrorSchema,
                 },
