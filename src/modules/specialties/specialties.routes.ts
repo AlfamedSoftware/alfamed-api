@@ -89,9 +89,10 @@ export const specialtiesRoutes = ({
                     return status(401, { message: "Unauthorized" });
                 }
                 
-                if (!selectedUnitId) {
-                    return status(400, { message: unitSelectionRequiredMessage });
-                }
+                //Liberar para o mobile
+                //if (!selectedUnitId) {
+                //    return status(400, { message: unitSelectionRequiredMessage });
+                //}
 
                 try {
                     const filters: { isActive?: boolean } = {};
