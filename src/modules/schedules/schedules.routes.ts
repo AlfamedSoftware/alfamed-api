@@ -54,8 +54,8 @@ export const schedulesRoutes = ({ db }: SchedulesRoutesOptions) => {
                     isAvailable: t.Optional(t.Boolean()),
                 }),
                 detail: {
-                    summary: "List full available schedule slots",
-                    description: "Returns available schedule slots with full data including users, professional units, and specialties.",
+                    summary: "List full schedule slots",
+                    description: "Returns schedule and it's slots with full data including users, professional units, and specialties.",
                     tags: ["Schedules"],
                 },
                 response: {
