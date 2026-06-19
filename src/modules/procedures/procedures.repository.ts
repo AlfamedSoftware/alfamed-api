@@ -248,14 +248,8 @@ export class ProceduresRepository {
                 isActive: procedures.isActive,
                 createdAt: procedures.createdAt,
                 updatedAt: procedures.updatedAt,
-                specialty: {
-                    id: specialties.id,
-                    name: specialties.name,
-                    isActive: specialties.isActive,
-                },
             })
             .from(procedures)
-            .leftJoin(specialties, eq(procedures.specialtyId, specialties.id))
             .where(eq(procedures.id, procedureId))
             .limit(1);
 

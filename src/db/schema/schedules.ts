@@ -2,6 +2,7 @@ import { pgTable, text, integer, boolean, timestamp, date, time } from "drizzle-
 import { randomUUID } from "node:crypto";
 import { professionalUnits } from "./professional-units.js";
 import { specialties } from "./specialties.js";
+import { procedures } from "./procedures.js";
 
 export const schedules = pgTable("schedules", {
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),
@@ -11,6 +12,8 @@ export const schedules = pgTable("schedules", {
     specialtyId: text("specialty_id")
         .notNull()
         .references(() => specialties.id, { onDelete: "cascade" }),
+    procedureId: text("procedure_id")
+        .references(() => procedures.id, { onDelete: "set null" }),
     slots: integer("slots").notNull(),
     emptySlots: integer("empty_slots").notNull(),
     allocatedSlots: integer("allocated_slots").notNull(),

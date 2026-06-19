@@ -8,6 +8,7 @@ import { professionals } from "../../db/schema/professionals.js";
 import { users } from "../../db/schema/users.js";
 import { specialties } from "../../db/schema/specialties.js";
 import { units } from "../../db/schema/units.js";
+import { procedures } from "../../db/schema/procedures.js";
 import { scheduleFullDataSchema, fullSlotDetailSchema } from "./schedules.schemas.js";
 
 type DatabaseClient = typeof dbType;
@@ -53,6 +54,7 @@ export class SchedulesRepository {
                 isActive: schedules.isActive,
                 professionalUnitId: schedules.professionalUnitId,
                 specialtyId: schedules.specialtyId,
+                procedureId: schedules.procedureId,
             })
             .from(schedules)
             .where(and(...whereConditions));
@@ -171,6 +173,7 @@ export class SchedulesRepository {
                     endTime: schedule.endTime,
                     durationMinutes: schedule.durationMinutes,
                     isActive: schedule.isActive,
+                    procedureId: schedule.procedureId,
                     users: {
                         id: user.id,
                         name: user.name,
@@ -232,6 +235,7 @@ export class SchedulesRepository {
                 isActive: schedules.isActive,
                 professionalUnitId: schedules.professionalUnitId,
                 specialtyId: schedules.specialtyId,
+                procedureId: schedules.procedureId,
             })
             .from(schedules)
             .where(eq(schedules.id, slot.scheduleId))
@@ -327,6 +331,28 @@ export class SchedulesRepository {
             return null;
         }
 
+        // Get procedure data
+        let procedure = null;
+        if (schedule.procedureId) {
+            const [procedureRow] = await this.db
+                .select({
+                    id: procedures.id,
+                    type: procedures.type,
+                    description: procedures.description,
+                    observation: procedures.observation,
+                    code: procedures.code,
+                    price: procedures.price,
+                    isActive: procedures.isActive,
+                })
+                .from(procedures)
+                .where(eq(procedures.id, schedule.procedureId))
+                .limit(1);
+
+            if (procedureRow) {
+                procedure = procedureRow;
+            }
+        }
+
         return fullSlotDetailSchema.parse({
             id: slot.id,
             startTime: slot.startTime,
@@ -343,6 +369,7 @@ export class SchedulesRepository {
                 endTime: schedule.endTime,
                 durationMinutes: schedule.durationMinutes,
                 isActive: schedule.isActive,
+                procedureId: schedule.procedureId,
             },
             users: {
                 id: user.id,
@@ -375,6 +402,7 @@ export class SchedulesRepository {
                 name: specialty.name,
                 isActive: specialty.isActive,
             },
+            procedures: procedure,
         });
     }
 }

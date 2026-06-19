@@ -12,6 +12,16 @@ export const scheduleSlotSchema = z.object({
     isActive: z.boolean(),
 });
 
+export const procedureSchema = z.object({
+    id: z.string().uuid(),
+    type: z.number(),
+    description: z.string(),
+    observation: z.string().nullable(),
+    code: z.string(),
+    price: z.string(),
+    isActive: z.boolean(),
+}).nullable();
+
 export const specialtySchema = z.object({
     id: z.string().uuid(),
     name: z.string(),
@@ -57,6 +67,7 @@ export const scheduleSchema = z.object({
     endTime: z.string(),
     durationMinutes: z.number(),
     isActive: z.boolean(),
+    procedureId: z.string().uuid().nullable(),
 });
 
 export const fullSlotDetailSchema = z.object({
@@ -70,6 +81,7 @@ export const fullSlotDetailSchema = z.object({
     professional_unit: professionalUnitSchema,
     units: unitSchema,
     specialties: specialtySchema,
+    procedures: procedureSchema,
 });
 
 export const scheduleFullDataSchema = z.object({
@@ -82,6 +94,7 @@ export const scheduleFullDataSchema = z.object({
     endTime: z.string(),
     durationMinutes: z.number(),
     isActive: z.boolean(),
+    procedureId: z.string().uuid().nullable(),
     users: userSchema,
     professional_unit: professionalUnitSchema,
     schedule_slots: z.array(scheduleSlotSchema),

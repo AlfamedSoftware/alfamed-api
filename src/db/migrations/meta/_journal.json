@@ -232,6 +232,13 @@
       "when": 1781901038340,
       "tag": "0032_reflective_unus",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1781909305487,
+      "tag": "0033_lonely_enchantress",
+      "breakpoints": true
     }
   ]
 }
