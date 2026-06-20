@@ -68,6 +68,10 @@ export const professionalUnitsRoutes = ({
                         return status(404, { message: "Professional not found" });
                     }
 
+                    if (isDomainError(error, "ROLE_NOT_FOUND")) {
+                        return status(404, { message: "Role not found" });
+                    }
+
                     if (isDomainError(error, "PROFESSIONAL_UNIT_ALREADY_EXISTS")) {
                         return status(409, { message: "Professional unit already exists" });
                     }
@@ -87,7 +91,7 @@ export const professionalUnitsRoutes = ({
                     201: professionalUnitProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
-                    404: t.Object({ message: t.Literal("Professional not found") }),
+                    404: t.Object({ message: t.Union([t.Literal("Professional not found"), t.Literal("Role not found")]) }),
                     409: t.Object({ message: t.Literal("Professional unit already exists") }),
                     500: professionalUnitsErrorSchema,
                 },

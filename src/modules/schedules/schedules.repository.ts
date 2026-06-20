@@ -11,7 +11,33 @@ import { units } from "../../db/schema/units.js";
 import { procedures } from "../../db/schema/procedures.js";
 import { scheduleFullDataSchema, fullSlotDetailSchema } from "./schedules.schemas.js";
 
+export type CreateScheduleInput = {
+    professionalUnitId: string;
+    isActive: boolean;
+    startTime: string;
+    endTime: string;
+    specialtyId: string;
+    slots: number;
+    date: string;
+    durationMinutes: number;
+    procedureId: string;
+};
+
 type DatabaseClient = typeof dbType;
+
+export type FindConflictingScheduleParams = {
+    professionalUnitId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+};
+
+export type ConflictingScheduleResult = {
+    professionalName: string;
+    unitName: string;
+    startTime: string;
+    endTime: string;
+};
 
 export type ListFullAvailableScheduleSlotsFilters = {
     date: string;
@@ -200,6 +226,130 @@ export class SchedulesRepository {
         );
 
         return results.filter((r): r is z.infer<typeof scheduleFullDataSchema> => r !== null);
+    }
+
+    async findConflictingSchedule(
+        params: FindConflictingScheduleParams,
+    ): Promise<ConflictingScheduleResult | null> {
+        const toMinutes = (time: string) => {
+            const [h, m] = time.split(":").map(Number);
+            return h * 60 + m;
+        };
+
+        const newStart = toMinutes(params.startTime);
+        const newEnd = toMinutes(params.endTime);
+
+        // Resolve professionalId from the given professionalUnitId
+        const [sourcePU] = await this.db
+            .select({
+                professionalId: professionalUnits.professionalId,
+            })
+            .from(professionalUnits)
+            .where(eq(professionalUnits.id, params.professionalUnitId))
+            .limit(1);
+
+        if (!sourcePU) return null;
+
+        // Get all units for this professional (may be in multiple units)
+        const allPUs = await this.db
+            .select({
+                id: professionalUnits.id,
+                unitId: professionalUnits.unitId,
+            })
+            .from(professionalUnits)
+            .where(eq(professionalUnits.professionalId, sourcePU.professionalId));
+
+        for (const pu of allPUs) {
+            const existingSchedules = await this.db
+                .select({
+                    startTime: schedules.startTime,
+                    endTime: schedules.endTime,
+                })
+                .from(schedules)
+                .where(and(
+                    eq(schedules.professionalUnitId, pu.id),
+                    eq(schedules.date, params.date),
+                    eq(schedules.isActive, true),
+                ));
+
+            for (const existing of existingSchedules) {
+                const existingStart = toMinutes(existing.startTime);
+                const existingEnd = toMinutes(existing.endTime);
+
+                // Half-open interval [start, end): overlaps if newStart < existingEnd AND existingStart < newEnd
+                // This naturally handles boundary sharing (e.g. one ends at 14:00, next starts at 14:00 = no conflict)
+                if (newStart < existingEnd && existingStart < newEnd) {
+                    const [professional] = await this.db
+                        .select({ userId: professionals.userId })
+                        .from(professionals)
+                        .where(eq(professionals.id, sourcePU.professionalId))
+                        .limit(1);
+
+                    const [user] = await this.db
+                        .select({ name: users.name })
+                        .from(users)
+                        .where(eq(users.id, professional.userId))
+                        .limit(1);
+
+                    const [unit] = await this.db
+                        .select({ name: units.name })
+                        .from(units)
+                        .where(eq(units.id, pu.unitId))
+                        .limit(1);
+
+                    return {
+                        professionalName: user?.name ?? "Profissional",
+                        unitName: unit?.name ?? "Unidade",
+                        startTime: existing.startTime,
+                        endTime: existing.endTime,
+                    };
+                }
+            }
+        }
+
+        return null;
+    }
+
+    async createSchedule(input: CreateScheduleInput) {
+        return this.db.transaction(async (tx) => {
+            const [created] = await tx
+                .insert(schedules)
+                .values({
+                    professionalUnitId: input.professionalUnitId,
+                    specialtyId: input.specialtyId,
+                    procedureId: input.procedureId,
+                    slots: input.slots,
+                    emptySlots: input.slots,
+                    allocatedSlots: 0,
+                    date: input.date,
+                    startTime: input.startTime,
+                    endTime: input.endTime,
+                    durationMinutes: input.durationMinutes,
+                    isActive: input.isActive,
+                })
+                .returning();
+
+            const [startHours, startMins] = input.startTime.split(":").map(Number);
+            const startMinutes = startHours * 60 + startMins;
+
+            const formatTime = (totalMinutes: number) => {
+                const h = Math.floor(totalMinutes / 60) % 24;
+                const m = totalMinutes % 60;
+                return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
+            };
+
+            const slotRows = Array.from({ length: input.slots }, (_, i) => ({
+                scheduleId: created.id,
+                startTime: formatTime(startMinutes + i * input.durationMinutes),
+                endTime: formatTime(startMinutes + (i + 1) * input.durationMinutes),
+                isAvailable: true,
+                isActive: true,
+            }));
+
+            await tx.insert(scheduleSlots).values(slotRows);
+
+            return created;
+        });
     }
 
     async checkSlotAvailability(slotId: string): Promise<boolean> {

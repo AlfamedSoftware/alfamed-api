@@ -8,8 +8,9 @@ export class ProceduresService {
         private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
     ) {}
 
-    async listProceduresByUnit(userId: string, unitId: string, specialtyId?: string, isActive?: boolean) {
-        await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
+    async listProceduresByUnit(unitId: string, specialtyId?: string, isActive?: boolean) {
+        //Removido, mobile não valida se unidade está logada
+        //await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
 
         return this.proceduresRepository.listByUnitId(unitId, specialtyId, isActive);
     }
@@ -33,6 +34,12 @@ export class ProceduresService {
         }
     }
 
+    private assertSpecialtyRequiredForType(type: number, specialtyId: string | null | undefined) {
+        if ((type === 1 || type === 2) && !specialtyId) {
+            throw new DomainError("SPECIALTY_REQUIRED_FOR_TYPE", "Especialidade é obrigatória para Consultas e Retornos");
+        }
+    }
+
     async createProcedureForUnit(userId: string, unitId: string, data: {
         specialtyId?: string | null;
         type: number;
@@ -43,6 +50,7 @@ export class ProceduresService {
         isActive?: boolean;
     }) {
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
+        this.assertSpecialtyRequiredForType(data.type, data.specialtyId);
         await this.assertProcedureCodeIsUnique(unitId, data.code);
 
         const rawPrice = data.price ?? "";
@@ -79,6 +87,10 @@ export class ProceduresService {
         if (!existing) {
             return null;
         }
+
+        const effectiveType = data.type ?? existing.type;
+        const effectiveSpecialtyId = typeof data.specialtyId !== "undefined" ? data.specialtyId : existing.specialtyId;
+        this.assertSpecialtyRequiredForType(effectiveType, effectiveSpecialtyId);
 
         if (typeof data.code !== "undefined") {
             await this.assertProcedureCodeIsUnique(unitId, data.code, procedureId);

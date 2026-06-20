@@ -13,7 +13,8 @@ export const schedules = pgTable("schedules", {
         .notNull()
         .references(() => specialties.id, { onDelete: "cascade" }),
     procedureId: text("procedure_id")
-        .references(() => procedures.id, { onDelete: "set null" }),
+        .notNull()
+        .references(() => procedures.id, { onDelete: "restrict" }),
     slots: integer("slots").notNull(),
     emptySlots: integer("empty_slots").notNull(),
     allocatedSlots: integer("allocated_slots").notNull(),

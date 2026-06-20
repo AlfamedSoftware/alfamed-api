@@ -52,7 +52,13 @@ export class ProfessionalUnitsService {
             throw new DomainError("PROFESSIONAL_UNIT_ALREADY_EXISTS", "Professional unit already exists");
         }
 
-        return this.professionalUnitsRepository.create(data);
+        const roleExists = await this.professionalUnitsRepository.roleExists(data.roleId);
+
+        if (!roleExists) {
+            throw new DomainError("ROLE_NOT_FOUND", "Role not found");
+        }
+
+        return this.professionalUnitsRepository.createWithRole(data, data.roleId);
     }
 
     async createProfessionalUnitFullCreate(
@@ -117,18 +123,17 @@ export class ProfessionalUnitsService {
             throw new DomainError("PROFESSIONAL_UNIT_ALREADY_EXISTS", "Professional unit already exists");
         }
 
-        if (data.roleId) {
-            const roleExists = await this.professionalUnitsRepository.roleExists(data.roleId);
+        const roleExists = await this.professionalUnitsRepository.roleExists(data.roleId);
 
-            if (!roleExists) {
-                throw new DomainError("ROLE_NOT_FOUND", "Role not found");
-            }
+        if (!roleExists) {
+            throw new DomainError("ROLE_NOT_FOUND", "Role not found");
         }
 
-        return this.professionalUnitsRepository.createWithOptionalRole(
+        return this.professionalUnitsRepository.createWithRole(
             {
                 professionalId,
                 unitId,
+                roleId: data.roleId,
                 isActive: data.isActive,
             },
             data.roleId,

@@ -12,11 +12,6 @@ export const procedureSchema = z.object({
     isActive: z.boolean(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
-    specialty: z.object({
-        id: z.string().uuid(),
-        name: z.string(),
-        isActive: z.boolean(),
-    }).nullable(),
 });
 
 export const proceduresListSchema = z.array(procedureSchema);

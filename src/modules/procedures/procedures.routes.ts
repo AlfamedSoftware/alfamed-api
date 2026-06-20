@@ -53,6 +53,10 @@ export const proceduresRoutes = ({
                         return status(403, { message: "Forbidden" });
                     }
 
+                    if (isDomainError(error, "SPECIALTY_REQUIRED_FOR_TYPE")) {
+                        return status(422, { message: "Especialidade é obrigatória para Consultas e Retornos" });
+                    }
+
                     if (isDomainError(error, "PROCEDURE_CODE_ALREADY_EXISTS")) {
                         return status(409, { message: "O código do procedimento já está cadastrado nessa unidade" });
                     }
@@ -74,6 +78,7 @@ export const proceduresRoutes = ({
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     409: t.Object({ message: t.Literal("O código do procedimento já está cadastrado nessa unidade") }),
+                    422: t.Object({ message: t.Literal("Especialidade é obrigatória para Consultas e Retornos") }),
                     500: proceduresErrorSchema,
                 },
             },
@@ -83,19 +88,13 @@ export const proceduresRoutes = ({
             async (context) => {
                 const { params, query, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const selectedUnitId = getUnitIdFromRequest(context.request);
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
 
-                if (!selectedUnitId) {
-                    return status(400, { message: unitSelectionRequiredMessage });
-                }
-
                 try {
                     const procedures = await proceduresService.listProceduresByUnit(
-                        userId,
                         params.unitId,
                         query.specialtyId as string | undefined,
                         query.isActive as boolean | undefined,
@@ -103,10 +102,6 @@ export const proceduresRoutes = ({
 
                     return status(200, procedures);
                 } catch (error) {
-                    if (isDomainError(error, "FORBIDDEN")) {
-                        return status(403, { message: "Forbidden" });
-                    }
-
                     return status(500, { message: "Internal server error" });
                 }
             },
@@ -127,8 +122,6 @@ export const proceduresRoutes = ({
                 response: {
                     200: proceduresListSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
-                    403: t.Object({ message: t.Literal("Forbidden") }),
                     500: proceduresErrorSchema,
                 },
             },
@@ -232,6 +225,10 @@ export const proceduresRoutes = ({
                         return status(403, { message: "Forbidden" });
                     }
 
+                    if (isDomainError(error, "SPECIALTY_REQUIRED_FOR_TYPE")) {
+                        return status(422, { message: "Especialidade é obrigatória para Consultas e Retornos" });
+                    }
+
                     if (isDomainError(error, "PROCEDURE_CODE_ALREADY_EXISTS")) {
                         return status(409, { message: "O código do procedimento já está cadastrado nessa unidade" });
                     }
@@ -254,6 +251,7 @@ export const proceduresRoutes = ({
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Procedure not found") }),
                     409: t.Object({ message: t.Literal("O código do procedimento já está cadastrado nessa unidade") }),
+                    422: t.Object({ message: t.Literal("Especialidade é obrigatória para Consultas e Retornos") }),
                     500: proceduresErrorSchema,
                 },
             },

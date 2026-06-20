@@ -67,7 +67,7 @@ export const scheduleSchema = z.object({
     endTime: z.string(),
     durationMinutes: z.number(),
     isActive: z.boolean(),
-    procedureId: z.string().uuid().nullable(),
+    procedureId: z.string().uuid(),
 });
 
 export const fullSlotDetailSchema = z.object({
@@ -94,7 +94,7 @@ export const scheduleFullDataSchema = z.object({
     endTime: z.string(),
     durationMinutes: z.number(),
     isActive: z.boolean(),
-    procedureId: z.string().uuid().nullable(),
+    procedureId: z.string().uuid(),
     users: userSchema,
     professional_unit: professionalUnitSchema,
     schedule_slots: z.array(scheduleSlotSchema),
@@ -102,3 +102,32 @@ export const scheduleFullDataSchema = z.object({
 });
 
 export const listFullAvailableScheduleSlotsSchema = z.array(scheduleFullDataSchema);
+
+export const createScheduleBodySchema = z.object({
+    professionalUnitId: z.string().uuid(),
+    isActive: z.boolean(),
+    startTime: z.string(),
+    endTime: z.string(),
+    specialtyId: z.string().uuid(),
+    slots: z.number().int().positive(),
+    date: z.string(),
+    durationMinutes: z.number().int().positive(),
+    procedureId: z.string().uuid(),
+});
+
+export const createScheduleResponseSchema = z.object({
+    id: z.string().uuid(),
+    professionalUnitId: z.string(),
+    specialtyId: z.string(),
+    procedureId: z.string().uuid(),
+    slots: z.number(),
+    emptySlots: z.number(),
+    allocatedSlots: z.number(),
+    date: z.string(),
+    startTime: z.string(),
+    endTime: z.string(),
+    durationMinutes: z.number(),
+    isActive: z.boolean(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+});

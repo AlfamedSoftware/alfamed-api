@@ -4,6 +4,7 @@ export const createProfessionalUnitSchema = z
     .object({
         professionalId: z.string().uuid(),
         unitId: z.string().uuid(),
+        roleId: z.string().uuid(),
         isActive: z.boolean().optional(),
     })
     .strict();
@@ -12,7 +13,7 @@ export const createProfessionalUnitByUserCpfSchema = z
     .object({
         cpf: z.string().min(1),
         isActive: z.boolean().optional(),
-        roleId: z.string().uuid().optional(),
+        roleId: z.string().uuid(),
         patientExists: z.boolean(),
         professionalExists: z.boolean(),
     })

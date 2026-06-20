@@ -58,9 +58,9 @@ type DatabaseClient = typeof dbType;
 
 export class ProfessionalUnitsRepository {
     readonly create: (data: CreateProfessionalUnitInput) => Promise<ProfessionalUnitProfile>;
-    readonly createWithOptionalRole: (
+    readonly createWithRole: (
         data: CreateProfessionalUnitInput,
-        roleId?: string,
+        roleId: string,
     ) => Promise<ProfessionalUnitProfile>;
     readonly findByIdAndUnit: (
         professionalUnitId: string,
@@ -204,7 +204,7 @@ export class ProfessionalUnitsRepository {
             return toProfile(result);
         };
 
-        this.createWithOptionalRole = async (data, roleId) => {
+        this.createWithRole = async (data, roleId) => {
             const result = await db.transaction(async (tx) => {
                 const [createdProfessionalUnit] = await tx
                     .insert(professionalUnits)

@@ -2,7 +2,6 @@ import { and, asc, eq, ne } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { procedures } from "../../db/schema/procedures.js";
-import { specialties } from "../../db/schema/specialties.js";
 import { procedureSchema } from "./procedures.schemas.js";
 
 type DatabaseClient = typeof dbType;
@@ -68,14 +67,8 @@ export class ProceduresRepository {
                 isActive: procedures.isActive,
                 createdAt: procedures.createdAt,
                 updatedAt: procedures.updatedAt,
-                specialty: {
-                    id: specialties.id,
-                    name: specialties.name,
-                    isActive: specialties.isActive,
-                },
             })
             .from(procedures)
-            .leftJoin(specialties, eq(procedures.specialtyId, specialties.id))
             .where(eq(procedures.id, procedureId))
             .limit(1);
 
@@ -116,14 +109,8 @@ export class ProceduresRepository {
                 isActive: procedures.isActive,
                 createdAt: procedures.createdAt,
                 updatedAt: procedures.updatedAt,
-                specialty: {
-                    id: specialties.id,
-                    name: specialties.name,
-                    isActive: specialties.isActive,
-                },
             })
             .from(procedures)
-            .leftJoin(specialties, eq(procedures.specialtyId, specialties.id))
             .where(whereClause)
             .orderBy(asc(procedures.description));
 
@@ -171,34 +158,10 @@ export class ProceduresRepository {
                 updatedAt: procedures.updatedAt,
             });
 
-        const [row] = await this.db
-            .select({
-                id: procedures.id,
-                unitId: procedures.unitId,
-                specialtyId: procedures.specialtyId,
-                type: procedures.type,
-                description: procedures.description,
-                observation: procedures.observation,
-                code: procedures.code,
-                price: procedures.price,
-                isActive: procedures.isActive,
-                createdAt: procedures.createdAt,
-                updatedAt: procedures.updatedAt,
-                specialty: {
-                    id: specialties.id,
-                    name: specialties.name,
-                    isActive: specialties.isActive,
-                },
-            })
-            .from(procedures)
-            .leftJoin(specialties, eq(procedures.specialtyId, specialties.id))
-            .where(eq(procedures.id, inserted.id))
-            .limit(1);
-
         return procedureSchema.parse({
-            ...row,
-            createdAt: row.createdAt.toISOString(),
-            updatedAt: row.updatedAt.toISOString(),
+            ...inserted,
+            createdAt: inserted.createdAt.toISOString(),
+            updatedAt: inserted.updatedAt.toISOString(),
         });
     }
 
