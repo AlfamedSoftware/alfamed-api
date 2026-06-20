@@ -239,6 +239,13 @@
       "when": 1781909305487,
       "tag": "0033_lonely_enchantress",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1781969217309,
+      "tag": "0034_reflective_sway",
+      "breakpoints": true
     }
   ]
 }

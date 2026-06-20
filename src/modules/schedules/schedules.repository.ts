@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { schedules } from "../../db/schema/schedules.js";
@@ -200,6 +200,72 @@ export class SchedulesRepository {
         );
 
         return results.filter((r): r is z.infer<typeof scheduleFullDataSchema> => r !== null);
+    }
+
+    async checkSlotAvailability(slotId: string): Promise<boolean> {
+        const [slot] = await this.db
+            .select({
+                isAvailable: scheduleSlots.isAvailable,
+            })
+            .from(scheduleSlots)
+            .where(and(
+                eq(scheduleSlots.id, slotId),
+                eq(scheduleSlots.isActive, true)
+            ))
+            .limit(1);
+
+        return slot?.isAvailable ?? false;
+    }
+
+    async setSlotAvailability(slotId: string, isAvailableBoolean: boolean): Promise<void> {
+        await this.db
+            .update(scheduleSlots)
+            .set({ isAvailable: isAvailableBoolean })
+            .where(eq(scheduleSlots.id, slotId));
+    }
+
+    async decrementEmptySlotsAndIncrementAllocatedSlots(scheduleSlotId: string, value: number): Promise<void> {
+        // Get the scheduleId from the scheduleSlot
+        const [slot] = await this.db
+            .select({ scheduleId: scheduleSlots.scheduleId })
+            .from(scheduleSlots)
+            .where(eq(scheduleSlots.id, scheduleSlotId))
+            .limit(1);
+
+        if (!slot) {
+            throw new Error("Schedule slot not found");
+        }
+
+        // Update the schedule: decrement emptySlots and increment allocatedSlots
+        await this.db
+            .update(schedules)
+            .set({
+                emptySlots: sql`${schedules.emptySlots} - ${value}`,
+                allocatedSlots: sql`${schedules.allocatedSlots} + ${value}`,
+            })
+            .where(eq(schedules.id, slot.scheduleId));
+    }
+
+    async incrementEmptySlotsAndDecrementAllocatedSlots(scheduleSlotId: string, value: number): Promise<void> {
+        // Get the scheduleId from the scheduleSlot
+        const [slot] = await this.db
+            .select({ scheduleId: scheduleSlots.scheduleId })
+            .from(scheduleSlots)
+            .where(eq(scheduleSlots.id, scheduleSlotId))
+            .limit(1);
+
+        if (!slot) {
+            throw new Error("Schedule slot not found");
+        }
+
+        // Update the schedule: increment emptySlots and decrement allocatedSlots
+        await this.db
+            .update(schedules)
+            .set({
+                emptySlots: sql`${schedules.emptySlots} + ${value}`,
+                allocatedSlots: sql`${schedules.allocatedSlots} - ${value}`,
+            })
+            .where(eq(schedules.id, slot.scheduleId));
     }
 
     async getFullSlotDetailById(slotId: string) {

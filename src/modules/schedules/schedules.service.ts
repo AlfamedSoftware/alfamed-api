@@ -10,6 +10,10 @@ export class SchedulesService {
         return this.schedulesRepository.listFullAvailableScheduleSlots(filters);
     }
 
+    async checkSlotAvailability(slotId: string) {
+        return this.schedulesRepository.checkSlotAvailability(slotId);
+    }
+
     async getFullSlotDetailById(slotId: string) {
         const slot = await this.schedulesRepository.getFullSlotDetailById(slotId);
         if (!slot) {

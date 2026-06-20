@@ -103,5 +103,40 @@ export const schedulesRoutes = ({ db }: SchedulesRoutesOptions) => {
                     500: schedulesErrorSchema,
                 },
             },
+        )
+        .get(
+            "/check-availability/:scheduleSlotId",
+            async (context) => {
+                const { params, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Não autorizado" });
+                }
+
+                try {
+                    const isAvailable = await schedulesService.checkSlotAvailability(params.scheduleSlotId);
+                    return status(200, { isAvailable });
+                } catch (error) {
+                    console.error("[schedules.routes] Error checking slot availability:", error);
+                    return status(500, { message: "Erro interno do servidor" });
+                }
+            },
+            {
+                auth: true,
+                params: t.Object({
+                    scheduleSlotId: t.String(),
+                }),
+                detail: {
+                    summary: "Check slot availability",
+                    description: "Returns true if the slot is available, false otherwise.",
+                    tags: ["Schedules"],
+                },
+                response: {
+                    200: t.Object({ isAvailable: t.Boolean() }),
+                    401: t.Object({ message: t.Literal("Não autorizado") }),
+                    500: schedulesErrorSchema,
+                },
+            },
         );
 };

@@ -20,7 +20,11 @@ import { RolesRepository } from "./modules/roles/roles.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
 import type { PatientsRepository } from "./modules/patients/patients.repository.js";
 import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
+import type { AppointmentsRepository } from "./modules/appointments/appointments.repository.js";
+import { AppointmentsRepository as AppointmentsRepositoryClass } from "./modules/appointments/appointments.repository.js";
 import { schedulesRoutes } from "./modules/schedules/schedules.routes.js";
+import type { SchedulesRepository } from "./modules/schedules/schedules.repository.js";
+import { SchedulesRepository as SchedulesRepositoryClass } from "./modules/schedules/schedules.repository.js";
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
@@ -45,6 +49,8 @@ type BuildAppOptions = {
     professionalUnitSpecialtiesRepository?: ProfessionalUnitSpecialtiesRepository;
     patientsRepository: PatientsRepository;
     rolesRepository?: RolesRepository;
+    appointmentsRepository?: AppointmentsRepository;
+    schedulesRepository?: SchedulesRepository;
     unitsRepository?: UnitsRepository;
     hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
     authPlugin: ElysiaPlugin;
@@ -61,6 +67,8 @@ export async function buildApp({
     specialtiesRepository,
     professionalUnitsRepository,
     professionalUnitSpecialtiesRepository,
+    appointmentsRepository,
+    schedulesRepository,
     unitsRepository,
     hasUserAccessToUnitChecker,
     authPlugin,
@@ -163,7 +171,10 @@ export async function buildApp({
         .use(usersRoutes({ usersRepository }))
         .use(patientsRoutes({ patientsRepository }))
         .use(rolesRoutes({ rolesRepository: rolesRepository ?? new RolesRepository(db) }))
-        .use(appointmentsRoutes({ db }));
+        .use(appointmentsRoutes({
+            appointmentsRepository: appointmentsRepository ?? new AppointmentsRepositoryClass(db),
+            schedulesRepository: schedulesRepository ?? new SchedulesRepositoryClass(db),
+        }));
 
     const resolvedHasUserAccessToUnitChecker =
         hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);

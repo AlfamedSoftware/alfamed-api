@@ -16,8 +16,8 @@ export const appointments = pgTable("appointments", {
     scheduleSlotId: text("schedule_slot_id")
         .notNull()
         .references(() => scheduleSlots.id, { onDelete: "restrict" }),
-    startAt: timestamp("start_at", { mode: "date" }).notNull(),
-    endAt: timestamp("end_at", { mode: "date" }).notNull(),
+    startAt: timestamp("start_at"),
+    endAt: timestamp("end_at"),
     diagnostics: text("diagnostics"),
     evolution: text("evolution"),
     statusId: text("status_id")
