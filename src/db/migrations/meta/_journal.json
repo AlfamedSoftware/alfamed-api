@@ -253,6 +253,13 @@
       "when": 1781990842118,
       "tag": "0035_reflective_shiva",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1750464000000,
+      "tag": "0038_seed_default_roles",
+      "breakpoints": true
     }
   ]
 }

@@ -12,28 +12,6 @@ import { users } from "../db/schema/users.js";
 
 const INTERNAL_ALFAMED_UNIT_NAME = "Alfamed Interno";
 const INTERNAL_ALFAMED_ROLE_KEY = "internal_alfamed";
-const DEFAULT_ROLES = [
-    {
-        description: "Administrador",
-        key: "administrative",
-        internal: false,
-    },
-    {
-        description: "Assistente Administrativo",
-        key: "administrative_assistant",
-        internal: false,
-    },
-    {
-        description: "Médico",
-        key: "medic",
-        internal: false,
-    },
-    {
-        description: "Alfamed",
-        key: INTERNAL_ALFAMED_ROLE_KEY,
-        internal: true,
-    },
-] as const;
 
 const seedAdminSchema = z.object({
     name: z.string().min(1),
@@ -62,10 +40,7 @@ const toDate = (value: string) => new Date(`${value}T00:00:00.000Z`);
 
 async function main() {
     const result = await db.transaction(async (tx) => {
-        // Etapa 1: garantir que as roles base existam antes de qualquer vínculo.
-        await ensureDefaultRoles(tx);
-
-        // Etapa 2: localizar a role interna que libera acesso ao painel admin.
+        // Etapa 1: localizar a role interna que libera acesso ao painel admin.
         const [internalRole] = await tx
             .select({ id: roles.id })
             .from(roles)
@@ -76,17 +51,17 @@ async function main() {
             throw new Error(`Role obrigatória não encontrada: ${INTERNAL_ALFAMED_ROLE_KEY}`);
         }
 
-        // Etapa 3: reaproveitar o usuário admin se ele já existir.
+        // Etapa 2: reaproveitar o usuário admin se ele já existir.
         const [existingUser] = await tx
             .select({ id: users.id })
             .from(users)
             .where(eq(users.email, normalizedInitialAdmin.email))
             .limit(1);
 
-        // Etapa 4: criar o usuário administrador quando ele ainda não existir.
+        // Etapa 3: criar o usuário administrador quando ele ainda não existir.
         const userId = existingUser?.id ?? (await createInitialAdminUser(tx));
 
-        // Etapa 5: criar a credencial apenas para o primeiro cadastro do usuário.
+        // Etapa 4: criar a credencial apenas para o primeiro cadastro do usuário.
         if (!existingUser) {
             await tx.insert(accounts).values({
                 userId,
@@ -97,16 +72,16 @@ async function main() {
             });
         }
 
-        // Etapa 6: garantir o perfil profissional vinculado ao usuário admin.
+        // Etapa 5: garantir o perfil profissional vinculado ao usuário admin.
         const professionalId = await ensureInitialAdminProfessional(tx, userId);
 
-        // Etapa 7: garantir a unidade interna da Alfamed.
+        // Etapa 6: garantir a unidade interna da Alfamed.
         const unitId = await ensureInternalUnit(tx);
 
-        // Etapa 8: vincular o profissional admin à unidade interna.
+        // Etapa 7: vincular o profissional admin à unidade interna.
         const professionalUnitId = await ensureProfessionalUnit(tx, professionalId, unitId);
 
-        // Etapa 9: aplicar a role interna ao vínculo profissional-unidade.
+        // Etapa 8: aplicar a role interna ao vínculo profissional-unidade.
         await ensureProfessionalUnitRole(tx, professionalUnitId, internalRole.id);
 
         return {
@@ -121,27 +96,6 @@ async function main() {
 
 type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-async function ensureDefaultRoles(tx: TransactionClient) {
-    // Cria apenas as roles que ainda não existem para manter o seed idempotente.
-    for (const defaultRole of DEFAULT_ROLES) {
-        const [existingRole] = await tx
-            .select({ id: roles.id })
-            .from(roles)
-            .where(eq(roles.key, defaultRole.key))
-            .limit(1);
-
-        if (existingRole) {
-            continue;
-        }
-
-        await tx.insert(roles).values({
-            description: defaultRole.description,
-            key: defaultRole.key,
-            internal: defaultRole.internal,
-            isActive: true,
-        });
-    }
-}
 
 async function createInitialAdminUser(tx: TransactionClient) {
     // Insere o usuário principal do ambiente interno.
