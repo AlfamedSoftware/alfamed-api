@@ -272,6 +272,16 @@ export class AppointmentsRepository {
             throw new Error("Professional not found for selected unit");
         }
 
+        const [activePatient] = await this.db
+            .select({ id: patients.id })
+            .from(patients)
+            .where(and(eq(patients.id, input.patientId), eq(patients.isActive, true)))
+            .limit(1);
+
+        if (!activePatient) {
+            throw new Error("Paciente não encontrado ou inativo");
+        }
+
         const normalizedStart = new Date(input.startAt);
         const normalizedEnd = input.endAt ? new Date(input.endAt) : new Date(normalizedStart.getTime() + 60 * 60 * 1000);
         const date = normalizedStart.toISOString().slice(0, 10);

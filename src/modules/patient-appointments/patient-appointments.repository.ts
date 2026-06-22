@@ -60,7 +60,7 @@ export class PatientAppointmentsRepository implements IPatientAppointmentsReposi
         const [row] = await this.db
             .select({ id: patients.id })
             .from(patients)
-            .where(eq(patients.userId, userId))
+            .where(and(eq(patients.userId, userId), eq(patients.isActive, true)))
             .limit(1);
 
         return row?.id ?? null;

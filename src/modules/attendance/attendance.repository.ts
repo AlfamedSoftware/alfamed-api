@@ -140,7 +140,6 @@ export class AttendanceRepository {
                 and(
                     eq(appointments.professionalUnitId, professionalUnitId),
                     eq(appointments.isActive, true),
-                    eq(patients.isActive, true),
                     gte(appointments.startAt, start),
                     lt(appointments.startAt, end),
                 ),
