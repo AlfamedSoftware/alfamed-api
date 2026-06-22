@@ -260,6 +260,41 @@
       "when": 1750464000000,
       "tag": "0038_seed_default_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1782086400000,
+      "tag": "0039_appointment_logs_fk_and_drop_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1782086401000,
+      "tag": "0040_rename_request_status_logs_to_request_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1782153864221,
+      "tag": "0041_dashing_emma_frost",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1782086403000,
+      "tag": "0042_add_clinic_notes_to_appointments",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1782154513413,
+      "tag": "0043_rainy_amphibian",
+      "breakpoints": true
     }
   ]
 }

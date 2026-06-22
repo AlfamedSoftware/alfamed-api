@@ -1,16 +1,16 @@
 import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { randomUUID } from "node:crypto";
-import { appointments } from "./appointments.js";
+import { requests } from "./requests.js";
 import { users } from "./users.js";
-import { appointmentsStatus } from "./appointments-status.js";
+import { requestsStatus } from "./requests-status.js";
 
-export const appointmentLogs = pgTable("appointment_logs", {
+export const requestLogs = pgTable("request_logs", {
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),
-    appointmentId: text("appointment_id")
+    requestId: text("request_id")
         .notNull()
-        .references(() => appointments.id, { onDelete: "cascade" }),
-    oldStatusId: text("old_status_id").references(() => appointmentsStatus.id), // pode ser null
-    newStatusId: text("new_status_id").notNull().references(() => appointmentsStatus.id),
+        .references(() => requests.id, { onDelete: "cascade" }),
+    oldStatusId: text("old_status_id").references(() => requestsStatus.id), // pode ser null
+    newStatusId: text("new_status_id").notNull().references(() => requestsStatus.id),
     changedBy: text("changed_by").notNull().references(() => users.id),
     changedAt: timestamp("changed_at").defaultNow().notNull(),
     observation: text("observation"),
