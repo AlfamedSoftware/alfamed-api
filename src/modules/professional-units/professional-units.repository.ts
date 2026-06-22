@@ -113,7 +113,7 @@ export class ProfessionalUnitsRepository {
             userId: string;
             professionalId: string;
             professionalUnitId: string;
-            professionalUnitRoleId: string;
+            professionalUnitRoleId?: string;
             patientId: string;
         },
     ) => Promise<{
@@ -138,7 +138,7 @@ export class ProfessionalUnitsRepository {
         professionalUnitRole: {
             id: string;
             roleId: string;
-        };
+        } | null;
         patient: {
             id: string;
             isActive: boolean;
@@ -590,15 +590,13 @@ export class ProfessionalUnitsRepository {
                 .from(professionalUnitRoles)
                 .where(
                     and(
-                        eq(professionalUnitRoles.id, data.professionalUnitRoleId),
+                        data.professionalUnitRoleId
+                            ? eq(professionalUnitRoles.id, data.professionalUnitRoleId)
+                            : undefined,
                         eq(professionalUnitRoles.professionalUnitId, data.professionalUnitId),
                     ),
                 )
                 .limit(1);
-
-            if (!roleLink) {
-                return null;
-            }
 
             const [patient] = await db
                 .select({
@@ -632,10 +630,9 @@ export class ProfessionalUnitsRepository {
                     id: base.professionalUnitId,
                     isActive: base.professionalUnitIsActive,
                 },
-                professionalUnitRole: {
-                    id: roleLink.id,
-                    roleId: roleLink.roleId,
-                },
+                professionalUnitRole: roleLink
+                    ? { id: roleLink.id, roleId: roleLink.roleId }
+                    : null,
                 patient,
             };
         };

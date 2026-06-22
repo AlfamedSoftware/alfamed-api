@@ -353,7 +353,7 @@ export class ProfessionalUnitsService {
         }
 
         const professionalUnitRoleChanges: FullUpdateChanges["professionalUnitRoleChanges"] = {};
-        if (data.roleId !== target.professionalUnitRole.roleId) {
+        if (target.professionalUnitRole && data.roleId !== target.professionalUnitRole.roleId) {
             const roleExists = await this.professionalUnitsRepository.roleExists(data.roleId);
 
             if (!roleExists) {
@@ -388,7 +388,7 @@ export class ProfessionalUnitsService {
                 userId: data.userId,
                 professionalId: data.professionalId,
                 professionalUnitId: data.professionalUnitId,
-                professionalUnitRoleId: data.professionalUnitRoleId,
+                professionalUnitRoleId: target.professionalUnitRole?.id ?? "",
                 patientId,
                 userChanges,
                 professionalChanges,

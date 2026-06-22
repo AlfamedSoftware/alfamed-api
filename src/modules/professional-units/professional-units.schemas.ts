@@ -57,7 +57,7 @@ export const professionalUnitFullUpdateSchema = z
         userId: z.string().uuid(),
         professionalId: z.string().uuid(),
         professionalUnitId: z.string().uuid(),
-        professionalUnitRoleId: z.string().uuid(),
+        professionalUnitRoleId: z.string().uuid().optional(),
         roleId: z.string().uuid(),
         patientId: z.string().uuid(),
         name: z.string().optional(),
