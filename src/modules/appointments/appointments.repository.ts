@@ -33,10 +33,6 @@ export class AppointmentsRepository {
         patientId: string;
         professionalUnitId: string;
         scheduleSlotId: string;
-        startAt?: Date | null;
-        endAt?: Date | null;
-        diagnostics?: string | null;
-        evolution?: string | null;
         statusId: string;
     }): Promise<AppointmentProfile> {
         const [inserted] = await this.db
@@ -45,10 +41,6 @@ export class AppointmentsRepository {
                 patientId: data.patientId,
                 professionalUnitId: data.professionalUnitId,
                 scheduleSlotId: data.scheduleSlotId,
-                startAt: data.startAt ?? null,
-                endAt: data.endAt ?? null,
-                diagnostics: data.diagnostics ?? null,
-                evolution: data.evolution ?? null,
                 statusId: data.statusId,
                 isActive: true,
             })

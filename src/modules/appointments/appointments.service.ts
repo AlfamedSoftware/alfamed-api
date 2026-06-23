@@ -11,10 +11,6 @@ export class AppointmentsService {
         patientId: string;
         professionalUnitId: string;
         scheduleSlotId: string;
-        startAt?: Date | null;
-        endAt?: Date | null;
-        diagnostics?: string | null;
-        evolution?: string | null;
         statusCode: number;
     }) {
         const statusUuid = await this.appointmentsRepository.getStatusIdByCode(data.statusCode);

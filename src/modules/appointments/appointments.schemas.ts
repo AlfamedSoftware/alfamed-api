@@ -26,10 +26,6 @@ export const createAppointmentSchema = z
         patientId: z.string().uuid(),
         professionalUnitId: z.string().uuid(),
         scheduleSlotId: z.string().uuid(),
-        startAt: z.date().nullable(),
-        endAt: z.date().nullable(),
-        diagnostics: z.string().nullable().optional(),
-        evolution: z.string().nullable().optional(),
         statusCode: z.number().int(),
     })
     .strict();
