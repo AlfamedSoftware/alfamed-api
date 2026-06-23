@@ -13,6 +13,12 @@ export class AppointmentsService {
         scheduleSlotId: string;
         statusCode: number;
     }) {
+        // Check for self-booking
+        const isSelfBooking = await this.appointmentsRepository.checkSelfBooking(data.patientId, data.professionalUnitId);
+        if (isSelfBooking) {
+            throw new Error("SELF_BOOKING_FORBIDDEN");
+        }
+
         const statusUuid = await this.appointmentsRepository.getStatusIdByCode(data.statusCode);
 
         const created = await this.appointmentsRepository.create({ ...data, statusId: statusUuid });

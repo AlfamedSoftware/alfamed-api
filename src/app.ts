@@ -27,6 +27,9 @@ import type { SchedulesRepository } from "./modules/schedules/schedules.reposito
 import { SchedulesRepository as SchedulesRepositoryClass } from "./modules/schedules/schedules.repository.js";
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
+import { attendimentsRoutes } from "./modules/attendiments/attendiments.routes.js";
+import type { AttendimentsRepository } from "./modules/attendiments/attendiments.repository.js";
+import { AttendimentsRepository as AttendimentsRepositoryClass } from "./modules/attendiments/attendiments.repository.js";
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
 import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
@@ -52,6 +55,7 @@ type BuildAppOptions = {
     appointmentsRepository?: AppointmentsRepository;
     schedulesRepository?: SchedulesRepository;
     unitsRepository?: UnitsRepository;
+    attendimentsRepository?: AttendimentsRepository;
     hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
     authPlugin: ElysiaPlugin;
     withDocs?: boolean;
@@ -70,6 +74,7 @@ export async function buildApp({
     appointmentsRepository,
     schedulesRepository,
     unitsRepository,
+    attendimentsRepository,
     hasUserAccessToUnitChecker,
     authPlugin,
     withDocs = true,
@@ -173,6 +178,10 @@ export async function buildApp({
         .use(rolesRoutes({ rolesRepository: rolesRepository ?? new RolesRepository(db) }))
         .use(appointmentsRoutes({
             appointmentsRepository: appointmentsRepository ?? new AppointmentsRepositoryClass(db),
+            schedulesRepository: schedulesRepository ?? new SchedulesRepositoryClass(db),
+        }))
+        .use(attendimentsRoutes({
+            attendimentsRepository: attendimentsRepository ?? new AttendimentsRepositoryClass(db),
             schedulesRepository: schedulesRepository ?? new SchedulesRepositoryClass(db),
         }));
 

@@ -727,7 +727,7 @@ export class ProfessionalUnitsRepository {
             const normalizedPhone = data.phone.trim();
             const normalizedName = data.name.trim();
             const normalizedPassword = data.password.trim();
-            const normalizedCrm = data.crm.trim().toUpperCase();
+            const normalizedCrm = data.crm?.trim().toUpperCase() || null;
             const professionalUnitStatus = data.professionalUnitStatus ?? true;
             const patientStatus = data.patientStatus ?? true;
 

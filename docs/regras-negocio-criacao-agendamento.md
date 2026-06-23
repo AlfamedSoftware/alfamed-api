@@ -33,14 +33,14 @@ O campo `statusId` é enviado como um **código numérico** pelo frontend. O sis
 
 | Código | Descrição |
 |---|---|
-| `1` | Agendando |
+| `1` | Agendado |
 | `2` | Atendimento iniciado |
 | `3` | Atendimento finalizado |
 | `4` | Faltou ao atendimento |
 | `5` | Cancelado |
 | `6` | Transferido |
 
-> Na criação de um novo agendamento, o status padrão esperado é `1` (Agendando).
+> Na criação de um novo agendamento, o status padrão esperado é `1` (Agendado).
 
 ---
 
@@ -66,6 +66,25 @@ Antes de criar o agendamento, o sistema verifica em tempo real se a vaga (`sched
 **Resposta de erro (HTTP 409):**
 ```json
 { "message": "Essa vaga não está mais disponivel para o agendamento" }
+```
+
+---
+
+### 4.3 Proibição de Auto-Agendamento
+
+O sistema impede que um profissional se auto-agende. Como médicos e pacientes compartilham a mesma tabela de usuários (`users`), um profissional não pode criar um agendamento onde ele próprio é o paciente.
+
+**Regra:** O `userId` do paciente deve ser diferente do `userId` do profissional vinculado ao `professionalUnitId`.
+
+**Lógica de validação:**
+1. Buscar o `userId` do paciente através do `patientId`
+2. Buscar o `userId` do profissional através do `professionalUnitId` → `professional` → `user`
+3. Comparar os dois `userId`s
+4. Se forem iguais, rejeitar o agendamento
+
+**Resposta de erro (HTTP 404):**
+```json
+{ "message": "Profissional não pode se auto agendar" }
 ```
 
 ---
@@ -125,29 +144,33 @@ Frontend envia payload
    └── isAvailable = false? → HTTP 409
         │
         ▼
-[3] Resolver statusId numérico → UUID em appointments_status
+[3] Verificar auto-agendamento
+   └── userId paciente = userId profissional? → HTTP 404
         │
         ▼
-[4] Inserir registro em `appointments`
+[4] Resolver statusId numérico → UUID em appointments_status
+        │
+        ▼
+[5] Inserir registro em `appointments`
    └── isActive = true
         │
         ▼
-[5] Inserir log em `appointment_logs`
+[6] Inserir log em `appointment_logs`
    ├── oldStatusId = null
    ├── newStatusId = UUID do status
    └── changedBy = userId do profissional
         │
         ▼
-[6] Marcar vaga como indisponível
+[7] Marcar vaga como indisponível
    └── schedule_slots.isAvailable = false
         │
         ▼
-[7] Atualizar contadores da agenda
+[8] Atualizar contadores da agenda
    ├── schedules.emptySlots - 1
    └── schedules.allocatedSlots + 1
         │
         ▼
-[8] Retornar agendamento criado → HTTP 201
+[9] Retornar agendamento criado → HTTP 201
 ```
 
 ---
@@ -182,5 +205,6 @@ Frontend envia payload
 | `201 Created` | Agendamento criado com sucesso |
 | `401 Unauthorized` | Usuário não autenticado |
 | `403 Forbidden` | Usuário não tem permissão para realizar esta operação |
+| `404 Not Found` | Profissional tentando se auto-agendar |
 | `409 Conflict` | A vaga já foi reservada por outro agendamento |
 | `500 Internal Server Error` | Erro inesperado no servidor |

@@ -5,6 +5,7 @@ import { appointments } from "../../db/schema/appointments.js";
 import { appointmentLogs } from "../../db/schema/appointment-logs.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionals } from "../../db/schema/professionals.js";
+import { patients } from "../../db/schema/patients.js";
 import { appointmentsStatus } from "../../db/schema/appointments-status.js";
 import { appointmentSchema } from "./appointments.schemas.js";
 
@@ -27,6 +28,34 @@ export class AppointmentsRepository {
         }
 
         return status.id;
+    }
+
+    async checkSelfBooking(patientId: string, professionalUnitId: string): Promise<boolean> {
+        // Get the patient's userId
+        const [patient] = await this.db
+            .select({ userId: patients.userId })
+            .from(patients)
+            .where(eq(patients.id, patientId))
+            .limit(1);
+
+        if (!patient) {
+            throw new Error("Patient not found");
+        }
+
+        // Get the professional's userId through professional_unit -> professional
+        const [professional] = await this.db
+            .select({ userId: professionals.userId })
+            .from(professionalUnits)
+            .innerJoin(professionals, eq(professionalUnits.professionalId, professionals.id))
+            .where(eq(professionalUnits.id, professionalUnitId))
+            .limit(1);
+
+        if (!professional) {
+            throw new Error("Professional not found");
+        }
+
+        // Return true if they are the same user (self-booking)
+        return patient.userId === professional.userId;
     }
 
     async create(data: {

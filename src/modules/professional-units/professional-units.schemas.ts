@@ -28,7 +28,7 @@ export const createProfessionalUnitFullCreateSchema = z
         birthdate: z.string().datetime(),
         phone: z.string().min(1),
         sex: z.enum(["M", "F", "O"]),
-        crm: z.string().min(1),
+        crm: z.union([z.string(), z.null()]).optional(),
         password: z.string().min(8),
         roleId: z.string().uuid(),
         professionalUnitStatus: z.boolean().optional(),

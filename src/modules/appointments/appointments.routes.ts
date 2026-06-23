@@ -51,6 +51,10 @@ export const appointmentsRoutes = ({
                         return status(403, { message: "Forbidden" });
                     }
 
+                    if (error instanceof Error && error.message === "SELF_BOOKING_FORBIDDEN") {
+                        return status(404, { message: "Profissional não pode se auto agendar" });
+                    }
+
                     return status(500, { message: "Internal server error" });
                 }
             },
@@ -66,6 +70,7 @@ export const appointmentsRoutes = ({
                     201: appointmentSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
+                    404: t.Object({ message: t.Literal("Profissional não pode se auto agendar") }),
                     409: t.Object({ message: t.Literal("Essa vaga não está mais disponivel para o agendamento") }),
                     500: appointmentsErrorSchema,
                 },
