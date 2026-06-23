@@ -30,7 +30,7 @@ export const createAppointmentSchema = z
         endAt: z.date().nullable(),
         diagnostics: z.string().nullable().optional(),
         evolution: z.string().nullable().optional(),
-        statusId: z.number(),
+        statusCode: z.number().int(),
     })
     .strict();
 
@@ -44,7 +44,7 @@ export const updateAppointmentSchema = z
         endAt: z.date().nullable().optional(),
         diagnostics: z.string().nullable().optional(),
         evolution: z.string().nullable().optional(),
-        statusId: z.number(),
+        statusCode: z.number().int(),
         isActive: z.boolean().optional(),
     })
     .strict();

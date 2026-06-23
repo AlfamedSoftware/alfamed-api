@@ -37,10 +37,8 @@ export class AppointmentsRepository {
         endAt?: Date | null;
         diagnostics?: string | null;
         evolution?: string | null;
-        statusId: number;
+        statusId: string;
     }): Promise<AppointmentProfile> {
-        const statusUuid = await this.getStatusIdByCode(data.statusId);
-
         const [inserted] = await this.db
             .insert(appointments)
             .values({
@@ -51,7 +49,7 @@ export class AppointmentsRepository {
                 endAt: data.endAt ?? null,
                 diagnostics: data.diagnostics ?? null,
                 evolution: data.evolution ?? null,
-                statusId: statusUuid,
+                statusId: data.statusId,
                 isActive: true,
             })
             .returning({

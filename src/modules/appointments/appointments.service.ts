@@ -15,9 +15,11 @@ export class AppointmentsService {
         endAt?: Date | null;
         diagnostics?: string | null;
         evolution?: string | null;
-        statusId: number;
+        statusCode: number;
     }) {
-        const created = await this.appointmentsRepository.create(data);
+        const statusUuid = await this.appointmentsRepository.getStatusIdByCode(data.statusCode);
+
+        const created = await this.appointmentsRepository.create({ ...data, statusId: statusUuid });
 
         // Create appointment log - use the status UUID from the created appointment
         await this.appointmentsRepository.createAppointmentLog(
@@ -44,13 +46,30 @@ export class AppointmentsService {
         endAt?: Date | null;
         diagnostics?: string | null;
         evolution?: string | null;
-        statusId?: string;
+        statusCode?: number;
         isActive?: boolean;
     }) {
-        const updated = await this.appointmentsRepository.updateById(appointmentId, data);
+        let statusUuid: string | undefined;
+        if (data.statusCode !== undefined) {
+            statusUuid = await this.appointmentsRepository.getStatusIdByCode(data.statusCode);
+        }
+
+        const updated = await this.appointmentsRepository.updateById(appointmentId, {
+            ...data,
+            statusId: statusUuid,
+        });
 
         if (!updated) {
             throw new Error("Appointment not found");
+        }
+
+        if (statusUuid && data.professionalUnitId) {
+            await this.appointmentsRepository.createAppointmentLog(
+                appointmentId,
+                null,
+                statusUuid,
+                data.professionalUnitId,
+            );
         }
 
         return updated;
