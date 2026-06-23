@@ -31,7 +31,7 @@ O módulo de atendimentos gerencia o ciclo de vida de um agendamento (`appointme
 
 **`GET /attendiments/list-appointments-by-specialty`**
 
-Retorna todos os agendamentos ativos (status `1` ou `2`) de uma data, agrupados por especialidade.
+Retorna todos os agendamentos ativos (status `1` a `4`) de uma data, agrupados por especialidade, ordenados por código de status e em seguida por horário de início da vaga (`scheduleSlots.startTime`).
 
 **Query params:**
 

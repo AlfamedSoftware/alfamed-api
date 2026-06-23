@@ -352,6 +352,22 @@ export class SchedulesRepository {
         });
     }
 
+    async getSlotStartDatetime(slotId: string): Promise<Date | null> {
+        const [row] = await this.db
+            .select({
+                date: schedules.date,
+                startTime: scheduleSlots.startTime,
+            })
+            .from(scheduleSlots)
+            .innerJoin(schedules, eq(scheduleSlots.scheduleId, schedules.id))
+            .where(eq(scheduleSlots.id, slotId))
+            .limit(1);
+
+        if (!row) return null;
+
+        return new Date(`${row.date}T${row.startTime}`);
+    }
+
     async checkSlotAvailability(slotId: string): Promise<boolean> {
         const [slot] = await this.db
             .select({

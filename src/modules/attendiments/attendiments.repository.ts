@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { appointments } from "../../db/schema/appointments.js";
@@ -27,27 +27,20 @@ export class AttendimentsRepository {
         date: string;
         professionalUnitId?: string;
     }): Promise<AppointmentBySpecialty[]> {
-        // Get status UUIDs for codes 1 and 2 (Agendando and Atendimento iniciado)
-        const [status1] = await this.db
+        // Get status UUIDs for codes 1–4
+        const activeStatuses = await this.db
             .select({ id: appointmentsStatus.id })
             .from(appointmentsStatus)
-            .where(eq(appointmentsStatus.code, 1))
-            .limit(1);
+            .where(inArray(appointmentsStatus.code, [1, 2, 3, 4]));
 
-        const [status2] = await this.db
-            .select({ id: appointmentsStatus.id })
-            .from(appointmentsStatus)
-            .where(eq(appointmentsStatus.code, 2))
-            .limit(1);
-
-        if (!status1 || !status2) {
+        if (activeStatuses.length === 0) {
             return [];
         }
 
         // Build where conditions
         const whereConditions = [
             eq(appointments.isActive, true),
-            inArray(appointments.statusId, [status1.id, status2.id]),
+            inArray(appointments.statusId, activeStatuses.map((s) => s.id)),
             eq(schedules.date, filters.date),
         ];
 
@@ -97,7 +90,8 @@ export class AttendimentsRepository {
             .innerJoin(patients, eq(appointments.patientId, patients.id))
             .innerJoin(users, eq(patients.userId, users.id))
             .innerJoin(appointmentsStatus, eq(appointments.statusId, appointmentsStatus.id))
-            .where(and(...whereConditions)) as unknown as Array<{
+            .where(and(...whereConditions))
+            .orderBy(asc(appointmentsStatus.code), asc(scheduleSlots.startTime)) as unknown as Array<{
                 appointmentId: string;
                 appointmentPatientId: string;
                 appointmentProfessionalUnitId: string;

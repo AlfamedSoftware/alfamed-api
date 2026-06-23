@@ -70,7 +70,22 @@ Antes de criar o agendamento, o sistema verifica em tempo real se a vaga (`sched
 
 ---
 
-### 4.3 Proibição de Auto-Agendamento
+### 4.3 Antecedência Mínima
+
+O sistema impede o agendamento quando faltam menos de 30 minutos para o horário de início da vaga.
+
+**Regra:** `agora < slotDatetime - 30 minutos` — caso contrário, rejeitar.
+
+**Lógica:** O datetime do slot é montado combinando `schedules.date` + `schedule_slots.startTime`. Se a diferença entre o horário do slot e o momento atual for menor que 30 minutos, o agendamento é bloqueado.
+
+**Resposta de erro (HTTP 422):**
+```json
+{ "message": "Não é possível agendar com menos de 30 minutos de antecedência" }
+```
+
+---
+
+### 4.4 Proibição de Auto-Agendamento
 
 O sistema impede que um profissional se auto-agende. Como médicos e pacientes compartilham a mesma tabela de usuários (`users`), um profissional não pode criar um agendamento onde ele próprio é o paciente.
 
@@ -144,33 +159,37 @@ Frontend envia payload
    └── isAvailable = false? → HTTP 409
         │
         ▼
-[3] Verificar auto-agendamento
+[3] Verificar antecedência mínima (30 minutos)
+   └── agora >= slotDatetime - 30min? → HTTP 422
+        │
+        ▼
+[4] Verificar auto-agendamento
    └── userId paciente = userId profissional? → HTTP 404
         │
         ▼
-[4] Resolver statusId numérico → UUID em appointments_status
+[5] Resolver statusId numérico → UUID em appointments_status
         │
         ▼
-[5] Inserir registro em `appointments`
+[6] Inserir registro em `appointments`
    └── isActive = true
         │
         ▼
-[6] Inserir log em `appointment_logs`
+[7] Inserir log em `appointment_logs`
    ├── oldStatusId = null
    ├── newStatusId = UUID do status
    └── changedBy = userId do profissional
         │
         ▼
-[7] Marcar vaga como indisponível
+[8] Marcar vaga como indisponível
    └── schedule_slots.isAvailable = false
         │
         ▼
-[8] Atualizar contadores da agenda
+[9] Atualizar contadores da agenda
    ├── schedules.emptySlots - 1
    └── schedules.allocatedSlots + 1
         │
         ▼
-[9] Retornar agendamento criado → HTTP 201
+[10] Retornar agendamento criado → HTTP 201
 ```
 
 ---
@@ -207,4 +226,5 @@ Frontend envia payload
 | `403 Forbidden` | Usuário não tem permissão para realizar esta operação |
 | `404 Not Found` | Profissional tentando se auto-agendar |
 | `409 Conflict` | A vaga já foi reservada por outro agendamento |
+| `422 Unprocessable Entity` | Faltam menos de 30 minutos para o horário do slot |
 | `500 Internal Server Error` | Erro inesperado no servidor |

@@ -55,6 +55,10 @@ export const appointmentsRoutes = ({
                         return status(404, { message: "Profissional não pode se auto agendar" });
                     }
 
+                    if (error instanceof Error && error.message === "SLOT_TOO_SOON") {
+                        return status(422, { message: "Não é possível agendar com menos de 30 minutos de antecedência" });
+                    }
+
                     return status(500, { message: "Internal server error" });
                 }
             },
@@ -72,6 +76,7 @@ export const appointmentsRoutes = ({
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Profissional não pode se auto agendar") }),
                     409: t.Object({ message: t.Literal("Essa vaga não está mais disponivel para o agendamento") }),
+                    422: t.Object({ message: t.Literal("Não é possível agendar com menos de 30 minutos de antecedência") }),
                     500: appointmentsErrorSchema,
                 },
             },
