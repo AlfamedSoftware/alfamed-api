@@ -20,6 +20,7 @@ export const appointments = pgTable("appointments", {
     endAt: timestamp("end_at"),
     diagnostics: text("diagnostics"),
     evolution: text("evolution"),
+    clinicNotes: text("clinic_notes"),
     statusId: text("status_id")
         .notNull()
         .references(() => appointmentsStatus.id, { onDelete: "restrict" }),
