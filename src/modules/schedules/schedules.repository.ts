@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { schedules } from "../../db/schema/schedules.js";
@@ -83,7 +83,8 @@ export class SchedulesRepository {
                 procedureId: schedules.procedureId,
             })
             .from(schedules)
-            .where(and(...whereConditions));
+            .where(and(...whereConditions))
+            .orderBy(asc(schedules.startTime));
 
         if (scheduleRows.length === 0) {
             return [];
@@ -187,7 +188,8 @@ export class SchedulesRepository {
                         isActive: scheduleSlots.isActive,
                     })
                     .from(scheduleSlots)
-                    .where(and(...slotConditions));
+                    .where(and(...slotConditions))
+                    .orderBy(asc(scheduleSlots.startTime));
 
                 return scheduleFullDataSchema.parse({
                     id: schedule.id,

@@ -23,6 +23,9 @@ export class AppointmentsService {
         const slotDatetime = await this.scheduleRepository.getSlotStartDatetime(data.scheduleSlotId);
         if (slotDatetime) {
             const diffMs = slotDatetime.getTime() - Date.now();
+            if (diffMs < 0) {
+                throw new Error("SLOT_PAST");
+            }
             if (diffMs < 30 * 60 * 1000) {
                 throw new Error("SLOT_TOO_SOON");
             }
