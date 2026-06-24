@@ -5,6 +5,7 @@ import type {
     CreatePatientInput,
     PatientFullDataByUser,
     Patient,
+    PatientListItem,
     PatientsRepository,
 } from "../../src/modules/patients/patients.repository";
 
@@ -71,6 +72,18 @@ class InMemoryPatientsRepository implements PatientsRepository {
     }
 
     async applyFullUpdate(): Promise<void> {}
+
+    async listPatients(): Promise<PatientListItem[]> {
+        return Object.values(this.patients).map((patient) => ({
+            id: patient.id,
+            userId: patient.userId,
+            name: "Test User",
+            email: "test@example.com",
+            cpf: "12345678900",
+            phone: "11999999999",
+            isActive: patient.isActive,
+        }));
+    }
 }
 
 describe("PatientsService", () => {

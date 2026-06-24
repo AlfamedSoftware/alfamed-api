@@ -14,15 +14,22 @@ import { SpecialtiesRepository } from "./modules/specialties/specialties.reposit
 import { professionalUnitsRoutes } from "./modules/professional-units/professional-units.routes.js";
 import { ProfessionalUnitsRepository } from "./modules/professional-units/professional-units.repository.js";
 import { professionalUnitSpecialtiesRoutes } from "./modules/professional-unit-specialties/professional-unit-specialties.routes.js";
+import { ProfessionalUnitSpecialtiesRepository } from "./modules/professional-unit-specialties/professional-unit-specialties.repository.js";
 import { rolesRoutes } from "./modules/roles/roles.routes.js";
 import { RolesRepository } from "./modules/roles/roles.repository.js";
 import { patientsRoutes } from "./modules/patients/patients.routes.js";
 import type { PatientsRepository } from "./modules/patients/patients.repository.js";
 import { appointmentsRoutes } from "./modules/appointments/appointments.routes.js";
+import type { AppointmentsRepository } from "./modules/appointments/appointments.repository.js";
+import { AppointmentsRepository as AppointmentsRepositoryClass } from "./modules/appointments/appointments.repository.js";
 import { schedulesRoutes } from "./modules/schedules/schedules.routes.js";
+import type { SchedulesRepository } from "./modules/schedules/schedules.repository.js";
+import { SchedulesRepository as SchedulesRepositoryClass } from "./modules/schedules/schedules.repository.js";
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
-// appointments routes removed
+import { attendimentsRoutes } from "./modules/attendiments/attendiments.routes.js";
+import type { AttendimentsRepository } from "./modules/attendiments/attendiments.repository.js";
+import { AttendimentsRepository as AttendimentsRepositoryClass } from "./modules/attendiments/attendiments.repository.js";
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
 import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
@@ -42,9 +49,13 @@ type BuildAppOptions = {
     proceduresRepository?: ProceduresRepository;
     specialtiesRepository?: SpecialtiesRepository;
     professionalUnitsRepository?: ProfessionalUnitsRepository;
+    professionalUnitSpecialtiesRepository?: ProfessionalUnitSpecialtiesRepository;
     patientsRepository: PatientsRepository;
     rolesRepository?: RolesRepository;
+    appointmentsRepository?: AppointmentsRepository;
+    schedulesRepository?: SchedulesRepository;
     unitsRepository?: UnitsRepository;
+    attendimentsRepository?: AttendimentsRepository;
     hasUserAccessToUnitChecker?: (userId: string, unitId: string) => Promise<boolean>;
     authPlugin: ElysiaPlugin;
     withDocs?: boolean;
@@ -59,7 +70,11 @@ export async function buildApp({
     proceduresRepository,
     specialtiesRepository,
     professionalUnitsRepository,
+    professionalUnitSpecialtiesRepository,
+    appointmentsRepository,
+    schedulesRepository,
     unitsRepository,
+    attendimentsRepository,
     hasUserAccessToUnitChecker,
     authPlugin,
     withDocs = true,
@@ -161,7 +176,14 @@ export async function buildApp({
         .use(usersRoutes({ usersRepository }))
         .use(patientsRoutes({ patientsRepository }))
         .use(rolesRoutes({ rolesRepository: rolesRepository ?? new RolesRepository(db) }))
-        .use(appointmentsRoutes({ db }));
+        .use(appointmentsRoutes({
+            appointmentsRepository: appointmentsRepository ?? new AppointmentsRepositoryClass(db),
+            schedulesRepository: schedulesRepository ?? new SchedulesRepositoryClass(db),
+        }))
+        .use(attendimentsRoutes({
+            attendimentsRepository: attendimentsRepository ?? new AttendimentsRepositoryClass(db),
+            schedulesRepository: schedulesRepository ?? new SchedulesRepositoryClass(db),
+        }));
 
     const resolvedHasUserAccessToUnitChecker =
         hasUserAccessToUnitChecker ?? createHasUserAccessToUnitChecker(db);
@@ -199,7 +221,12 @@ export async function buildApp({
             usersRepository,
             hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
         }),
-    ).use(professionalUnitSpecialtiesRoutes);
+    ).use(
+        professionalUnitSpecialtiesRoutes({
+            professionalUnitSpecialtiesRepository: professionalUnitSpecialtiesRepository ?? new ProfessionalUnitSpecialtiesRepository(db),
+            hasUserAccessToUnitChecker: resolvedHasUserAccessToUnitChecker,
+        }),
+    );
 
     const configuredAppWithAdmin = configuredAppWithProfessionalUnits.use(
         adminUnitsRoutes({

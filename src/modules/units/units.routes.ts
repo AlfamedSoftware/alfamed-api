@@ -48,7 +48,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                 auth: true,
                 body: createUnitSchema,
                 detail: {
-                    summary: "Create unit",
+                    summary: "Create unit (ServiceDesk)",
                     description:
                         "Creates a new unit linked to the authenticated professional. If the authenticated user is not linked to a professional, returns 403 Forbidden.",
                     tags: ["Units"],
@@ -57,6 +57,45 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                     201: unitProfileSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
+                    500: unitsErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/",
+            async (context) => {
+                const { query, status } = context;
+                const userId = resolveAuthenticatedUser(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                try {
+                    const filters: { isActive?: boolean } = {};
+                    if (query.isActive !== undefined) {
+                        filters.isActive = query.isActive;
+                    }
+                    const units = await unitsService.listUnits(filters);
+
+                    return status(200, units);
+                } catch (error) {
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                query: t.Object({
+                    isActive: t.Optional(t.Boolean()),
+                }),
+                detail: {
+                    summary: "List units",
+                    description: "Lists all units with optional isActive filter.",
+                    tags: ["Units"],
+                },
+                response: {
+                    200: unitsListSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
                     500: unitsErrorSchema,
                 },
             },
@@ -82,7 +121,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
             {
                 auth: true,
                 detail: {
-                    summary: "List user units",
+                    summary: "List user units (ServiceDesk)",
                     description:
                         "Lists all units linked to the authenticated user through their professional profile.",
                     tags: ["Units"],
@@ -125,7 +164,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                     id: t.String({ format: "uuid" }),
                 }),
                 detail: {
-                    summary: "Get unit",
+                    summary: "Get unit by id",
                     description: "Gets a unit by route id if the authenticated user belongs to that unit.",
                     tags: ["Units"],
                 },
@@ -170,7 +209,7 @@ export const unitsRoutes = ({ unitsRepository, hasUserAccessToUnitChecker }: Uni
                 }),
                 body: updateUnitSchema,
                 detail: {
-                    summary: "Update unit",
+                    summary: "Update unit (ServiceDesk)",
                     description:
                         "Updates the unit selected by route id if the authenticated user has access to that unit.",
                     tags: ["Units"],

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { professionalUnits } from "./professional-units.js";
 import { patients } from "./patients.js";
 import { appointmentsStatus } from "./appointments-status.js";
+import { scheduleSlots } from "./schedule-slots.js";
 
 export const appointments = pgTable("appointments", {
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),
@@ -12,9 +13,14 @@ export const appointments = pgTable("appointments", {
     professionalUnitId: text("professional_unit_id")
         .notNull()
         .references(() => professionalUnits.id, { onDelete: "cascade" }),
-    startAt: timestamp("start_at", { mode: "date" }).notNull(),
-    endAt: timestamp("end_at", { mode: "date" }).notNull(),
-    reason: text("reason"),
+    scheduleSlotId: text("schedule_slot_id")
+        .notNull()
+        .references(() => scheduleSlots.id, { onDelete: "restrict" }),
+    startAt: timestamp("start_at"),
+    endAt: timestamp("end_at"),
+    diagnostics: text("diagnostics"),
+    evolution: text("evolution"),
+    clinicNotes: text("clinic_notes"),
     statusId: text("status_id")
         .notNull()
         .references(() => appointmentsStatus.id, { onDelete: "restrict" }),

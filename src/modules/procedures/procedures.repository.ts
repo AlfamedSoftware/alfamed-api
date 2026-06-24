@@ -28,6 +28,8 @@ export class ProceduresRepository {
             .select({
                 id: procedures.id,
                 unitId: procedures.unitId,
+                specialtyId: procedures.specialtyId,
+                type: procedures.type,
                 description: procedures.description,
                 observation: procedures.observation,
                 code: procedures.code,
@@ -56,6 +58,8 @@ export class ProceduresRepository {
             .select({
                 id: procedures.id,
                 unitId: procedures.unitId,
+                specialtyId: procedures.specialtyId,
+                type: procedures.type,
                 description: procedures.description,
                 observation: procedures.observation,
                 code: procedures.code,
@@ -83,11 +87,21 @@ export class ProceduresRepository {
         });
     }
 
-    async listByUnitId(unitId: string): Promise<ProcedureProfile[]> {
+    async listByUnitId(unitId: string, specialtyId?: string, isActive?: boolean): Promise<ProcedureProfile[]> {
+        const whereClause = specialtyId && isActive !== undefined
+            ? and(eq(procedures.unitId, unitId), eq(procedures.specialtyId, specialtyId), eq(procedures.isActive, isActive))
+            : specialtyId
+            ? and(eq(procedures.unitId, unitId), eq(procedures.specialtyId, specialtyId))
+            : isActive !== undefined
+            ? and(eq(procedures.unitId, unitId), eq(procedures.isActive, isActive))
+            : eq(procedures.unitId, unitId);
+
         const rows = await this.db
             .select({
                 id: procedures.id,
                 unitId: procedures.unitId,
+                specialtyId: procedures.specialtyId,
+                type: procedures.type,
                 description: procedures.description,
                 observation: procedures.observation,
                 code: procedures.code,
@@ -97,7 +111,7 @@ export class ProceduresRepository {
                 updatedAt: procedures.updatedAt,
             })
             .from(procedures)
-            .where(eq(procedures.unitId, unitId))
+            .where(whereClause)
             .orderBy(asc(procedures.description));
 
         return rows.map((row) =>
@@ -110,16 +124,20 @@ export class ProceduresRepository {
     }
 
     async createForUnit(unitId: string, data: {
+        specialtyId?: string | null;
+        type: number;
         description: string;
         observation?: string | null;
         code: string;
         price: string;
         isActive?: boolean;
     }): Promise<ProcedureProfile> {
-        const [row] = await this.db
+        const [inserted] = await this.db
             .insert(procedures)
             .values({
                 unitId,
+                specialtyId: data.specialtyId ?? null,
+                type: data.type,
                 description: data.description,
                 observation: data.observation ?? null,
                 code: data.code,
@@ -129,6 +147,8 @@ export class ProceduresRepository {
             .returning({
                 id: procedures.id,
                 unitId: procedures.unitId,
+                specialtyId: procedures.specialtyId,
+                type: procedures.type,
                 description: procedures.description,
                 observation: procedures.observation,
                 code: procedures.code,
@@ -139,9 +159,9 @@ export class ProceduresRepository {
             });
 
         return procedureSchema.parse({
-            ...row,
-            createdAt: row.createdAt.toISOString(),
-            updatedAt: row.updatedAt.toISOString(),
+            ...inserted,
+            createdAt: inserted.createdAt.toISOString(),
+            updatedAt: inserted.updatedAt.toISOString(),
         });
     }
 
@@ -149,6 +169,8 @@ export class ProceduresRepository {
         procedureId: string,
         unitId: string,
         data: {
+            specialtyId?: string | null;
+            type?: number;
             description?: string;
             observation?: string | null;
             code?: string;
@@ -156,9 +178,11 @@ export class ProceduresRepository {
             isActive?: boolean;
         },
     ): Promise<ProcedureProfile | null> {
-        const [row] = await this.db
+        const [updated] = await this.db
             .update(procedures)
             .set({
+                ...(typeof data.specialtyId !== "undefined" ? { specialtyId: data.specialtyId } : {}),
+                ...(typeof data.type !== "undefined" ? { type: data.type } : {}),
                 ...(typeof data.description !== "undefined" ? { description: data.description } : {}),
                 ...(typeof data.observation !== "undefined" ? { observation: data.observation } : {}),
                 ...(typeof data.code !== "undefined" ? { code: data.code } : {}),
@@ -168,7 +192,18 @@ export class ProceduresRepository {
             .where(and(eq(procedures.id, procedureId), eq(procedures.unitId, unitId)))
             .returning({
                 id: procedures.id,
+            });
+
+        if (!updated) {
+            return null;
+        }
+
+        const [row] = await this.db
+            .select({
+                id: procedures.id,
                 unitId: procedures.unitId,
+                specialtyId: procedures.specialtyId,
+                type: procedures.type,
                 description: procedures.description,
                 observation: procedures.observation,
                 code: procedures.code,
@@ -176,11 +211,10 @@ export class ProceduresRepository {
                 isActive: procedures.isActive,
                 createdAt: procedures.createdAt,
                 updatedAt: procedures.updatedAt,
-            });
-
-        if (!row) {
-            return null;
-        }
+            })
+            .from(procedures)
+            .where(eq(procedures.id, procedureId))
+            .limit(1);
 
         return procedureSchema.parse({
             ...row,

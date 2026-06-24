@@ -1,160 +1,65 @@
 import { Elysia, t } from "elysia";
 import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
-import { getUnitIdFromRequest, getProfessionalUnitIdFromRequest } from "../../http/plugins/unit-context.js";
-import type { db as dbType } from "../../db/client.js";
-import { AppointmentsRepository } from "./appointments.repository.js";
+import { isDomainError } from "../../http/plugins/domain-error.js";
+import type { AppointmentsRepository } from "./appointments.repository.js";
+import { AppointmentsService } from "./appointments.service.js";
+import type { SchedulesRepository } from "../schedules/schedules.repository.js";
 import {
-    appointmentAvailabilityResponseSchema,
-    appointmentEventSchema,
     appointmentsErrorSchema,
-    availabilityQuerySchema,
-    calendarEventsQuerySchema,
     createAppointmentSchema,
+    updateAppointmentSchema,
+    appointmentSchema,
 } from "./appointments.schemas.js";
 
-type DatabaseClient = typeof dbType;
-
 type AppointmentsRoutesOptions = {
-    db: DatabaseClient;
+    appointmentsRepository: AppointmentsRepository;
+    schedulesRepository: SchedulesRepository;
 };
 
-export const appointmentsRoutes = ({ db }: AppointmentsRoutesOptions) => {
-    const appointmentsRepository = new AppointmentsRepository(db);
+export const appointmentsRoutes = ({
+    appointmentsRepository,
+    schedulesRepository,
+}: AppointmentsRoutesOptions) => {
+    const appointmentsService = new AppointmentsService(
+        appointmentsRepository,
+        schedulesRepository,
+    );
 
     return new Elysia({ name: "appointments-routes", prefix: "/appointments" })
-        .get(
-            "/events",
-            async (context) => {
-                const { query, status } = context;
-                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const unitId = getUnitIdFromRequest(context.request);
-
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
-
-                if (!unitId) {
-                    return status(400, { message: "Selecione uma clínica para continuar" });
-                }
-
-                try {
-                    const events = await appointmentsRepository.listAgendaEvents(query, unitId);
-                    return status(200, events);
-                } catch (error) {
-                    console.error("[appointments.routes] Error listing events:", error);
-                    return status(500, { message: "Internal server error" });
-                }
-            },
-            {
-                auth: true,
-                query: calendarEventsQuerySchema,
-                detail: {
-                    summary: "List agenda events",
-                    description: "Returns appointments and blocks for the selected unit and professionals.",
-                    tags: ["Appointments"],
-                },
-                response: {
-                    200: appointmentEventSchema.array(),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
-                    500: appointmentsErrorSchema,
-                },
-            },
-        )
-        .get(
-            "/availability",
-            async (context) => {
-                const { query, status } = context;
-                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const unitId = getUnitIdFromRequest(context.request);
-
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
-
-                if (!unitId) {
-                    return status(400, { message: "Selecione uma clínica para continuar" });
-                }
-
-                try {
-                    const availability = await appointmentsRepository.checkAvailability(query, unitId);
-                    return status(200, {
-                        available: availability.available,
-                        windows: availability.windows.map((window) => ({
-                            start: window.start.toISOString(),
-                            end: window.end.toISOString(),
-                        })),
-                    });
-                } catch (error) {
-                    console.error("[appointments.routes] Error checking availability:", error);
-                    return status(500, { message: "Internal server error" });
-                }
-            },
-            {
-                auth: true,
-                query: availabilityQuerySchema,
-                detail: {
-                    summary: "Check availability",
-                    description: "Returns whether the requested interval is available and the free windows in the day.",
-                    tags: ["Appointments"],
-                },
-                response: {
-                    200: appointmentAvailabilityResponseSchema,
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
-                    500: appointmentsErrorSchema,
-                },
-            },
-        )
         .post(
             "/",
             async (context) => {
                 const { body, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const unitId = getUnitIdFromRequest(context.request);
-                const currentProfessionalUnitId = getProfessionalUnitIdFromRequest(context.request);
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
 
-                if (!unitId) {
-                    return status(400, { message: "Selecione uma clínica para continuar" });
-                }
-
                 try {
-                    let professionalId = body.professionalId ?? null;
+                    const { scheduleSlotId } = body as { scheduleSlotId: string };
+                    const isAvailable = await schedulesRepository.checkSlotAvailability(scheduleSlotId);
 
-                    if (!professionalId) {
-                        if (!currentProfessionalUnitId) {
-                            return status(400, { message: "Selecione um profissional para continuar" });
-                        }
-
-                        const professionalUnit = await appointmentsRepository.findProfessionalUnitById(currentProfessionalUnitId);
-
-                        if (!professionalUnit || professionalUnit.unitId !== unitId) {
-                            return status(403, { message: "Forbidden" });
-                        }
-
-                        professionalId = professionalUnit.professionalId;
+                    if (!isAvailable) {
+                        return status(409, { message: "Essa vaga não está mais disponivel para o agendamento" });
                     }
 
-                    if (!professionalId) {
-                        return status(400, { message: "Selecione um profissional para continuar" });
-                    }
-
-                    const appointment = await appointmentsRepository.createAppointment(
-                        {
-                            ...body,
-                            professionalId,
-                        },
-                        unitId,
-                    );
-
-                    return status(201, appointment);
+                    const created = await appointmentsService.createAppointment(body as any);
+                    return status(201, created);
                 } catch (error) {
-                    console.error("[appointments.routes] Error creating appointment:", error);
-                    return status(409, { message: error instanceof Error ? error.message : "Schedule is not available" });
+                    if (isDomainError(error, "FORBIDDEN")) {
+                        return status(403, { message: "Forbidden" });
+                    }
+
+                    if (error instanceof Error && error.message === "SELF_BOOKING_FORBIDDEN") {
+                        return status(404, { message: "Profissional não pode se auto agendar" });
+                    }
+
+                    if (error instanceof Error && error.message === "SLOT_TOO_SOON") {
+                        return status(422, { message: "Não é possível agendar com menos de 30 minutos de antecedência" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
                 }
             },
             {
@@ -162,205 +67,58 @@ export const appointmentsRoutes = ({ db }: AppointmentsRoutesOptions) => {
                 body: createAppointmentSchema,
                 detail: {
                     summary: "Create appointment",
-                    description: "Creates an appointment for a patient and a professional.",
+                    description: "Creates a new appointment.",
                     tags: ["Appointments"],
                 },
                 response: {
-                    201: t.Object({
-                        id: t.String({ format: "uuid" }),
-                        patientId: t.String({ format: "uuid" }),
-                        professionalUnitId: t.String({ format: "uuid" }),
-                        startAt: t.Date(),
-                        endAt: t.Date(),
-                        reason: t.Union([t.String(), t.Null()]),
-                    }),
+                    201: appointmentSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Union([
-                        t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
-                        t.Object({ message: t.Literal("Selecione um profissional para continuar") }),
-                    ]),
                     403: t.Object({ message: t.Literal("Forbidden") }),
-                    409: t.Object({ message: t.String() }),
+                    404: t.Object({ message: t.Literal("Profissional não pode se auto agendar") }),
+                    409: t.Object({ message: t.Literal("Essa vaga não está mais disponivel para o agendamento") }),
+                    422: t.Object({ message: t.Literal("Não é possível agendar com menos de 30 minutos de antecedência") }),
                     500: appointmentsErrorSchema,
                 },
             },
         )
-        .get(
-            "/:id",
-            async (context) => {
-                const { params, status } = context;
-                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const unitId = getUnitIdFromRequest(context.request);
-
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
-
-                if (!unitId) {
-                    return status(400, { message: "Selecione uma clínica para continuar" });
-                }
-
-                try {
-                    console.log("[appointments.routes] GET /:id params:", params);
-                    console.log("[appointments.routes] GET /:id unitId:", unitId);
-
-                    const appointment = await appointmentsRepository.getAppointmentById(params.id, unitId);
-
-                    if (!appointment) {
-                        console.log("[appointments.routes] Appointment not found:", params.id);
-                        return status(404, { message: "Appointment not found" });
-                    }
-
-                    console.log("[appointments.routes] Returning appointment:", appointment);
-
-                    return status(200, {
-                        id: appointment.id,
-                        patientId: appointment.patientId,
-                        professionalUnitId: appointment.professionalUnitId,
-                        startAt: appointment.startAt,
-                        endAt: appointment.endAt,
-                        professionalId: appointment.professionalId,
-                        reason: appointment.reason ?? null,
-                    });
-                } catch (error) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    console.error("[appointments.routes] Error getting appointment:", errorMessage, error);
-                    return status(500, { message: `Internal server error: ${errorMessage}` });
-                }
-            },
-            {
-                auth: true,
-                detail: {
-                    summary: "Get appointment",
-                    description: "Returns appointment details.",
-                    tags: ["Appointments"],
-                },
-                response: {
-                    200: t.Object({
-                        id: t.String({ format: "uuid" }),
-                        patientId: t.String({ format: "uuid" }),
-                        professionalUnitId: t.String({ format: "uuid" }),
-                        startAt: t.Date(),
-                        endAt: t.Date(),
-                        reason: t.Union([t.String(), t.Null()]),
-                        professionalId: t.String({ format: "uuid" }),
-                    }),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
-                    404: t.Object({ message: t.Literal("Appointment not found") }),
-                    500: appointmentsErrorSchema,
-                },
-            },
-        )
-        .put(
+        .patch(
             "/:id",
             async (context) => {
                 const { params, body, status } = context;
                 const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const unitId = getUnitIdFromRequest(context.request);
 
                 if (!userId) {
                     return status(401, { message: "Unauthorized" });
                 }
 
-                if (!unitId) {
-                    return status(400, { message: "Selecione uma clínica para continuar" });
-                }
-
                 try {
-                    const appointment = await appointmentsRepository.updateAppointment(params.id, body, unitId);
-                    return status(200, appointment);
+                    const updated = await appointmentsService.updateAppointment(params.id, body as any);
+                    return status(200, updated);
                 } catch (error) {
-                    console.error("[appointments.routes] Error updating appointment:", error);
-                    const message = error instanceof Error ? error.message : "Internal server error";
-
-                    if (message === "Appointment not found") {
-                        return status(404, { message });
+                    if (isDomainError(error, "FORBIDDEN")) {
+                        return status(403, { message: "Forbidden" });
                     }
 
-                    if (message.includes("not available")) {
-                        return status(409, { message });
-                    }
-
-                    return status(500, { message });
-                }
-            },
-            {
-                auth: true,
-                body: t.Partial(
-                    t.Object({
-                        patientId: t.String({ format: "uuid" }),
-                        startAt: t.Date(),
-                        endAt: t.Date(),
-                        reason: t.Union([t.String(), t.Null()]),
-                    }),
-                ),
-                detail: {
-                    summary: "Update appointment",
-                    description: "Updates an appointment.",
-                    tags: ["Appointments"],
-                },
-                response: {
-                    200: t.Object({
-                        id: t.String({ format: "uuid" }),
-                        patientId: t.String({ format: "uuid" }),
-                        professionalUnitId: t.String({ format: "uuid" }),
-                        startAt: t.Date(),
-                        endAt: t.Date(),
-                        reason: t.Union([t.String(), t.Null()]),
-                    }),
-                    401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
-                    404: t.Object({ message: t.Literal("Appointment not found") }),
-                    409: t.Object({ message: t.String() }),
-                    500: appointmentsErrorSchema,
-                },
-            },
-        )
-        .delete(
-            "/:id",
-            async (context) => {
-                const { params, status } = context;
-                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
-                const unitId = getUnitIdFromRequest(context.request);
-
-                if (!userId) {
-                    return status(401, { message: "Unauthorized" });
-                }
-
-                if (!unitId) {
-                    return status(400, { message: "Selecione uma clínica para continuar" });
-                }
-
-                try {
-                    const existing = await appointmentsRepository.getAppointmentById(params.id, unitId);
-
-                    if (!existing) {
-                        return status(404, { message: "Appointment not found" });
-                    }
-
-                    // Soft delete
-                    await appointmentsRepository.deleteAppointment(params.id);
-                    return status(200, { success: true });
-                } catch (error) {
-                    console.error("[appointments.routes] Error deleting appointment:", error);
                     return status(500, { message: "Internal server error" });
                 }
             },
             {
                 auth: true,
+                params: t.Object({
+                    id: t.String({ format: "uuid" }),
+                }),
+                body: updateAppointmentSchema,
                 detail: {
-                    summary: "Delete appointment",
-                    description: "Deletes an appointment.",
+                    summary: "Update appointment",
+                    description: "Updates an existing appointment.",
                     tags: ["Appointments"],
                 },
                 response: {
-                    200: t.Object({ success: t.Boolean() }),
+                    200: appointmentSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
-                    400: t.Object({ message: t.Literal("Selecione uma clínica para continuar") }),
-                    404: t.Object({ message: t.Literal("Appointment not found") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
                     500: appointmentsErrorSchema,
                 },
             },
-        );
+        )
 };

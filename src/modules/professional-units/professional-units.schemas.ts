@@ -4,6 +4,7 @@ export const createProfessionalUnitSchema = z
     .object({
         professionalId: z.string().uuid(),
         unitId: z.string().uuid(),
+        roleId: z.string().uuid(),
         isActive: z.boolean().optional(),
     })
     .strict();
@@ -12,7 +13,7 @@ export const createProfessionalUnitByUserCpfSchema = z
     .object({
         cpf: z.string().min(1),
         isActive: z.boolean().optional(),
-        roleId: z.string().uuid().optional(),
+        roleId: z.string().uuid(),
         patientExists: z.boolean(),
         professionalExists: z.boolean(),
     })
@@ -27,7 +28,7 @@ export const createProfessionalUnitFullCreateSchema = z
         birthdate: z.string().datetime(),
         phone: z.string().min(1),
         sex: z.enum(["M", "F", "O"]),
-        crm: z.string().min(1),
+        crm: z.union([z.string(), z.null()]).optional(),
         password: z.string().min(8),
         roleId: z.string().uuid(),
         professionalUnitStatus: z.boolean().optional(),

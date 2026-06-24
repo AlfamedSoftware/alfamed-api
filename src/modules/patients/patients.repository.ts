@@ -1,5 +1,5 @@
 import { hash } from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { accounts } from "../../db/schema/accounts.js";
@@ -26,7 +26,8 @@ export class PatientsRepository {
     readonly createPatientFullCreate: (data: CreatePatientFullCreateInput) => Promise<PatientFullDataByUser>;
     readonly getPatientByUserId: (userId: string) => Promise<Patient | null>;
     readonly getPatientById: (patientId: string) => Promise<Patient | null>;
-    readonly getPatientFullDataByUserId: (userId: string) => Promise<PatientFullDataByUser | null>;
+    readonly getPatientFullDataByUserId: (userId: string, isActive?: boolean) => Promise<PatientFullDataByUser | null>;
+    readonly getPatientFullDataByCpf: (cpf: string, isActive?: boolean) => Promise<PatientFullDataByUser | null>;
     readonly listPatients: () => Promise<PatientListItem[]>;
     readonly findUserByEmail: (email: string) => Promise<{ id: string } | null>;
     readonly findUserByCpf: (cpf: string) => Promise<{ id: string } | null>;
@@ -225,7 +226,12 @@ export class PatientsRepository {
             );
         };
 
-        this.getPatientFullDataByUserId = async (userId: string) => {
+        this.getPatientFullDataByUserId = async (userId: string, isActive?: boolean) => {
+            const whereConditions = [eq(users.id, userId)];
+            if (typeof isActive === 'boolean') {
+                whereConditions.push(eq(patients.isActive, isActive));
+            }
+
             const [result] = await db
                 .select({
                     id: patients.id,
@@ -242,7 +248,53 @@ export class PatientsRepository {
                 })
                 .from(patients)
                 .innerJoin(users, eq(patients.userId, users.id))
-                .where(eq(users.id, userId))
+                .where(and(...whereConditions))
+                .limit(1);
+
+            if (!result) {
+                return null;
+            }
+
+            return patientFullDataByUserSchema.parse({
+                id: result.id,
+                isActive: result.isActive,
+                users: {
+                    id: result.userId,
+                    name: result.userName,
+                    socialName: result.userSocialName,
+                    email: result.userEmail,
+                    phone: result.userPhone,
+                    cpf: result.userCpf,
+                    birthdate: result.userBirthdate.toISOString(),
+                    sex: result.userSex,
+                    isActive: result.userIsActive,
+                },
+            });
+        };
+
+        this.getPatientFullDataByCpf = async (cpf: string, isActive?: boolean) => {
+            const whereConditions = [eq(users.cpf, cpf)];
+            if (typeof isActive === 'boolean') {
+                whereConditions.push(eq(patients.isActive, isActive));
+            }
+
+            const [result] = await db
+                .select({
+                    id: patients.id,
+                    isActive: patients.isActive,
+                    userId: users.id,
+                    userName: users.name,
+                    userSocialName: users.socialName,
+                    userEmail: users.email,
+                    userPhone: users.phone,
+                    userCpf: users.cpf,
+                    userBirthdate: users.birthdate,
+                    userSex: users.sex,
+                    userIsActive: users.isActive,
+                })
+                .from(patients)
+                .innerJoin(users, eq(patients.userId, users.id))
+                .where(and(...whereConditions))
                 .limit(1);
 
             if (!result) {

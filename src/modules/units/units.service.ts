@@ -24,6 +24,10 @@ export class UnitsService {
         return unit;
     }
 
+    async listUnits(filters?: { isActive?: boolean }) {
+        return this.unitsRepository.list(filters);
+    }
+
     async listUnitsByUserId(userId: string) {
         return this.unitsRepository.listByUserId(userId);
     }
