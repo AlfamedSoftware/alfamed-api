@@ -174,7 +174,10 @@ export async function buildApp({
         .use(createSessionRoutes(db))
         .use(systemRoutes())
         .use(usersRoutes({ usersRepository }))
-        .use(patientsRoutes({ patientsRepository }))
+        .use(patientsRoutes({
+            patientsRepository,
+            professionalsRepository: professionalsRepository ?? new ProfessionalsRepository(db),
+        }))
         .use(rolesRoutes({ rolesRepository: rolesRepository ?? new RolesRepository(db) }))
         .use(appointmentsRoutes({
             appointmentsRepository: appointmentsRepository ?? new AppointmentsRepositoryClass(db),

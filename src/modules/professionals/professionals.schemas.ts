@@ -8,6 +8,22 @@ export const professionalByUserCpfQuerySchema = z.object({
     cpf: z.string().min(1),
 });
 
+export const professionalByUserNameQuerySchema = z.object({
+    name: z.string().min(1),
+});
+
+export const professionalByUserNameResponseSchema = z.array(
+    z.object({
+        userId: z.string().uuid(),
+        name: z.string(),
+        socialName: z.string().nullable(),
+        cpf: z.string(),
+        professionalId: z.string().uuid().or(z.literal("")),
+        patientId: z.string().uuid().or(z.literal("")),
+        professionalUnitId: z.string().uuid().or(z.literal("")),
+    }),
+);
+
 export const createProfessionalSchema = z.object({
     name: z.string().optional(),
     email: z.string().email().optional(),
@@ -52,6 +68,9 @@ export const professionalUnitProfileSchema = z.object({
 
 export const professionalByUserCpfResponseSchema = z.object({
     userId: z.string().uuid(),
+    name: z.string(),
+    socialName: z.string().nullable(),
+    cpf: z.string(),
     professionalId: z.string().uuid().or(z.literal("")),
     patientId: z.string().uuid().or(z.literal("")),
     professionalUnitId: z.string().uuid().or(z.literal("")),

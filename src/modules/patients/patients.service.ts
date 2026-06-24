@@ -116,4 +116,8 @@ export class PatientsService {
 
         return patient;
     }
+
+    async searchPatientsByName(name: string, isActive?: boolean) {
+        return this.patientsRepository.searchPatientFullDataByName(name, isActive);
+    }
 }

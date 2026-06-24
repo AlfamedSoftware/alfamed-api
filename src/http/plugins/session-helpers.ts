@@ -12,6 +12,9 @@ import {
     SESSION_EXPIRY_SECONDS,
 } from "../../config/session.js";
 
+const secureCookie = true;
+const sameSiteCookie = (IS_PRODUCTION ? "none" : "lax") as "lax" | "none";
+
 const betterAuthSessionTokenCookieName = "better-auth.session_token";
 const betterAuthSessionDataCookieName = "better-auth.session_data";
 
@@ -43,8 +46,8 @@ export async function renewSessionCookies(
             set.cookie[betterAuthSessionTokenCookieName] = {
                 value: sessionToken,
                 httpOnly: true,
-                secure: IS_PRODUCTION,
-                sameSite: (IS_PRODUCTION ? "none" : "lax") as "lax" | "none",
+                secure: secureCookie,
+                sameSite: sameSiteCookie,
                 path: "/",
                 maxAge: SESSION_EXPIRY_SECONDS,
             };
@@ -55,8 +58,8 @@ export async function renewSessionCookies(
             set.cookie[betterAuthSessionDataCookieName] = {
                 value: sessionData,
                 httpOnly: true,
-                secure: IS_PRODUCTION,
-                sameSite: (IS_PRODUCTION ? "none" : "lax") as "lax" | "none",
+                secure: secureCookie,
+                sameSite: sameSiteCookie,
                 path: "/",
                 maxAge: SESSION_EXPIRY_SECONDS,
             };
@@ -68,8 +71,8 @@ export async function renewSessionCookies(
             set.cookie[selectedUnitCookieName] = {
                 value: unitId,
                 httpOnly: true,
-                secure: IS_PRODUCTION,
-                sameSite: (IS_PRODUCTION ? "none" : "lax") as "lax" | "none",
+                secure: secureCookie,
+                sameSite: sameSiteCookie,
                 path: "/",
                 maxAge: SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS,
             };
@@ -81,20 +84,13 @@ export async function renewSessionCookies(
             set.cookie[selectedProfessionalUnitCookieName] = {
                 value: professionalUnitId,
                 httpOnly: true,
-                secure: IS_PRODUCTION,
-                sameSite: (IS_PRODUCTION ? "none" : "lax") as "lax" | "none",
+                secure: secureCookie,
+                sameSite: sameSiteCookie,
                 path: "/",
                 maxAge: SELECTED_UNIT_COOKIE_MAX_AGE_SECONDS,
             };
         }
 
-        // Still call Better Auth session read to keep backend session lifecycle active.
-        await auth.api.getSession({
-            headers: request.headers,
-            query: {
-                disableCookieCache: true,
-            },
-        });
     } catch {
         // Silently ignore renewal failures to avoid impacting request flow.
     }

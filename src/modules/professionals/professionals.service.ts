@@ -52,6 +52,9 @@ export class ProfessionalsService {
 
     async getProfessionalByUserCpf(requestUserId: string, unitId: string, cpf: string): Promise<Record<string, never> | {
         userId: string;
+        name: string;
+        socialName: string | null;
+        cpf: string;
         professionalId: string;
         patientId: string;
         professionalUnitId: string;
@@ -80,10 +83,19 @@ export class ProfessionalsService {
 
         return {
             userId: user.id,
+            name: user.name,
+            socialName: user.socialName ?? null,
+            cpf: user.cpf,
             professionalId: professional?.id ?? "",
             patientId: patient?.id ?? "",
             professionalUnitId,
         };
+    }
+
+    async getProfessionalsByUserName(requestUserId: string, unitId: string, name: string) {
+        await assertUserHasUnitAccess(requestUserId, unitId, this.hasUserAccessToUnitChecker);
+
+        return this.professionalsRepository.findManyByUserName(name.trim(), unitId);
     }
 
     async updateProfessional(

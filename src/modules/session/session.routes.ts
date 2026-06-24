@@ -119,9 +119,6 @@ export const createSessionRoutes = (db: DatabaseClient) => {
             async (context) => {
                 const session = await auth.api.getSession({
                     headers: context.request.headers,
-                    query: {
-                        disableCookieCache: true,
-                    },
                 });
 
                 if (!session?.user) {
@@ -176,9 +173,6 @@ export const createSessionRoutes = (db: DatabaseClient) => {
             async (context) => {
                 const session = await auth.api.getSession({
                     headers: context.request.headers,
-                    query: {
-                        disableCookieCache: true,
-                    },
                 });
 
                 if (!session?.user) {
@@ -238,9 +232,6 @@ export const createSessionRoutes = (db: DatabaseClient) => {
                 const { body, request, status } = context;
                 const session = await auth.api.getSession({
                     headers: request.headers,
-                    query: {
-                        disableCookieCache: true,
-                    },
                 });
 
                 if (!session?.user) {
