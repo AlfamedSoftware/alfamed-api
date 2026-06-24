@@ -10,7 +10,7 @@ type DatabaseClient = typeof dbType;
 
 export class UsersRepository {
     readonly getUserById: (userId: string) => Promise<UserProfile | null>;
-    readonly findByCpf: (cpf: string) => Promise<{ id: string } | null>;
+    readonly findByCpf: (cpf: string) => Promise<{ id: string; name: string; socialName: string | null; cpf: string } | null>;
 
     constructor(db: DatabaseClient) {
         this.getUserById = async (userId: string) => {
@@ -59,7 +59,7 @@ export class UsersRepository {
 
         this.findByCpf = async (cpf: string) => {
             const [result] = await db
-                .select({ id: users.id })
+                .select({ id: users.id, name: users.name, socialName: users.socialName, cpf: users.cpf })
                 .from(users)
                 .where(eq(users.cpf, cpf))
                 .limit(1);

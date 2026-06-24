@@ -68,7 +68,7 @@ Retorna os dados do usuário autenticado. O sistema impõe que o `id` informado 
 
 ### 4.1 `POST /patients/full-create` — Criação completa de paciente *(Mobile)*
 
-Cria em uma **única transação**: `user`, `account` (credenciais de acesso) e `patient`. Não exige autenticação — é usado no fluxo de auto-cadastro do paciente pelo app mobile.
+Cria em uma **única transação**: `user`, `account` (credenciais de acesso) e `patient`. Requer autenticação — o mobile deve ter uma sessão ativa antes de chamar este endpoint.
 
 **Validações:**
 - E-mail já cadastrado → HTTP 409 `"E-mail já cadastrado"`
@@ -77,6 +77,7 @@ Cria em uma **única transação**: `user`, `account` (credenciais de acesso) e 
 | Código | Situação |
 |---|---|
 | `201` | Usuário e paciente criados |
+| `401` | Não autenticado |
 | `409` | E-mail ou CPF duplicado |
 | `500` | Erro interno |
 
@@ -134,11 +135,45 @@ Retorna dados completos do paciente (usuário + paciente) filtrando pelo `userId
 
 ### 4.6 `GET /patients/patient-full-data-by-user-cpf/:cpf` — Dados completos por CPF
 
-Retorna os dados completos do paciente cujo usuário vinculado possui o CPF informado. Requer autenticação. Não restringe ao próprio usuário — qualquer usuário autenticado pode buscar por CPF.
+Retorna os dados completos do paciente cujo usuário vinculado possui o CPF informado. Requer autenticação e que o caller seja um **profissional** — endpoint exclusivo do sistema web para busca de pacientes no fluxo de agendamento.
+
+| Código | Situação |
+|---|---|
+| `200` | Dados retornados |
+| `401` | Não autenticado |
+| `403` | Caller não é profissional |
+| `404` | Paciente não encontrado |
+| `500` | Erro interno |
 
 ---
 
-### 4.7 `PATCH /patients/full-update` — Atualização completa de paciente *(Mobile)*
+### 4.7 `GET /patients/patient-full-data-by-user-name` — Busca por nome ou nome social
+
+Busca pacientes cujo nome (`users.name`) **ou** nome social (`users.social_name`) corresponda ao termo informado. Útil para campos de busca com digitação progressiva no frontend.
+
+**Query params:**
+
+| Parâmetro | Obrigatório | Descrição |
+|---|---|---|
+| `name` | Sim | Termo de busca (mínimo 1 caractere) |
+| `isActive` | Não | Filtra pelo status do paciente |
+
+**Retorno (`200`):** array com o mesmo payload de `patient-full-data-by-user-cpf`, contendo `id`, `isActive` e objeto `users` aninhado. Lista vazia `[]` quando nenhum paciente corresponde.
+
+**Regras:**
+- Busca com `ILIKE '%name%'` em `users.name` **ou** `users.social_name`
+- Limitado a **20 resultados** por requisição
+- Qualquer usuário autenticado pode buscar — sem restrição ao próprio usuário
+
+| Código | Situação |
+|---|---|
+| `200` | Lista de resultados (pode ser vazia) |
+| `401` | Não autenticado |
+| `500` | Erro interno |
+
+---
+
+### 4.8 `PATCH /patients/full-update` — Atualização completa de paciente *(Mobile)*
 
 Atualiza dados do `user` e do `patient` simultaneamente. Exclusivo do mobile — permite que o próprio paciente edite seu perfil pelo app. Apenas o próprio usuário pode atualizar seus dados (`userId` no body deve coincidir com o `userId` da sessão).
 
@@ -194,11 +229,67 @@ Retorna todos os profissionais vinculados à unidade do contexto.
 
 ### 5.3 `GET /professionals/professional-by-user-cpf` — Buscar por CPF
 
-Busca um usuário pelo CPF e retorna os IDs relevantes para o fluxo de vinculação: `userId`, `professionalId`, `patientId` e `professionalUnitId`. Retorna objeto vazio `{}` caso o CPF não seja encontrado — **sem lançar 404**. Isso permite que o frontend verifique a existência antes de iniciar qualquer criação.
+Busca um usuário pelo CPF e retorna os dados e IDs relevantes para o fluxo de vinculação. Retorna objeto vazio `{}` caso o CPF não seja encontrado — **sem lançar 404**. Isso permite que o frontend verifique a existência antes de iniciar qualquer criação.
+
+**Retorno (`200`):**
+```json
+{
+  "userId": "uuid",
+  "name": "string",
+  "socialName": "string | null",
+  "cpf": "string",
+  "professionalId": "uuid ou \"\"",
+  "patientId": "uuid ou \"\"",
+  "professionalUnitId": "uuid ou \"\""
+}
+```
 
 ---
 
-### 5.4 `GET /professionals/:id` — Buscar profissional por ID
+### 5.4 `GET /professionals/professional-by-user-name` — Buscar por nome
+
+Busca profissionais cujo nome de usuário corresponda ao termo informado (busca parcial, sem distinção de maiúsculas/minúsculas). Retorna uma lista de até **20 resultados** com os IDs relevantes para o fluxo de vinculação.
+
+**Query param:**
+
+| Parâmetro | Obrigatório | Descrição |
+|---|---|---|
+| `name` | Sim | Termo de busca (mínimo 1 caractere) |
+
+**Retorno (`200`):**
+
+```json
+[
+  {
+    "userId": "uuid",
+    "name": "string",
+    "socialName": "string | null",
+    "cpf": "string",
+    "professionalId": "uuid ou \"\"",
+    "patientId": "uuid ou \"\"",
+    "professionalUnitId": "uuid ou \"\""
+  }
+]
+```
+
+**Regras:**
+- Busca feita com `ILIKE '%name%'` nos campos `users.name` **ou** `users.social_name`
+- `professionalUnitId` é o vínculo com a **unidade do contexto** — vazio se não houver vínculo
+- `patientId` é vazio se o usuário não for paciente
+- Lista vazia `[]` quando nenhum profissional corresponde ao termo
+- Requer acesso à unidade do contexto → HTTP 403 caso contrário
+
+| Código | Situação |
+|---|---|
+| `200` | Lista de resultados (pode ser vazia) |
+| `400` | Unidade não selecionada |
+| `401` | Não autenticado |
+| `403` | Sem acesso à unidade |
+| `500` | Erro interno |
+
+---
+
+### 5.5 `GET /professionals/:id` — Buscar profissional por ID
 
 Verifica que o profissional pertence à unidade do contexto antes de retornar os dados.
 
@@ -206,7 +297,7 @@ Verifica que o profissional pertence à unidade do contexto antes de retornar os
 
 ---
 
-### 5.5 `PATCH /professionals/:id` — Atualizar profissional
+### 5.6 `PATCH /professionals/:id` — Atualizar profissional
 
 Atualiza dados do profissional. Verifica pertencimento à unidade antes de permitir a atualização.
 
@@ -359,7 +450,7 @@ Atualiza simultaneamente: `user`, `professional`, `professional_unit` (status at
 
 | Rota | Web (painel) | Mobile (app) |
 |---|---|---|
-| `POST /patients/full-create` | — | ✓ Auto-cadastro |
+| `POST /patients/full-create` | — | ✓ Auto-cadastro (requer sessão) |
 | `POST /patients/` | — | ✓ |
 | `PATCH /patients/full-update` | — | ✓ Edição de perfil próprio |
 | `POST /professional-units/full-create` | ✓ | — |

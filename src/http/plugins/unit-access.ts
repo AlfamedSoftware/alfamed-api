@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import type { db as dbType } from "../../db/client.js";
 import { professionals } from "../../db/schema/professionals.js";
@@ -25,22 +24,13 @@ type DatabaseClient = typeof dbType;
 
 export function createHasUserAccessToUnitChecker(db: DatabaseClient) {
     return async (userId: string, unitId: string) => {
-        const [professional] = await db
-            .select({ professionalId: professionals.id })
-            .from(professionals)
-            .where(eq(professionals.userId, userId))
-            .limit(1);
-
-        if (!professional) {
-            return false;
-        }
-
         const [result] = await db
             .select({ id: professionalUnits.id })
-            .from(professionalUnits)
+            .from(professionals)
+            .innerJoin(professionalUnits, eq(professionalUnits.professionalId, professionals.id))
             .where(
                 and(
-                    eq(professionalUnits.professionalId, professional.professionalId),
+                    eq(professionals.userId, userId),
                     eq(professionalUnits.unitId, unitId),
                     eq(professionalUnits.isActive, true),
                 ),

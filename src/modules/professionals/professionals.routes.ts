@@ -12,6 +12,8 @@ import {
     createProfessionalSchema,
     professionalByUserCpfQuerySchema,
     professionalByUserCpfResponseSchema,
+    professionalByUserNameQuerySchema,
+    professionalByUserNameResponseSchema,
     professionalProfileSchema,
     professionalDetailSchema,
     professionalWithUnitProfileSchema,
@@ -203,6 +205,53 @@ export const professionalsRoutes = ({
                     400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Professional not found") }),
+                    500: professionalsErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/professional-by-user-name",
+            async (context) => {
+                const { query, status } = context;
+                const scope = await resolveRequestScope(context as { request: Request; user?: { id?: string } });
+
+                if ("error" in scope) {
+                    if (scope.error === "unauthorized") {
+                        return status(401, { message: "Unauthorized" });
+                    }
+
+                    return status(400, { message: unitSelectionRequiredMessage });
+                }
+
+                try {
+                    const professionals = await professionalsService.getProfessionalsByUserName(
+                        scope.userId,
+                        scope.unitId,
+                        query.name,
+                    );
+
+                    return status(200, professionals);
+                } catch (error) {
+                    if (isDomainError(error, "FORBIDDEN")) {
+                        return status(403, { message: "Forbidden" });
+                    }
+
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                query: professionalByUserNameQuerySchema,
+                detail: {
+                    summary: "Search professionals by user name",
+                    description: "Returns professionals whose user name matches the search term.",
+                    tags: ["Professionals"],
+                },
+                response: {
+                    200: professionalByUserNameResponseSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
+                    403: t.Object({ message: t.Literal("Forbidden") }),
                     500: professionalsErrorSchema,
                 },
             },

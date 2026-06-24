@@ -1,8 +1,10 @@
 import { Elysia, t } from "elysia";
+import { z } from "zod";
 import { isDomainError } from "../../http/plugins/domain-error.js";
 import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
 import type { PatientsRepository } from "./patients.repository.js";
 import { PatientsService } from "./patients.service.js";
+import type { ProfessionalsRepository } from "../professionals/professionals.repository.js";
 import {
     createPatientFullCreateSchema,
     createPatientForUserSchema,
@@ -14,9 +16,10 @@ import {
 
 type PatientsRoutesOptions = {
     patientsRepository: PatientsRepository;
+    professionalsRepository: ProfessionalsRepository;
 };
 
-export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) => {
+export const patientsRoutes = ({ patientsRepository, professionalsRepository }: PatientsRoutesOptions) => {
     const patientsService = new PatientsService(patientsRepository);
 
     return new Elysia({ name: "patients-routes", prefix: "/patients" })
@@ -82,6 +85,7 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 }
             },
             {
+                auth: true,
                 body: createPatientFullCreateSchema,
                 detail: {
                     summary: "Full create patient",
@@ -90,6 +94,7 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 },
                 response: {
                     201: patientFullDataByUserSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
                     409: t.Object({
                         message: t.Union([
                             t.Literal("E-mail já cadastrado"),
@@ -239,6 +244,11 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                     return status(401, { message: "Não autorizado" });
                 }
 
+                const professional = await professionalsRepository.findByUserId(userId);
+                if (!professional) {
+                    return status(403, { message: "Acesso negado" });
+                }
+
                 try {
                     const patient = await patientsService.getPatientFullDataByCpf(params.cpf, query.isActive);
                     return status(200, patient);
@@ -266,7 +276,44 @@ export const patientsRoutes = ({ patientsRepository }: PatientsRoutesOptions) =>
                 response: {
                     200: patientFullDataByUserSchema,
                     401: t.Object({ message: t.Literal("Não autorizado") }),
+                    403: t.Object({ message: t.Literal("Acesso negado") }),
                     404: t.Object({ message: t.Literal("Paciente não encontrado") }),
+                    500: patientsErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/patient-full-data-by-user-name",
+            async (context) => {
+                const { query, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Não autorizado" });
+                }
+
+                try {
+                    const patients = await patientsService.searchPatientsByName(query.name, query.isActive);
+                    return status(200, patients);
+                } catch (error) {
+                    console.error("[patients.routes] Error searching patients by name:", error);
+                    return status(500, { message: "Erro interno do servidor" });
+                }
+            },
+            {
+                auth: true,
+                query: t.Object({
+                    name: t.String({ minLength: 1 }),
+                    isActive: t.Optional(t.Boolean()),
+                }),
+                detail: {
+                    summary: "Search patients by name",
+                    description: "Returns patients whose name or social name matches the search term (case-insensitive, partial match). Up to 20 results.",
+                    tags: ["Patients"],
+                },
+                response: {
+                    200: z.array(patientFullDataByUserSchema),
+                    401: t.Object({ message: t.Literal("Não autorizado") }),
                     500: patientsErrorSchema,
                 },
             },
