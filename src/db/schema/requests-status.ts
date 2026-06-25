@@ -1,8 +1,8 @@
-import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
 
 export const requestsStatus = pgTable("requests_status", {
     id: text("id").primaryKey(),
-    code: text("code").notNull(),
+    code: integer("code").notNull(),
     description: text("description").notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),

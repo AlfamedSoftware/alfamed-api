@@ -15,5 +15,6 @@ export * from "./procedures.js";
 export * from "./requests.js";
 export * from "./requests-status.js";
 export * from "./request-logs.js";
+export * from "./request-results.js";
 export * from "./password-reset-tokens.js";
 export * from "./appointment-logs.js";
