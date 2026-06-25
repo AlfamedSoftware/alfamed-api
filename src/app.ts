@@ -25,6 +25,7 @@ import { AppointmentsRepository as AppointmentsRepositoryClass } from "./modules
 import { schedulesRoutes } from "./modules/schedules/schedules.routes.js";
 import type { SchedulesRepository } from "./modules/schedules/schedules.repository.js";
 import { SchedulesRepository as SchedulesRepositoryClass } from "./modules/schedules/schedules.repository.js";
+import { medicalRecordsRoutes } from "./modules/medical-records/medical-records.routes.js";
 import { unitsRoutes } from "./modules/units/units.routes.js";
 import type { UnitsRepository } from "./modules/units/units.repository.js";
 import { attendimentsRoutes } from "./modules/attendiments/attendiments.routes.js";
@@ -145,6 +146,10 @@ export async function buildApp({
                             name: "Admin",
                             description: "Internal administration operations",
                         },
+                        {
+                            name: "Medical Records",
+                            description: "Operations about patient medical records",
+                        },
                     ],
                     components: await OpenAPI.components,
                     paths: await OpenAPI.getPaths(),
@@ -256,6 +261,7 @@ export async function buildApp({
 
     // Register schedules routes (depend on db directly)
     configuredAppWithProfessionals.use(schedulesRoutes({ db }));
+    configuredAppWithProfessionals.use(medicalRecordsRoutes({ db }));
 
     return configuredAppWithProfessionals;
 }
