@@ -85,7 +85,6 @@ export const patientsRoutes = ({ patientsRepository, professionalsRepository }: 
                 }
             },
             {
-                auth: true,
                 body: createPatientFullCreateSchema,
                 detail: {
                     summary: "Full create patient",
