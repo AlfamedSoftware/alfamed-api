@@ -1,35 +1,34 @@
-# Medical Records
+# Regras de Negócio — Prontuário do Paciente
 
-Módulo responsável por expor o histórico de consultas (appointments) de um paciente, com todos os dados relacionados resolvidos em uma única consulta ao banco.
+**Sistema:** Alfamed API  
+**Módulo:** Medical Records  
+**Data:** Junho/2026  
 
 ---
 
-## Rota
+## 1. Visão Geral
 
-### `GET /medical-records/list-patient-medical-records`
+O módulo de prontuário expõe o histórico de consultas (appointments) de um paciente, com todos os dados relacionados resolvidos em uma única consulta ao banco.
+
+---
+
+## 2. Rotas
+
+### 2.1 Listar Prontuário do Paciente
+
+**`GET /medical-records/list-patient-medical-records`**
 
 Retorna os dados do paciente e a lista de todos os seus appointments, ordenados por data de início.
 
-**Autenticação:** obrigatória (`auth: true`)
+**Autenticação:** obrigatória
 
-**Query params**
+**Query params:**
 
-| Campo    | Tipo   | Obrigatório | Descrição              |
-|----------|--------|-------------|------------------------|
-| `userId` | `uuid` | Sim         | ID do usuário (`users.id`) |
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `userId` | UUID | Sim | ID do usuário (`users.id`) |
 
-**Respostas**
-
-| Status | Descrição                                        |
-|--------|--------------------------------------------------|
-| `200`  | Sucesso — retorna objeto com dados do paciente e appointments |
-| `401`  | Usuário não autenticado                          |
-| `404`  | Paciente não encontrado ou inativo               |
-| `500`  | Erro interno                                     |
-
----
-
-## Estrutura da resposta (`200`)
+**Estrutura da resposta (200):**
 
 ```json
 {
@@ -126,19 +125,28 @@ Retorna os dados do paciente e a lista de todos os seus appointments, ordenados 
 }
 ```
 
+**Tabela de respostas:**
+
+| Código | Situação |
+|---|---|
+| `200 OK` | Retorna objeto com dados do paciente e appointments |
+| `401 Unauthorized` | Usuário não autenticado |
+| `404 Not Found` | Paciente não encontrado ou inativo |
+| `500 Internal Server Error` | Erro inesperado no servidor |
+
 ---
 
-## Fluxo interno
+## 3. Fluxo Interno
 
 ```
 Route → Service → Repository (2 queries)
 ```
 
-### 1. `MedicalRecordsRepository.findActivePatientByUserId(userId)`
+### 3.1 `MedicalRecordsRepository.findActivePatientByUserId(userId)`
 
 Busca o patient vinculado ao `userId` com `isActive = true`, fazendo join com `users` para já trazer os dados do paciente. Retorna `null` se não encontrar.
 
-### 2. `MedicalRecordsRepository.listMedicalRecordsByPatientId(patientId)`
+### 3.2 `MedicalRecordsRepository.listMedicalRecordsByPatientId(patientId)`
 
 Executa um único `SELECT` com 10 `INNER JOIN`s para trazer todos os dados dos appointments do paciente. Cadeia de joins:
 
@@ -159,7 +167,7 @@ appointments
 
 > `users` é joined duas vezes: uma para o paciente e outra (com alias `professional_user`) para o profissional.
 
-### `MedicalRecordsService.listPatientMedicalRecords(userId)`
+### 3.3 `MedicalRecordsService.listPatientMedicalRecords(userId)`
 
 1. Chama `findActivePatientByUserId` → lança `PatientNotFoundError` se não encontrar
 2. Chama `listMedicalRecordsByPatientId` com o `patient.id` retornado
@@ -168,7 +176,7 @@ appointments
 
 ---
 
-## Arquivos
+## 4. Arquivos do Módulo
 
 | Arquivo | Responsabilidade |
 |---|---|
