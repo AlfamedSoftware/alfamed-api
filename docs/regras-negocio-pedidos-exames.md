@@ -10,6 +10,8 @@
 
 O módulo de pedidos de exames gerencia a solicitação, execução e liberação de resultados de exames (ex.: exame de sangue, raio-x) originados a partir de um agendamento (`appointment`). Cada transição de status é registrada em `request_logs`, permitindo rastrear todo o histórico do pedido. O resultado é armazenado em `request_results` e vinculado ao prontuário do paciente ao ser liberado (status `5`).
 
+> **Pré-requisito:** Este módulo só está disponível para unidades com o parâmetro `modulo1GestaoExames = true` em `unit_parameters`. Unidades com o parâmetro desativado não podem criar pedidos internos — apenas pedidos externos (`external_requests`). Consulte [regras-negocio-parametros-unidade.md](regras-negocio-parametros-unidade.md).
+
 ---
 
 ## 2. Status do Pedido
@@ -98,6 +100,7 @@ Médico prescreve
 ## 5. Regras de Negócio
 
 ### 5.1 Criação do pedido
+- Um pedido (`request`) só pode ser criado se a unidade tiver `modulo1GestaoExames = true` em `unit_parameters`.
 - Um pedido (`request`) é sempre criado a partir de um `appointment` ativo.
 - O `procedureId` define qual exame foi solicitado e deve existir na tabela `procedures` com o tipo `3` (Exames).
 - O status inicial é obrigatoriamente `1` (Prescrito).
@@ -146,3 +149,4 @@ Médico prescreve
 | **Unidades Profissionais** | Profissional da unidade responsável pela execução e assinatura do laudo |
 | **Prontuário** | Todos os pedidos e seus status são visíveis no prontuário do paciente; o PDF do laudo só fica acessível no status `5` (Laudo liberado) |
 | **Logs** | Toda transição de status é auditada em `request_logs` |
+| **Parâmetros da Unidade** | Requer `modulo1GestaoExames = true` em `unit_parameters` — consulte [regras-negocio-parametros-unidade.md](regras-negocio-parametros-unidade.md) |

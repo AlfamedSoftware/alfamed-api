@@ -18,3 +18,5 @@ export * from "./request-logs.js";
 export * from "./request-results.js";
 export * from "./password-reset-tokens.js";
 export * from "./appointment-logs.js";
+export * from "./external-requests.js";
+export * from "./unit-parameters.js";
