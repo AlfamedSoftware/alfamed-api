@@ -1,4 +1,4 @@
-import { asc, eq, and } from "drizzle-orm";
+import { desc, eq, and } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { db as dbType } from "../../db/client.js";
 import { appointments } from "../../db/schema/appointments.js";
@@ -152,7 +152,7 @@ export class MedicalRecordsRepository {
             .innerJoin(professionals, eq(professionalUnits.professionalId, professionals.id))
             .innerJoin(professionalUser, eq(professionals.userId, professionalUser.id))
             .where(eq(appointments.patientId, patientId))
-            .orderBy(asc(appointments.startAt));
+            .orderBy(desc(appointments.startAt));
 
         return rows;
     }
