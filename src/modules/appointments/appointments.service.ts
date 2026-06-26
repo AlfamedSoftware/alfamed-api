@@ -19,7 +19,7 @@ export class AppointmentsService {
             throw new Error("SELF_BOOKING_FORBIDDEN");
         }
 
-        // Check if current time is less than 1 hour before the slot start time
+        // Check if current time is less than 30 min before the slot start time
         const slotDatetime = await this.scheduleRepository.getSlotStartDatetime(data.scheduleSlotId);
         if (slotDatetime) {
             const diffMs = slotDatetime.getTime() - Date.now();
