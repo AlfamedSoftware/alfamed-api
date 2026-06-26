@@ -9,6 +9,7 @@ export const procedureSchema = z.object({
     observation: z.string().nullable(),
     code: z.string(),
     price: z.string(),
+    isPerformedInUnit: z.boolean(),
     isActive: z.boolean(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),

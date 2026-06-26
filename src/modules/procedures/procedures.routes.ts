@@ -127,6 +127,56 @@ export const proceduresRoutes = ({
             },
         )
         .get(
+            "/list-procedures-by-ids/:listaIds",
+            async (context) => {
+                const { params, query, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+                const selectedUnitId = getUnitIdFromRequest(context.request);
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                if (!selectedUnitId) {
+                    return status(400, { message: unitSelectionRequiredMessage });
+                }
+
+                const ids = params.listaIds.split(",").map((id) => id.trim()).filter(Boolean);
+
+                try {
+                    const procedures = await proceduresService.listProceduresByIds(
+                        selectedUnitId,
+                        ids,
+                        query.isActive as boolean | undefined,
+                    );
+
+                    return status(200, procedures);
+                } catch (error) {
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                params: t.Object({
+                    listaIds: t.String(),
+                }),
+                query: t.Object({
+                    isActive: t.Optional(t.Boolean()),
+                }),
+                detail: {
+                    summary: "List procedures by IDs",
+                    description: "Returns procedures matching the given comma-separated IDs, filtered to the selected unit.",
+                    tags: ["Procedures"],
+                },
+                response: {
+                    200: proceduresListSchema,
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    500: proceduresErrorSchema,
+                },
+            },
+        )
+        .get(
             "/:procedureId",
             async (context) => {
                 const { params, status } = context;

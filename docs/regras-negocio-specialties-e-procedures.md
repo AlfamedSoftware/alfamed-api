@@ -31,6 +31,7 @@ A maioria das rotas de ambos os módulos exige que uma unidade esteja selecionad
 |---|---|
 | `GET /specialties/list-specialties-by-unit/:unitId` | Não |
 | `GET /procedures/list-procedures-by-unit/:unitId` | Não |
+| `GET /procedures/list-procedures-by-ids/:listaIds` | **Sim** (usado para filtrar por unidade) |
 | Todas as outras rotas | Sim |
 
 **Resposta de erro (HTTP 400) quando unidade não selecionada:**
@@ -182,6 +183,7 @@ Atualiza uma especialidade existente. O `specialtyId` é enviado no body.
 | `observation` | String \| null | Observação adicional |
 | `code` | String | Código do procedimento (único por unidade) |
 | `price` | String | Preço em formato decimal (`"150.00"`) |
+| `isPerformedInUnit` | Boolean | Indica se o procedimento é executado internamente pela unidade — padrão `false` |
 | `isActive` | Boolean | Status de ativo/inativo |
 | `createdAt` | DateTime | Data de criação |
 | `updatedAt` | DateTime | Data da última atualização |
@@ -202,6 +204,7 @@ Cria um novo procedimento na unidade do contexto.
 | `observation` | String | Não | Observação adicional |
 | `code` | String | Sim | Código do procedimento (único por unidade) |
 | `price` | String | Sim | Preço (aceita formato BR: `"1.500,00"` ou decimal: `"1500.00"`) |
+| `isPerformedInUnit` | Boolean | Não | Padrão `false` |
 | `isActive` | Boolean | Não | Padrão `true` |
 
 **Regras:**
@@ -249,7 +252,32 @@ Retorna todos os procedimentos da unidade com suporte a filtros.
 
 ---
 
-### 4.5 `GET /procedures/:procedureId` — Buscar procedimento por ID
+### 4.5 `GET /procedures/list-procedures-by-ids/:listaIds` — Listar procedimentos por IDs
+
+Retorna procedimentos a partir de uma lista de IDs, restrito à unidade do contexto.
+
+**Parâmetros:**
+
+| Parâmetro | Local | Tipo | Descrição |
+|---|---|---|---|
+| `:listaIds` | Path | String | IDs separados por vírgula (ex: `uuid1,uuid2,uuid3`) |
+| `isActive` | Query | Boolean | Filtra por status ativo/inativo (opcional) |
+
+**Regras:**
+- Exige unidade no cabeçalho de contexto — retorna apenas procedures que pertencem à unidade selecionada
+- IDs que não pertençam à unidade são silenciosamente ignorados
+- Requer autenticação
+
+| Código | Situação |
+|---|---|
+| `200 OK` | Lista retornada |
+| `400 Bad Request` | Unidade não selecionada |
+| `401 Unauthorized` | Não autenticado |
+| `500 Internal Server Error` | Erro interno |
+
+---
+
+### 4.6 `GET /procedures/:procedureId` — Buscar procedimento por ID
 
 Retorna os dados de um procedimento específico.
 
@@ -268,7 +296,7 @@ Retorna os dados de um procedimento específico.
 
 ---
 
-### 4.6 `PATCH /procedures/` — Atualizar procedimento
+### 4.7 `PATCH /procedures/` — Atualizar procedimento
 
 Atualiza um procedimento existente. O `procedureId` é enviado no body.
 
@@ -283,6 +311,7 @@ Atualiza um procedimento existente. O `procedureId` é enviado no body.
 | `observation` | String \| null | Não | Nova observação (null limpa o campo) |
 | `code` | String | Não | Novo código |
 | `price` | String | Não | Novo preço |
+| `isPerformedInUnit` | Boolean | Não | Atualiza se a unidade executa o procedimento internamente |
 | `isActive` | Boolean | Não | Novo status |
 
 **Regras:**
@@ -349,10 +378,20 @@ O campo `code` deve ser único dentro da mesma unidade. Na atualização, o pró
 { "message": "O código do procedimento já está cadastrado nessa unidade" }
 ```
 
-### 5.5 Atualização Incremental
+### 5.5 Execução Interna do Procedimento (`isPerformedInUnit`)
+
+O campo `isPerformedInUnit` indica se a unidade executa o procedimento internamente ou se ele é apenas um encaminhamento externo.
+
+- Padrão `false` — o procedimento não é executado pela unidade.
+- Quando `true`, o médico pode criar **pedidos internos** (`requests`) para esse procedimento durante o atendimento, desde que a unidade também tenha `modulo1GestaoExames = true` em `unit_parameters`.
+- Quando `false`, o procedimento pode ser usado apenas em **pedidos externos** (`external_requests`).
+
+Consulte [regras-negocio-parametros-unidade.md](regras-negocio-parametros-unidade.md) e [regras-negocio-pedidos-externos.md](regras-negocio-pedidos-externos.md).
+
+### 5.6 Atualização Incremental
 
 Em ambos os módulos, o `PATCH` atualiza apenas os campos enviados no payload. Campos ausentes mantêm seus valores atuais.
 
-### 5.6 Controle de Acesso por Unidade
+### 5.7 Controle de Acesso por Unidade
 
 Operações de escrita e busca por ID validam se o usuário pertence à unidade via `assertUserHasUnitAccess`, aplicado antes de qualquer lógica de negócio. As rotas de listagem são abertas a qualquer usuário autenticado para suportar o fluxo de agendamento mobile.

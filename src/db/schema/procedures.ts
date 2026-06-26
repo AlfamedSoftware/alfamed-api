@@ -13,6 +13,7 @@ export const procedures = pgTable("procedures", {
     observation: text("observation"),
     code: text("code").notNull(),
     price: numeric("price", { precision: 12, scale: 2 }).notNull(),
+    isPerformedInUnit: boolean("is_performed_in_unit").default(false).notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),

@@ -15,6 +15,10 @@ export class ProceduresService {
         return this.proceduresRepository.listByUnitId(unitId, specialtyId, isActive);
     }
 
+    async listProceduresByIds(unitId: string, ids: string[], isActive?: boolean) {
+        return this.proceduresRepository.listByIds(unitId, ids, isActive);
+    }
+
     async getProcedureById(userId: string, unitId: string, procedureId: string) {
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
 
