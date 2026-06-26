@@ -10,6 +10,7 @@ import {
     updateAppointmentSchema,
     appointmentSchema,
 } from "./appointments.schemas.js";
+import { appointmentFullDataSchema } from "../attendiments/attendiments.schemas.js";
 
 type AppointmentsRoutesOptions = {
     appointmentsRepository: AppointmentsRepository;
@@ -122,6 +123,40 @@ export const appointmentsRoutes = ({
                     200: appointmentSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
+                    500: appointmentsErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/list-next-appointments-by-user/:userId",
+            async (context) => {
+                const { params, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                try {
+                    const result = await appointmentsService.listNextAppointmentsByUserId(params.userId);
+                    return status(200, result);
+                } catch {
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                params: t.Object({
+                    userId: t.String({ format: "uuid" }),
+                }),
+                detail: {
+                    summary: "List next appointments by user",
+                    description: "Returns all active pending appointments (status code 1) for the given userId.",
+                    tags: ["Appointments"],
+                },
+                response: {
+                    200: appointmentFullDataSchema.array(),
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
                     500: appointmentsErrorSchema,
                 },
             },
