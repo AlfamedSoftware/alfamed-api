@@ -231,7 +231,7 @@ export class AttendimentsRepository {
         //Primeiramente precisa ver o GET /unit-parameters/get-parameters/:unitId
         //se o modulo1GestaoExames vier false todos os procedimentos gravam na src\db\schema\external-requests.ts
 
-        //funcao para verificar: GET /procedures/list-procedures-by-ids/:listaIds
+        //funcao para verificar: GET /procedures/list-procedures-by-ids/:listaIds?isActive=true
         //precisa verificar o campo isPerformedInUnit do procedures
 
         //Acredito que aqui pode gerar 2 listas, uma com os procedimentos que tem isPerformedInUnit false e outra com os que tem true e dai so chamar os dois post e gravar tudo de uma vez
