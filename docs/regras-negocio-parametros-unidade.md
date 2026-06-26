@@ -64,23 +64,49 @@ Apenas encaminhamentos                    │    └── Fluxo completo de sta
 
 ---
 
-## 5. Regras de Negócio
+## 5. Rotas
 
-### 5.1 Criação do registro
+### 5.1 `GET /unit-parameters/get-parameters/:unitId` — Buscar parâmetros da unidade
+
+Retorna o registro de parâmetros de uma unidade pelo seu ID.
+
+**Parâmetros:**
+
+| Parâmetro | Local | Tipo | Descrição |
+|-----------|-------|------|-----------|
+| `:unitId` | Path | UUID | ID da unidade |
+
+**Regras:**
+- Requer autenticação.
+- Não exige unidade no cabeçalho de contexto — qualquer usuário autenticado pode consultar.
+- Retorna HTTP 404 se a unidade não possuir registro de parâmetros.
+
+| Código | Situação |
+|--------|---------|
+| `200 OK` | Parâmetros retornados |
+| `401 Unauthorized` | Não autenticado |
+| `404 Not Found` | Parâmetros não encontrados para a unidade |
+| `500 Internal Server Error` | Erro interno |
+
+---
+
+## 6. Regras de Negócio
+
+### 6.1 Criação do registro
 - Todo `unit_parameters` é criado junto com a unidade, com todos os módulos desativados por padrão.
 - Não pode existir mais de um registro por unidade (`unitId` é único).
 
-### 5.2 Alteração de parâmetros
+### 6.2 Alteração de parâmetros
 - Os parâmetros podem ser alterados apenas pelo ServiceDesk.
 - A mudança tem efeito imediato — não requer reinicialização ou nova sessão.
 - Desativar `modulo1GestaoExames` **não exclui** pedidos internos existentes; apenas impede a criação de novos.
 
-### 5.3 Exclusão
+### 6.3 Exclusão
 - A exclusão da unidade remove seu registro de parâmetros em cascata (`ON DELETE CASCADE`).
 
 ---
 
-## 6. Relacionamentos com outros módulos
+## 7. Relacionamentos com outros módulos
 
 | Módulo | Relação |
 |--------|---------|

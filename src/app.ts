@@ -38,6 +38,7 @@ import { adminUpmRoutes } from "./modules/admin/admin-upm.routes.js";
 import { createSessionRoutes } from "./modules/session/session.routes.js";
 import { authPasswordResetRoutes } from "./modules/auth/auth-password-reset.routes.js";
 import { renewSessionCookies } from "./http/plugins/session-helpers.js";
+import { unitParametersRoutes } from "./modules/unit-parameters/unit-parameters.routes.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -149,6 +150,10 @@ export async function buildApp({
                         {
                             name: "Medical Records",
                             description: "Operations about patient medical records",
+                        },
+                        {
+                            name: "Unit Parameters",
+                            description: "Operations about unit configuration parameters",
                         },
                     ],
                     components: await OpenAPI.components,
@@ -262,6 +267,7 @@ export async function buildApp({
     // Register schedules routes (depend on db directly)
     configuredAppWithProfessionals.use(schedulesRoutes({ db }));
     configuredAppWithProfessionals.use(medicalRecordsRoutes({ db }));
+    configuredAppWithProfessionals.use(unitParametersRoutes({ db }));
 
     return configuredAppWithProfessionals;
 }
