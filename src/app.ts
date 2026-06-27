@@ -31,6 +31,8 @@ import type { UnitsRepository } from "./modules/units/units.repository.js";
 import { attendimentsRoutes } from "./modules/attendiments/attendiments.routes.js";
 import type { AttendimentsRepository } from "./modules/attendiments/attendiments.repository.js";
 import { AttendimentsRepository as AttendimentsRepositoryClass } from "./modules/attendiments/attendiments.repository.js";
+import { anamnesisRoutes } from "./modules/anamnesis/anamnesis.routes.js";
+import { AnamnesisRepository } from "./modules/anamnesis/anamnesis.repository.js";
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
 import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
@@ -155,6 +157,10 @@ export async function buildApp({
                             name: "Unit Parameters",
                             description: "Operations about unit configuration parameters",
                         },
+                        {                            
+                            name: "Anamnesis",
+                            description: "Operations about patient anamnesis",
+                        },
                     ],
                     components: await OpenAPI.components,
                     paths: await OpenAPI.getPaths(),
@@ -196,6 +202,9 @@ export async function buildApp({
         .use(attendimentsRoutes({
             attendimentsRepository: attendimentsRepository ?? new AttendimentsRepositoryClass(db),
             schedulesRepository: schedulesRepository ?? new SchedulesRepositoryClass(db),
+        }))
+        .use(anamnesisRoutes({
+            anamnesisRepository: new AnamnesisRepository(db),
         }));
 
     const resolvedHasUserAccessToUnitChecker =

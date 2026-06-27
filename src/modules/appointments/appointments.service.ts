@@ -52,12 +52,16 @@ export class AppointmentsService {
         return created;
     }
 
+    async listNextAppointmentsByUserId(userId: string) {
+        return this.appointmentsRepository.listNextAppointmentsByUserId(userId);
+    }
+
     async updateAppointment(appointmentId: string, data: {
         patientId?: string;
         professionalUnitId?: string;
         scheduleSlotId?: string;
-        startAt?: Date | null;
-        endAt?: Date | null;
+        startAt?: string | null;
+        endAt?: string | null;
         diagnostics?: string | null;
         evolution?: string | null;
         statusCode?: number;
@@ -70,6 +74,8 @@ export class AppointmentsService {
 
         const updated = await this.appointmentsRepository.updateById(appointmentId, {
             ...data,
+            startAt: data.startAt != null ? new Date(data.startAt) : data.startAt,
+            endAt: data.endAt != null ? new Date(data.endAt) : data.endAt,
             statusId: statusUuid,
         });
 
