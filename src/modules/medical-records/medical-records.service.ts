@@ -21,6 +21,22 @@ export class MedicalRecordsService {
         const rows = await this.medicalRecordsRepository.listMedicalRecordsByPatientId(patient.id);
         const { users } = patient;
 
+        const appointmentIds = rows.map((row) => row.id);
+        const requests = await this.medicalRecordsRepository.listRequestsByAppointmentIds(appointmentIds);
+        const externalRequests = await this.medicalRecordsRepository.listExternalRequestsByAppointmentIds(appointmentIds);
+
+        const requestsByAppointmentId = new Map<string, typeof requests>();
+        for (const request of requests) {
+            const existing = requestsByAppointmentId.get(request.appointmentId) || [];
+            requestsByAppointmentId.set(request.appointmentId, [...existing, request]);
+        }
+
+        const externalRequestsByAppointmentId = new Map<string, typeof externalRequests>();
+        for (const externalRequest of externalRequests) {
+            const existing = externalRequestsByAppointmentId.get(externalRequest.appointmentId) || [];
+            externalRequestsByAppointmentId.set(externalRequest.appointmentId, [...existing, externalRequest]);
+        }
+
         return listPatientMedicalRecordsResponseSchema.parse({
             id: users.id,
             name: users.name,
@@ -53,6 +69,8 @@ export class MedicalRecordsService {
                 units: row.units,
                 professionals: row.professionals,
                 professional_user: row.professional_user,
+                requests: requestsByAppointmentId.get(row.id) || [],
+                external_requests: externalRequestsByAppointmentId.get(row.id) || [],
             })),
         });
     }
