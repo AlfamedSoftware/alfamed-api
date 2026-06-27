@@ -118,7 +118,21 @@ Retorna todos os agendamentos pendentes (status `1` — Agendado) e ativos do pa
 
 **Resposta de sucesso (HTTP 200):**
 
-Array de objetos com dados completos do agendamento (`appointmentFullDataSchema`), incluindo informações do paciente (`users`), agenda (`schedules`), vaga (`schedules_slots`), especialidade (`specialties`), procedimento (`procedures`) e status (`appointment_status`).
+Array de objetos com dados completos do agendamento (`appointmentFullDataSchema`), incluindo informações do paciente (`users`), agenda (`schedules`), vaga (`schedules_slots`), especialidade (`specialties`), procedimento (`procedures`), status (`appointment_status`) e unidade de atendimento (`units`).
+
+O objeto `units` é obtido via `appointments.professionalUnitId → professional_units.unitId → units` e contém:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | UUID | Identificador da unidade |
+| `name` | String | Nome da unidade |
+| `cnpj` | String \| null | CNPJ da unidade |
+| `address` | String \| null | Endereço |
+| `city` | String \| null | Cidade |
+| `state` | String \| null | Estado |
+| `phone` | String \| null | Telefone |
+| `email` | String \| null | E-mail |
+| `isActive` | Boolean | Se a unidade está ativa |
 
 **Tabela de respostas:**
 

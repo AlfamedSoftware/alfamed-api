@@ -12,6 +12,7 @@ import { schedules } from "../../db/schema/schedules.js";
 import { specialties } from "../../db/schema/specialties.js";
 import { procedures } from "../../db/schema/procedures.js";
 import { users } from "../../db/schema/users.js";
+import { units } from "../../db/schema/units.js";
 import { appointmentSchema } from "./appointments.schemas.js";
 import { appointmentFullDataSchema } from "../attendiments/attendiments.schemas.js";
 
@@ -229,6 +230,15 @@ export class AppointmentsRepository {
                 procedureCode: procedures.code,
                 procedurePrice: procedures.price,
                 procedureIsActive: procedures.isActive,
+                unitId: units.id,
+                unitName: units.name,
+                unitCnpj: units.cnpj,
+                unitAddress: units.address,
+                unitCity: units.city,
+                unitState: units.state,
+                unitPhone: units.phone,
+                unitEmail: units.email,
+                unitIsActive: units.isActive,
             })
             .from(appointments)
             .innerJoin(scheduleSlots, eq(appointments.scheduleSlotId, scheduleSlots.id))
@@ -238,6 +248,8 @@ export class AppointmentsRepository {
             .innerJoin(patients, eq(appointments.patientId, patients.id))
             .innerJoin(users, eq(patients.userId, users.id))
             .innerJoin(appointmentsStatus, eq(appointments.statusId, appointmentsStatus.id))
+            .innerJoin(professionalUnits, eq(appointments.professionalUnitId, professionalUnits.id))
+            .innerJoin(units, eq(professionalUnits.unitId, units.id))
             .where(
                 and(
                     eq(patients.userId, userId),
@@ -304,6 +316,17 @@ export class AppointmentsRepository {
                 code: row.statusCode,
                 description: row.statusDescription,
                 isActive: row.statusIsActive,
+            },
+            units: {
+                id: row.unitId,
+                name: row.unitName,
+                cnpj: row.unitCnpj ?? null,
+                address: row.unitAddress ?? null,
+                city: row.unitCity ?? null,
+                state: row.unitState ?? null,
+                phone: row.unitPhone ?? null,
+                email: row.unitEmail ?? null,
+                isActive: row.unitIsActive,
             },
         }));
     }

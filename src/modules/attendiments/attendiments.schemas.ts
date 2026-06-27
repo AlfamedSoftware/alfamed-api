@@ -114,4 +114,15 @@ export const appointmentFullDataSchema = z.object({
         description: z.string(),
         isActive: z.boolean(),
     }),
+    units: z.object({
+        id: z.string().uuid(),
+        name: z.string(),
+        cnpj: z.string().nullable(),
+        address: z.string().nullable(),
+        city: z.string().nullable(),
+        state: z.string().nullable(),
+        phone: z.string().nullable(),
+        email: z.string().nullable(),
+        isActive: z.boolean(),
+    }),
 });
