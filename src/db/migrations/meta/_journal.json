@@ -379,6 +379,13 @@
       "when": 1782200010000,
       "tag": "0056_procedures_add_is_performed_in_unit",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1782200011000,
+      "tag": "0057_create_anamnesis",
+      "breakpoints": true
     }
   ]
 }
