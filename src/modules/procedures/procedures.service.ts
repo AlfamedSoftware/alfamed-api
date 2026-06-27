@@ -51,6 +51,7 @@ export class ProceduresService {
         observation?: string | null;
         code: string;
         price: string;
+        isPerformedInUnit?: boolean;
         isActive?: boolean;
     }) {
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
@@ -69,6 +70,7 @@ export class ProceduresService {
             observation: data.observation,
             code: data.code.trim(),
             price: normalizedPrice,
+            isPerformedInUnit: data.isPerformedInUnit,
             isActive: data.isActive,
         };
 
@@ -82,6 +84,7 @@ export class ProceduresService {
         observation?: string | null;
         code?: string;
         price?: string;
+        isPerformedInUnit?: boolean;
         isActive?: boolean;
     }) {
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
@@ -111,6 +114,7 @@ export class ProceduresService {
             ...(typeof data.observation !== "undefined" ? { observation: data.observation } : {}),
             ...(typeof data.code !== "undefined" ? { code: data.code.trim() } : {}),
             ...(typeof normalizedPrice !== "undefined" ? { price: normalizedPrice } : {}),
+            ...(typeof data.isPerformedInUnit !== "undefined" ? { isPerformedInUnit: data.isPerformedInUnit } : {}),
             ...(typeof data.isActive !== "undefined" ? { isActive: data.isActive } : {}),
         };
 

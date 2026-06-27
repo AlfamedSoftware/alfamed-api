@@ -1,6 +1,6 @@
 {
-  "id": "9ec8cdb4-fc90-45a5-9654-d3b2abc0c5a9",
-  "prevId": "0b28e4d6-279b-4a30-8153-30ee0348a06b",
+  "id": "0b28e4d6-279b-4a30-8153-30ee0348a06b",
+  "prevId": "c6e5c7ad-325d-46a3-8b8e-4080a596dcfd",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -112,6 +112,114 @@
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.anamnesis": {
+      "name": "anamnesis",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "appointment_id": {
+          "name": "appointment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "main_complaint": {
+          "name": "main_complaint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pain_level": {
+          "name": "pain_level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "taking_medication": {
+          "name": "taking_medication",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "known_allergy": {
+          "name": "known_allergy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "had_surgery": {
+          "name": "had_surgery",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "surgery_details": {
+          "name": "surgery_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "family_history": {
+          "name": "family_history",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "family_history_details": {
+          "name": "family_history_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "anamnesis_appointment_id_appointments_id_fk": {
+          "name": "anamnesis_appointment_id_appointments_id_fk",
+          "tableFrom": "anamnesis",
+          "tableTo": "appointments",
+          "columnsFrom": [
+            "appointment_id"
           ],
           "columnsTo": [
             "id"
@@ -1150,190 +1258,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.request_results": {
-      "name": "request_results",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "request_id": {
-          "name": "request_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "professional_unit_id": {
-          "name": "professional_unit_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "complementary_info": {
-          "name": "complementary_info",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "attachment_url": {
-          "name": "attachment_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "released_at": {
-          "name": "released_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "request_results_request_id_requests_id_fk": {
-          "name": "request_results_request_id_requests_id_fk",
-          "tableFrom": "request_results",
-          "tableTo": "requests",
-          "columnsFrom": [
-            "request_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "request_results_professional_unit_id_professional_units_id_fk": {
-          "name": "request_results_professional_unit_id_professional_units_id_fk",
-          "tableFrom": "request_results",
-          "tableTo": "professional_units",
-          "columnsFrom": [
-            "professional_unit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "request_results_request_id_unique": {
-          "name": "request_results_request_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "request_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.external_requests": {
-      "name": "external_requests",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "appointment_id": {
-          "name": "appointment_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "procedure_id": {
-          "name": "procedure_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "external_requests_appointment_id_appointments_id_fk": {
-          "name": "external_requests_appointment_id_appointments_id_fk",
-          "tableFrom": "external_requests",
-          "tableTo": "appointments",
-          "columnsFrom": [
-            "appointment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "external_requests_procedure_id_procedures_id_fk": {
-          "name": "external_requests_procedure_id_procedures_id_fk",
-          "tableFrom": "external_requests",
-          "tableTo": "procedures",
-          "columnsFrom": [
-            "procedure_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.requests": {
       "name": "requests",
       "schema": "",
@@ -1350,38 +1274,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "procedure_id": {
-          "name": "procedure_id",
+        "type": {
+          "name": "type",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "professional_unit_id": {
-          "name": "professional_unit_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "complementary_info": {
-          "name": "complementary_info",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "performed_at": {
-          "name": "performed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "justification": {
-          "name": "justification",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status_id": {
-          "name": "status_id",
+        "status": {
+          "name": "status",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -1423,43 +1323,17 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "requests_procedure_id_procedures_id_fk": {
-          "name": "requests_procedure_id_procedures_id_fk",
-          "tableFrom": "requests",
-          "tableTo": "procedures",
-          "columnsFrom": [
-            "procedure_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "requests_professional_unit_id_professional_units_id_fk": {
-          "name": "requests_professional_unit_id_professional_units_id_fk",
-          "tableFrom": "requests",
-          "tableTo": "professional_units",
-          "columnsFrom": [
-            "professional_unit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "requests_status_id_requests_status_id_fk": {
-          "name": "requests_status_id_requests_status_id_fk",
+        "requests_status_requests_status_id_fk": {
+          "name": "requests_status_requests_status_id_fk",
           "tableFrom": "requests",
           "tableTo": "requests_status",
           "columnsFrom": [
-            "status_id"
+            "status"
           ],
           "columnsTo": [
             "id"
           ],
-          "onDelete": "restrict",
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -1481,7 +1355,7 @@
         },
         "code": {
           "name": "code",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },

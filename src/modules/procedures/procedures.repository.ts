@@ -164,6 +164,7 @@ export class ProceduresRepository {
         observation?: string | null;
         code: string;
         price: string;
+        isPerformedInUnit?: boolean;
         isActive?: boolean;
     }): Promise<ProcedureProfile> {
         const [inserted] = await this.db
@@ -176,6 +177,7 @@ export class ProceduresRepository {
                 observation: data.observation ?? null,
                 code: data.code,
                 price: data.price,
+                isPerformedInUnit: data.isPerformedInUnit ?? false,
                 isActive: data.isActive ?? true,
             })
             .returning({
@@ -210,6 +212,7 @@ export class ProceduresRepository {
             observation?: string | null;
             code?: string;
             price?: string;
+            isPerformedInUnit?: boolean;
             isActive?: boolean;
         },
     ): Promise<ProcedureProfile | null> {
@@ -222,6 +225,7 @@ export class ProceduresRepository {
                 ...(typeof data.observation !== "undefined" ? { observation: data.observation } : {}),
                 ...(typeof data.code !== "undefined" ? { code: data.code } : {}),
                 ...(typeof data.price !== "undefined" ? { price: data.price } : {}),
+                ...(typeof data.isPerformedInUnit !== "undefined" ? { isPerformedInUnit: data.isPerformedInUnit } : {}),
                 ...(typeof data.isActive !== "undefined" ? { isActive: data.isActive } : {}),
             })
             .where(and(eq(procedures.id, procedureId), eq(procedures.unitId, unitId)))

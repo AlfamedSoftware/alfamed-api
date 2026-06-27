@@ -257,6 +257,7 @@ export const proceduresRoutes = ({
                         observation?: string | null;
                         code?: string;
                         price?: string;
+                        isPerformedInUnit?: boolean;
                         isActive?: boolean;
                     };
 
