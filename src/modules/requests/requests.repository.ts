@@ -56,10 +56,29 @@ export class RequestsRepository {
             .from(procedures)
             .where(and(eq(procedures.unitId, appointment.unitId), inArray(procedures.id, ids)));
 
+        // Idempotência: ignora procedimentos que já possuem pedido ativo neste
+        // atendimento, evitando duplicar caso a função seja chamada novamente
+        // (ex.: retry de finalização).
+        const [existingInternal, existingExternal] = await Promise.all([
+            this.db
+                .select({ procedureId: requests.procedureId })
+                .from(requests)
+                .where(and(eq(requests.appointmentId, appointmentId), eq(requests.isActive, true))),
+            this.db
+                .select({ procedureId: externalRequests.procedureId })
+                .from(externalRequests)
+                .where(and(eq(externalRequests.appointmentId, appointmentId), eq(externalRequests.isActive, true))),
+        ]);
+        const alreadySaved = new Set([
+            ...existingInternal.map((r) => r.procedureId),
+            ...existingExternal.map((r) => r.procedureId),
+        ]);
+
         // 4. Separa as listas.
         const internalIds: string[] = [];
         const externalIds: string[] = [];
         for (const proc of procs) {
+            if (alreadySaved.has(proc.id)) continue;
             if (gestaoExames && proc.isPerformedInUnit) {
                 internalIds.push(proc.id);
             } else {
@@ -113,6 +132,58 @@ export class RequestsRepository {
                 observation: null,
             });
         }
+    }
+
+    /** Lista os exames (internos e externos) gravados em um atendimento. */
+    async listByAppointment(appointmentId: string): Promise<Array<{
+        id: string;
+        procedureId: string;
+        description: string;
+        kind: "internal" | "external";
+        statusCode: number | null;
+        statusDescription: string | null;
+    }>> {
+        const internal = await this.db
+            .select({
+                id: requests.id,
+                procedureId: requests.procedureId,
+                description: procedures.description,
+                statusCode: requestsStatus.code,
+                statusDescription: requestsStatus.description,
+            })
+            .from(requests)
+            .innerJoin(procedures, eq(requests.procedureId, procedures.id))
+            .innerJoin(requestsStatus, eq(requests.statusId, requestsStatus.id))
+            .where(and(eq(requests.appointmentId, appointmentId), eq(requests.isActive, true)));
+
+        const external = await this.db
+            .select({
+                id: externalRequests.id,
+                procedureId: externalRequests.procedureId,
+                description: procedures.description,
+            })
+            .from(externalRequests)
+            .innerJoin(procedures, eq(externalRequests.procedureId, procedures.id))
+            .where(and(eq(externalRequests.appointmentId, appointmentId), eq(externalRequests.isActive, true)));
+
+        return [
+            ...internal.map((r) => ({
+                id: r.id,
+                procedureId: r.procedureId,
+                description: r.description,
+                kind: "internal" as const,
+                statusCode: r.statusCode,
+                statusDescription: r.statusDescription,
+            })),
+            ...external.map((r) => ({
+                id: r.id,
+                procedureId: r.procedureId,
+                description: r.description,
+                kind: "external" as const,
+                statusCode: null,
+                statusDescription: null,
+            })),
+        ];
     }
 
     /** Cria pedidos externos (external_requests). Sem status nem log. */
