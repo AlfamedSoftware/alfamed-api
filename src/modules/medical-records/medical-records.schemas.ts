@@ -125,9 +125,9 @@ export const medicalRecordRequestsSchema = z.object({
     justification: z.string().nullable(),
     statusId: z.string().uuid().nullable(),
     isActive: z.boolean().nullable(),
-    internalProcedures: medicalRecordInternalProceduresSchema,
-    request_status: medicalRecordRequestStatusSchema,
-    request_results: medicalRecordRequestResultsSchema,
+    internalProcedures: medicalRecordInternalProceduresSchema.nullable(),
+    request_status: medicalRecordRequestStatusSchema.nullable(),
+    request_results: medicalRecordRequestResultsSchema.nullable(),
 });
 
 export const medicalRecordExternalProceduresSchema = z.object({
