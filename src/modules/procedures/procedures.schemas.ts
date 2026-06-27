@@ -23,12 +23,13 @@ export const proceduresErrorSchema = z.object({
 
 export const createProcedureSchema = z
     .object({
-        specialtyId: z.string().uuid().optional(),
+        specialtyId: z.union([z.string().uuid(), z.null()]).optional(),
         type: z.number(),
         description: z.string().min(1),
         observation: z.string().optional(),
         code: z.string().min(1),
         price: z.string().min(1),
+        isPerformedInUnit: z.boolean().optional(),
         isActive: z.boolean().optional(),
     })
     .strict();
@@ -42,6 +43,7 @@ export const updateProcedureSchema = z
         observation: z.union([z.string(), z.null()]).optional(),
         code: z.string().min(1).optional(),
         price: z.string().min(1).optional(),
+        isPerformedInUnit: z.boolean().optional(),
         isActive: z.boolean().optional(),
     })
     .strict();

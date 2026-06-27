@@ -2,7 +2,7 @@
 
 **Sistema:** Alfamed API  
 **Módulos:** Specialties · Procedures  
-**Data:** Junho/2026  
+**Data:** Junho/2026 — atualizado 27/06/2026  
 
 ---
 
