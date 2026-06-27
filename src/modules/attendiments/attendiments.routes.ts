@@ -1,21 +1,25 @@
 import { Elysia, t } from "elysia";
 import type { AttendimentsRepository } from "./attendiments.repository.js";
 import type { SchedulesRepository } from "../schedules/schedules.repository.js";
+import type { RequestsRepository } from "../requests/requests.repository.js";
 import { AttendimentsService } from "./attendiments.service.js";
 import { appointmentFullDataSchema, appointmentsBySpecialtyListSchema, attendimentsErrorSchema } from "./attendiments.schemas.js";
 
 type AttendimentsRoutesOptions = {
     attendimentsRepository: AttendimentsRepository;
     schedulesRepository: SchedulesRepository;
+    requestsRepository: RequestsRepository;
 };
 
 export const attendimentsRoutes = ({
     attendimentsRepository,
     schedulesRepository,
+    requestsRepository,
 }: AttendimentsRoutesOptions) => {
     const attendimentsService = new AttendimentsService(
         attendimentsRepository,
         schedulesRepository,
+        requestsRepository,
     );
 
     return new Elysia({ name: "attendiments-routes", prefix: "/attendiments" })
@@ -101,10 +105,12 @@ export const attendimentsRoutes = ({
                     const result = await attendimentsService.finalizarAtendimento(params.id, body as {
                         diagnostics?: string | null;
                         clinicNotes?: string | null;
+                        examProcedureIds?: string[];
                     });
                     if (!result.success) return status(404, { message: "Appointment not found" });
                     return status(200, { message: "Atendimento finalizado com sucesso" });
-                } catch {
+                } catch (error) {
+                    console.error("Error finalizing appointment and saving requests:", error);
                     return status(500, { message: "Internal server error" });
                 }
             },
@@ -115,6 +121,7 @@ export const attendimentsRoutes = ({
                 body: t.Object({
                     diagnostics: t.Optional(t.Nullable(t.String())),
                     clinicNotes: t.Optional(t.Nullable(t.String())),
+                    examProcedureIds: t.Optional(t.Array(t.String({ format: "uuid" }))),
                 }),
                 detail: {
                     summary: "Finalizar atendimento",

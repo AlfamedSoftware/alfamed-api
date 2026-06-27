@@ -1,10 +1,12 @@
 import type { AttendimentsRepository } from "./attendiments.repository.js";
 import type { SchedulesRepository } from "../schedules/schedules.repository.js";
+import type { RequestsRepository } from "../requests/requests.repository.js";
 
 export class AttendimentsService {
     constructor(
         private readonly attendimentsRepository: AttendimentsRepository,
         private readonly schedulesRepository: SchedulesRepository,
+        private readonly requestsRepository: RequestsRepository,
     ) {}
 
     async listAppointmentsBySpecialty(filters: {
@@ -27,13 +29,21 @@ export class AttendimentsService {
     async finalizarAtendimento(appointmentId: string, data: {
         diagnostics?: string | null;
         clinicNotes?: string | null;
+        examProcedureIds?: string[];
     }) {
-        // TODO: gravar procedures do atendimento
-        return this.attendimentsRepository.transitionAppointmentStatus(appointmentId, 3, {
+        const result = await this.attendimentsRepository.transitionAppointmentStatus(appointmentId, 3, {
             endAt: new Date(),
             diagnostics: data.diagnostics,
             clinicNotes: data.clinicNotes,
         });
+
+        if (!result.success) return result;
+
+        if (data.examProcedureIds && data.examProcedureIds.length > 0) {
+            await this.requestsRepository.saveExamRequests(appointmentId, data.examProcedureIds);
+        }
+
+        return result;
     }
 
     async faltaAtendimento(appointmentId: string) {

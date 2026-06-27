@@ -89,14 +89,12 @@ export class ProceduresRepository {
         });
     }
 
-    async listByUnitId(unitId: string, specialtyId?: string, isActive?: boolean): Promise<ProcedureProfile[]> {
-        const whereClause = specialtyId && isActive !== undefined
-            ? and(eq(procedures.unitId, unitId), eq(procedures.specialtyId, specialtyId), eq(procedures.isActive, isActive))
-            : specialtyId
-            ? and(eq(procedures.unitId, unitId), eq(procedures.specialtyId, specialtyId))
-            : isActive !== undefined
-            ? and(eq(procedures.unitId, unitId), eq(procedures.isActive, isActive))
-            : eq(procedures.unitId, unitId);
+    async listByUnitId(unitId: string, specialtyId?: string, isActive?: boolean, type?: number): Promise<ProcedureProfile[]> {
+        const conditions = [eq(procedures.unitId, unitId)];
+        if (specialtyId) conditions.push(eq(procedures.specialtyId, specialtyId));
+        if (isActive !== undefined) conditions.push(eq(procedures.isActive, isActive));
+        if (type !== undefined) conditions.push(eq(procedures.type, type));
+        const whereClause = and(...conditions);
 
         const rows = await this.db
             .select({

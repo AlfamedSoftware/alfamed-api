@@ -98,6 +98,7 @@ export const proceduresRoutes = ({
                         params.unitId,
                         query.specialtyId as string | undefined,
                         query.isActive as boolean | undefined,
+                        query.type as number | undefined,
                     );
 
                     return status(200, procedures);
@@ -113,6 +114,7 @@ export const proceduresRoutes = ({
                 query: t.Object({
                     specialtyId: t.Optional(t.String({ format: "uuid" })),
                     isActive: t.Optional(t.Boolean()),
+                    type: t.Optional(t.Numeric()),
                 }),
                 detail: {
                     summary: "List procedures by unit",

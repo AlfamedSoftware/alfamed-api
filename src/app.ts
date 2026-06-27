@@ -31,6 +31,7 @@ import type { UnitsRepository } from "./modules/units/units.repository.js";
 import { attendimentsRoutes } from "./modules/attendiments/attendiments.routes.js";
 import type { AttendimentsRepository } from "./modules/attendiments/attendiments.repository.js";
 import { AttendimentsRepository as AttendimentsRepositoryClass } from "./modules/attendiments/attendiments.repository.js";
+import { RequestsRepository as RequestsRepositoryClass } from "./modules/requests/requests.repository.js";
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
 import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
@@ -196,6 +197,7 @@ export async function buildApp({
         .use(attendimentsRoutes({
             attendimentsRepository: attendimentsRepository ?? new AttendimentsRepositoryClass(db),
             schedulesRepository: schedulesRepository ?? new SchedulesRepositoryClass(db),
+            requestsRepository: new RequestsRepositoryClass(db),
         }));
 
     const resolvedHasUserAccessToUnitChecker =
