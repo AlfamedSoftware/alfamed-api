@@ -100,6 +100,8 @@ Médico prescreve
 ## 5. Regras de Negócio
 
 ### 5.1 Criação do pedido
+> **Implementação:** a criação a partir do atendimento (seleção de exames + separação interno/externo + endpoints) está documentada em [regras-negocio-solicitacao-exames-atendimento.md](regras-negocio-solicitacao-exames-atendimento.md).
+
 - Um pedido (`request`) só pode ser criado se a unidade tiver `modulo1GestaoExames = true` em `unit_parameters`.
 - Um pedido (`request`) é sempre criado a partir de um `appointment` ativo.
 - O `procedureId` define qual exame foi solicitado e deve existir na tabela `procedures` com o tipo `3` (Exames).

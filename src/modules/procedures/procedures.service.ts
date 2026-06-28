@@ -8,11 +8,11 @@ export class ProceduresService {
         private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
     ) {}
 
-    async listProceduresByUnit(unitId: string, specialtyId?: string, isActive?: boolean) {
+    async listProceduresByUnit(unitId: string, specialtyId?: string, isActive?: boolean, type?: number) {
         //Removido, mobile não valida se unidade está logada
         //await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
 
-        return this.proceduresRepository.listByUnitId(unitId, specialtyId, isActive);
+        return this.proceduresRepository.listByUnitId(unitId, specialtyId, isActive, type);
     }
 
     async listProceduresByIds(unitId: string, ids: string[], isActive?: boolean) {

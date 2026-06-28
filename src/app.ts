@@ -31,6 +31,7 @@ import type { UnitsRepository } from "./modules/units/units.repository.js";
 import { attendimentsRoutes } from "./modules/attendiments/attendiments.routes.js";
 import type { AttendimentsRepository } from "./modules/attendiments/attendiments.repository.js";
 import { AttendimentsRepository as AttendimentsRepositoryClass } from "./modules/attendiments/attendiments.repository.js";
+import { requestsRoutes } from "./modules/requests/requests.routes.js";
 import { anamnesisRoutes } from "./modules/anamnesis/anamnesis.routes.js";
 import { AnamnesisRepository } from "./modules/anamnesis/anamnesis.repository.js";
 import { externalRequestsRoutes } from "./modules/external-requests/external-requests.routes.js";
@@ -297,6 +298,7 @@ export async function buildApp({
     configuredAppWithProfessionals.use(externalRequestsRoutes({ db }));
     configuredAppWithProfessionals.use(appointmentStatusRoutes({ appointmentStatusRepository: new AppointmentStatusRepository(db) }));
     configuredAppWithProfessionals.use(requestStatusRoutes({ requestStatusRepository: new RequestStatusRepository(db) }));
+    configuredAppWithProfessionals.use(requestsRoutes({ db }));
 
     return configuredAppWithProfessionals;
 }

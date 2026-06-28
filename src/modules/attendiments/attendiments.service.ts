@@ -29,7 +29,6 @@ export class AttendimentsService {
         diagnostics?: string | null;
         clinicNotes?: string | null;
     }) {
-        // TODO: gravar procedures do atendimento
         return this.attendimentsRepository.transitionAppointmentStatus(appointmentId, 3, {
             endAt: new Date(),
             diagnostics: data.diagnostics,

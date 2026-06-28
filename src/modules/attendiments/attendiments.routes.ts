@@ -106,7 +106,8 @@ export const attendimentsRoutes = ({
                     });
                     if (!result.success) return status(404, { message: "Appointment not found" });
                     return status(200, { message: "Atendimento finalizado com sucesso" });
-                } catch {
+                } catch (error) {
+                    console.log("Error finalizing appointment and saving requests:", error);
                     return status(500, { message: "Internal server error" });
                 }
             },

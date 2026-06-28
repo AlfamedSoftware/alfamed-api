@@ -221,20 +221,6 @@ export class AttendimentsRepository {
             changedBy: professionalUnit?.userId ?? null,
             observation: null,
         });
-        
-        //Primeiramente precisa ver o GET /unit-parameters/get-parameters/:unitId
-        //se o modulo1GestaoExames vier false todos os procedimentos gravam na src\db\schema\external-requests.ts
-
-        //funcao para verificar: GET /procedures/list-procedures-by-ids/:listaIds?isActive=true
-        //precisa verificar o campo isPerformedInUnit do procedures
-
-        //Acredito que aqui pode gerar 2 listas, uma com os procedimentos que tem isPerformedInUnit false e outra com os que tem true e dai so chamar os dois post e gravar tudo de uma vez
-        
-        //for false grava na src\db\schema\external-requests.ts - como na primeira etapa ali em cima
-        //se for true grava na src\db\schema\requests.ts
-        
-        //criar pasta "requests" criar o schema e o repository com as duas funções de post
-        //envia a lista de procedimentos selecionados para essas função do repository junto com o appointmentId e lista de ids de cada uma
 
         return { success: true, scheduleSlotId: current.scheduleSlotId };
     }
