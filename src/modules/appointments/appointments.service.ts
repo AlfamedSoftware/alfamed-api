@@ -22,6 +22,7 @@ export class AppointmentsService {
         // Check if current time is less than 30 min before the slot start time
         const slotDatetime = await this.scheduleRepository.getSlotStartDatetime(data.scheduleSlotId);
         if (slotDatetime) {
+            console.log("[appointments] slotDatetime from DB:", slotDatetime.toISOString(), "| now:", new Date().toISOString());
             const diffMs = slotDatetime.getTime() - Date.now();
             if (diffMs < 0) {
                 throw new Error("SLOT_PAST");
