@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { appointments } from "../../db/schema/appointments.js";
@@ -27,29 +27,22 @@ export class AttendimentsRepository {
     async listAppointmentsBySpecialty(filters: {
         date: string;
         professionalUnitId?: string;
+        statusId?: string;
     }): Promise<AppointmentBySpecialty[]> {
-        // Get status UUIDs for codes 1–4
-        const activeStatuses = await this.db
-            .select({ id: appointmentsStatus.id })
-            .from(appointmentsStatus)
-            .where(inArray(appointmentsStatus.code, [1, 2, 3, 4]));
-
-        if (activeStatuses.length === 0) {
-            return [];
-        }
-
         // Build where conditions
         const whereConditions = [
             eq(appointments.isActive, true),
-            inArray(appointments.statusId, activeStatuses.map((s) => s.id)),
             eq(schedules.date, filters.date),
         ];
+
+        if (filters.statusId) {
+            whereConditions.push(eq(appointments.statusId, filters.statusId));
+        }
 
         if (filters.professionalUnitId) {
             whereConditions.push(eq(appointments.professionalUnitId, filters.professionalUnitId));
         }
 
-        // Get all appointments with status 1 or 2
         const activeAppointments = await this.db
             .select({
                 appointmentId: appointments.id,
