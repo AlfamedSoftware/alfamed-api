@@ -88,6 +88,66 @@ export const medicalRecordProfessionalUserSchema = z.object({
     isActive: z.boolean(),
 });
 
+export const medicalRecordRequestStatusSchema = z.object({
+    id: z.string().uuid().nullable(),
+    code: z.number().nullable(),
+    description: z.string().nullable(),
+    isActive: z.boolean().nullable(),
+});
+
+export const medicalRecordRequestResultsSchema = z.object({
+    id: z.string().uuid().nullable(),
+    requestId: z.string().uuid().nullable(),
+    professionalUnitId: z.string().uuid().nullable(),
+    complementaryInfo: z.string().nullable(),
+    attachmentUrl: z.string().nullable(),
+    releasedAt: z.string().datetime().nullable(),
+    isActive: z.boolean().nullable(),
+});
+
+export const medicalRecordInternalProceduresSchema = z.object({
+    id: z.string().uuid().nullable(),
+    type: z.number().nullable(),
+    description: z.string().nullable(),
+    observation: z.string().nullable(),
+    code: z.string().nullable(),
+    price: z.string().nullable(),
+    isActive: z.boolean().nullable(),
+});
+
+export const medicalRecordRequestsSchema = z.object({
+    id: z.string().uuid().nullable(),
+    appointmentId: z.string().uuid().nullable(),
+    procedureId: z.string().uuid().nullable(),
+    professionalUnitId: z.string().uuid().nullable(),
+    complementaryInfo: z.string().nullable(),
+    performedAt: z.string().datetime().nullable(),
+    justification: z.string().nullable(),
+    statusId: z.string().uuid().nullable(),
+    isActive: z.boolean().nullable(),
+    internalProcedures: medicalRecordInternalProceduresSchema.nullable(),
+    request_status: medicalRecordRequestStatusSchema.nullable(),
+    request_results: medicalRecordRequestResultsSchema.nullable(),
+});
+
+export const medicalRecordExternalProceduresSchema = z.object({
+    id: z.string().uuid().nullable(),
+    type: z.number().nullable(),
+    description: z.string().nullable(),
+    observation: z.string().nullable(),
+    code: z.string().nullable(),
+    price: z.string().nullable(),
+    isActive: z.boolean().nullable(),
+});
+
+export const medicalRecordExternalRequestsSchema = z.object({
+    id: z.string().uuid().nullable(),
+    appointmentId: z.string().uuid().nullable(),
+    procedureId: z.string().uuid().nullable(),
+    isActive: z.boolean().nullable(),
+    externalProcedures: medicalRecordExternalProceduresSchema,
+});
+
 export const medicalRecordAppointmentSchema = z.object({
     id: z.string().uuid(),
     patientId: z.string().uuid(),
@@ -110,6 +170,8 @@ export const medicalRecordAppointmentSchema = z.object({
     units: medicalRecordUnitSchema,
     professionals: medicalRecordProfessionalSchema,
     professional_user: medicalRecordProfessionalUserSchema,
+    requests: z.array(medicalRecordRequestsSchema),
+    external_requests: z.array(medicalRecordExternalRequestsSchema),
 });
 
 export const listPatientMedicalRecordsResponseSchema = z.object({

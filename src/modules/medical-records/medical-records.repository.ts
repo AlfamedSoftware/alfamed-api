@@ -1,4 +1,4 @@
-import { desc, eq, and } from "drizzle-orm";
+import { desc, eq, and, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { db as dbType } from "../../db/client.js";
 import { appointments } from "../../db/schema/appointments.js";
@@ -12,6 +12,10 @@ import { procedures } from "../../db/schema/procedures.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionals } from "../../db/schema/professionals.js";
 import { units } from "../../db/schema/units.js";
+import { requests } from "../../db/schema/requests.js";
+import { externalRequests } from "../../db/schema/external-requests.js";
+import { requestsStatus } from "../../db/schema/requests-status.js";
+import { requestResults } from "../../db/schema/request-results.js";
 
 type DatabaseClient = typeof dbType;
 
@@ -47,6 +51,8 @@ export class MedicalRecordsRepository {
 
     async listMedicalRecordsByPatientId(patientId: string) {
         const professionalUser = alias(users, "professional_user");
+        const internalProcedures = alias(procedures, "internal_procedures");
+        const externalProcedures = alias(procedures, "external_procedures");
 
         const rows = await this.db
             .select({
@@ -152,7 +158,87 @@ export class MedicalRecordsRepository {
             .innerJoin(professionals, eq(professionalUnits.professionalId, professionals.id))
             .innerJoin(professionalUser, eq(professionals.userId, professionalUser.id))
             .where(eq(appointments.patientId, patientId))
-            .orderBy(desc(appointments.startAt));
+            .orderBy(desc(schedules.date), desc(scheduleSlots.startTime));
+
+        return rows;
+    }
+
+    async listRequestsByAppointmentIds(appointmentIds: string[]) {
+        if (appointmentIds.length === 0) return [];
+
+        const internalProcedures = alias(procedures, "internal_procedures");
+        const internalProceduresCols = {
+            id: internalProcedures.id as any,
+            type: internalProcedures.type as any,
+            description: internalProcedures.description as any,
+            observation: internalProcedures.observation as any,
+            code: internalProcedures.code as any,
+            price: internalProcedures.price as any,
+            isActive: internalProcedures.isActive as any,
+        };
+
+        const rows = await this.db
+            .select({
+                id: requests.id,
+                appointmentId: requests.appointmentId,
+                procedureId: requests.procedureId,
+                professionalUnitId: requests.professionalUnitId,
+                complementaryInfo: requests.complementaryInfo,
+                performedAt: requests.performedAt,
+                justification: requests.justification,
+                statusId: requests.statusId,
+                isActive: requests.isActive,
+                internalProcedures: internalProceduresCols,
+                request_status: {
+                    id: requestsStatus.id,
+                    code: requestsStatus.code,
+                    description: requestsStatus.description,
+                    isActive: requestsStatus.isActive,
+                } as any,
+                request_results: {
+                    id: requestResults.id,
+                    requestId: requestResults.requestId,
+                    professionalUnitId: requestResults.professionalUnitId,
+                    complementaryInfo: requestResults.complementaryInfo,
+                    attachmentUrl: requestResults.attachmentUrl,
+                    releasedAt: requestResults.releasedAt,
+                    isActive: requestResults.isActive,
+                } as any,
+            })
+            .from(requests)
+            .leftJoin(requestsStatus, eq(requests.statusId, requestsStatus.id))
+            .leftJoin(requestResults, eq(requests.id, requestResults.requestId))
+            .leftJoin(internalProcedures, eq(requests.procedureId, internalProcedures.id))
+            .where(inArray(requests.appointmentId, appointmentIds));
+
+        return rows;
+    }
+
+    async listExternalRequestsByAppointmentIds(appointmentIds: string[]) {
+        if (appointmentIds.length === 0) return [];
+
+        const externalProcedures = alias(procedures, "external_procedures");
+        const externalProceduresCols = {
+            id: externalProcedures.id as any,
+            type: externalProcedures.type as any,
+            description: externalProcedures.description as any,
+            observation: externalProcedures.observation as any,
+            code: externalProcedures.code as any,
+            price: externalProcedures.price as any,
+            isActive: externalProcedures.isActive as any,
+        };
+
+        const rows = await this.db
+            .select({
+                id: externalRequests.id,
+                appointmentId: externalRequests.appointmentId,
+                procedureId: externalRequests.procedureId,
+                isActive: externalRequests.isActive,
+                externalProcedures: externalProceduresCols,
+            })
+            .from(externalRequests)
+            .leftJoin(externalProcedures, eq(externalRequests.procedureId, externalProcedures.id))
+            .where(inArray(externalRequests.appointmentId, appointmentIds));
 
         return rows;
     }

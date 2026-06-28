@@ -34,6 +34,7 @@ import { AttendimentsRepository as AttendimentsRepositoryClass } from "./modules
 import { requestsRoutes } from "./modules/requests/requests.routes.js";
 import { anamnesisRoutes } from "./modules/anamnesis/anamnesis.routes.js";
 import { AnamnesisRepository } from "./modules/anamnesis/anamnesis.repository.js";
+import { externalRequestsRoutes } from "./modules/external-requests/external-requests.routes.js";
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
 import type { db as dbType } from "./db/client.js";
 import { adminUnitsRoutes } from "./modules/admin/admin-units.routes.js";
@@ -42,6 +43,10 @@ import { createSessionRoutes } from "./modules/session/session.routes.js";
 import { authPasswordResetRoutes } from "./modules/auth/auth-password-reset.routes.js";
 import { renewSessionCookies } from "./http/plugins/session-helpers.js";
 import { unitParametersRoutes } from "./modules/unit-parameters/unit-parameters.routes.js";
+import { appointmentStatusRoutes } from "./modules/appointment-status/appointment-status.routes.js";
+import { AppointmentStatusRepository } from "./modules/appointment-status/appointment-status.repository.js";
+import { requestStatusRoutes } from "./modules/request-status/request-status.routes.js";
+import { RequestStatusRepository } from "./modules/request-status/request-status.repository.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -158,9 +163,21 @@ export async function buildApp({
                             name: "Unit Parameters",
                             description: "Operations about unit configuration parameters",
                         },
-                        {                            
+                        {
                             name: "Anamnesis",
                             description: "Operations about patient anamnesis",
+                        },
+                        {
+                            name: "External Requests",
+                            description: "Operations about external exam requests",
+                        },
+                        {
+                            name: "Appointment Status",
+                            description: "Operations about appointment statuses",
+                        },
+                        {
+                            name: "Request Status",
+                            description: "Operations about request statuses",
                         },
                     ],
                     components: await OpenAPI.components,
@@ -278,6 +295,9 @@ export async function buildApp({
     configuredAppWithProfessionals.use(schedulesRoutes({ db }));
     configuredAppWithProfessionals.use(medicalRecordsRoutes({ db }));
     configuredAppWithProfessionals.use(unitParametersRoutes({ db }));
+    configuredAppWithProfessionals.use(externalRequestsRoutes({ db }));
+    configuredAppWithProfessionals.use(appointmentStatusRoutes({ appointmentStatusRepository: new AppointmentStatusRepository(db) }));
+    configuredAppWithProfessionals.use(requestStatusRoutes({ requestStatusRepository: new RequestStatusRepository(db) }));
     configuredAppWithProfessionals.use(requestsRoutes({ db }));
 
     return configuredAppWithProfessionals;

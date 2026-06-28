@@ -2,7 +2,7 @@
 
 **Sistema:** Alfamed API  
 **Módulo:** Medical Records  
-**Data:** Junho/2026  
+**Data:** Junho/2026 — atualizado 27/06/2026  
 
 ---
 
@@ -18,7 +18,7 @@ O módulo de prontuário expõe o histórico de consultas (appointments) de um p
 
 **`GET /medical-records/list-patient-medical-records`**
 
-Retorna os dados do paciente e a lista de todos os seus appointments, ordenados por data de início.
+Retorna os dados do paciente e a lista de todos os seus appointments, ordenados por data de início **decrescente** (mais recente primeiro).
 
 **Autenticação:** obrigatória
 
@@ -119,7 +119,61 @@ Retorna os dados do paciente e a lista de todos os seus appointments, ordenados 
         "cpf": "string",
         "sex": "string | null",
         "isActive": true
-      }
+      },
+      "requests": [
+        {
+          "id": "uuid | null",
+          "appointmentId": "uuid | null",
+          "procedureId": "uuid | null",
+          "professionalUnitId": "uuid | null",
+          "complementaryInfo": "string | null",
+          "performedAt": "ISO datetime | null",
+          "justification": "string | null",
+          "statusId": "uuid | null",
+          "isActive": "boolean | null",
+          "internalProcedures": {
+            "id": "uuid | null",
+            "type": "number | null",
+            "description": "string | null",
+            "observation": "string | null",
+            "code": "string | null",
+            "price": "string | null",
+            "isActive": "boolean | null"
+          },
+          "request_status": {
+            "id": "uuid | null",
+            "code": "number | null",
+            "description": "string | null",
+            "isActive": "boolean | null"
+          },
+          "request_results": {
+            "id": "uuid | null",
+            "requestId": "uuid | null",
+            "professionalUnitId": "uuid | null",
+            "complementaryInfo": "string | null",
+            "attachmentUrl": "string | null",
+            "releasedAt": "ISO datetime | null",
+            "isActive": "boolean | null"
+          }
+        }
+      ],
+      "external_requests": [
+        {
+          "id": "uuid | null",
+          "appointmentId": "uuid | null",
+          "procedureId": "uuid | null",
+          "isActive": "boolean | null",
+          "externalProcedures": {
+            "id": "uuid | null",
+            "type": "number | null",
+            "description": "string | null",
+            "observation": "string | null",
+            "code": "string | null",
+            "price": "string | null",
+            "isActive": "boolean | null"
+          }
+        }
+      ]
     }
   ]
 }
@@ -130,7 +184,7 @@ Retorna os dados do paciente e a lista de todos os seus appointments, ordenados 
 | Código | Situação |
 |---|---|
 | `200 OK` | Retorna objeto com dados do paciente e appointments |
-| `401 Unauthorized` | Usuário não autenticado |
+| `401 Unauthorized` | Usuário não autenticado (`"Não autorizado"`) |
 | `404 Not Found` | Paciente não encontrado ou inativo |
 | `500 Internal Server Error` | Erro inesperado no servidor |
 
@@ -139,7 +193,7 @@ Retorna os dados do paciente e a lista de todos os seus appointments, ordenados 
 ## 3. Fluxo Interno
 
 ```
-Route → Service → Repository (2 queries)
+Route → Service → Repository (3 queries)
 ```
 
 ### 3.1 `MedicalRecordsRepository.findActivePatientByUserId(userId)`
@@ -148,7 +202,7 @@ Busca o patient vinculado ao `userId` com `isActive = true`, fazendo join com `u
 
 ### 3.2 `MedicalRecordsRepository.listMedicalRecordsByPatientId(patientId)`
 
-Executa um único `SELECT` com 10 `INNER JOIN`s para trazer todos os dados dos appointments do paciente. Cadeia de joins:
+Executa um único `SELECT` com 11 `INNER JOIN`s para trazer todos os dados dos appointments do paciente. Cadeia de joins:
 
 ```
 appointments
@@ -167,12 +221,23 @@ appointments
 
 > `users` é joined duas vezes: uma para o paciente e outra (com alias `professional_user`) para o profissional.
 
-### 3.3 `MedicalRecordsService.listPatientMedicalRecords(userId)`
+### 3.3 `MedicalRecordsRepository.listRequestsByAppointmentIds(appointmentIds)`
+
+Busca todos os pedidos internos (requests) para os appointments fornecidos, com LEFT JOINs para `requests_status`, `request_results` e `procedures` (como `internal_procedures`).
+
+### 3.4 `MedicalRecordsRepository.listExternalRequestsByAppointmentIds(appointmentIds)`
+
+Busca todos os pedidos externos (external_requests) para os appointments fornecidos, com LEFT JOIN para `procedures` (como `external_procedures`).
+
+### 3.5 `MedicalRecordsService.listPatientMedicalRecords(userId)`
 
 1. Chama `findActivePatientByUserId` → lança `PatientNotFoundError` se não encontrar
 2. Chama `listMedicalRecordsByPatientId` com o `patient.id` retornado
-3. Monta a resposta final: dados do usuário vindos de `patient.users` (garante resposta mesmo com `appointments: []`), appointments mapeados das linhas do join
-4. Valida e serializa via `listPatientMedicalRecordsResponseSchema`
+3. Extrai os `appointmentIds` dos appointments retornados
+4. Chama `listRequestsByAppointmentIds` e depois `listExternalRequestsByAppointmentIds` sequencialmente
+5. Agrupa os requests e external_requests por `appointmentId` usando Maps
+6. Monta a resposta final: dados do usuário vindos de `patient.users` (garante resposta mesmo com `appointments: []`), appointments mapeados com arrays de requests e external_requests
+7. Valida e serializa via `listPatientMedicalRecordsResponseSchema`
 
 ---
 

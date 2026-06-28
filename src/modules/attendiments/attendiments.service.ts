@@ -10,6 +10,7 @@ export class AttendimentsService {
     async listAppointmentsBySpecialty(filters: {
         date: string;
         professionalUnitId?: string;
+        statusId?: string;
     }) {
         return this.attendimentsRepository.listAppointmentsBySpecialty(filters);
     }
