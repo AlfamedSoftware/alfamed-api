@@ -367,7 +367,7 @@ export class SchedulesRepository {
 
         if (!row) return null;
 
-        return new Date(`${row.date}T${row.startTime}`);
+        return new Date(`${row.date}T${row.startTime}-03:00`);
     }
 
     async checkSlotAvailability(slotId: string): Promise<boolean> {
