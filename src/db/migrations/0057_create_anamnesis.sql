@@ -1,4 +1,4 @@
-CREATE TABLE "anamnesis" (
+CREATE TABLE IF NOT EXISTS "anamnesis" (
 	"id" text PRIMARY KEY NOT NULL,
 	"appointment_id" text NOT NULL,
 	"main_complaint" text,
