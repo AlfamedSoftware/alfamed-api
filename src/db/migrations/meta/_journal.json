@@ -302,6 +302,90 @@
       "when": 1782158810252,
       "tag": "0045_cold_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1782520212008,
+      "tag": "0046_loud_harrier",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1782200001000,
+      "tag": "0047_insert_appointments_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1782200002000,
+      "tag": "0048_seed_request_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1782200003000,
+      "tag": "0049_requests_add_status_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1782200004000,
+      "tag": "0050_requests_add_procedure_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1782200005000,
+      "tag": "0051_create_request_results",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1782200006000,
+      "tag": "0052_requests_add_professional_unit_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1782200007000,
+      "tag": "0053_requests_replace_type_add_justification",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1782200008000,
+      "tag": "0054_create_external_requests_drop_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1782200009000,
+      "tag": "0055_create_unit_parameters",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1782200010000,
+      "tag": "0056_procedures_add_is_performed_in_unit",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1782200011000,
+      "tag": "0057_create_anamnesis",
+      "breakpoints": true
     }
   ]
 }

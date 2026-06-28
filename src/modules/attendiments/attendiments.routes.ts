@@ -25,6 +25,7 @@ export const attendimentsRoutes = ({
                 const result = await attendimentsService.listAppointmentsBySpecialty({
                     date: query.date as string,
                     professionalUnitId: query.professionalUnitId as string,
+                    statusId: query.statusId,
                 });
                 return result;
             },
@@ -32,10 +33,11 @@ export const attendimentsRoutes = ({
                 query: t.Object({
                     date: t.String(),
                     professionalUnitId: t.String({ format: "uuid" }),
+                    statusId: t.Optional(t.String({ format: "uuid" })),
                 }),
                 detail: {
                     summary: "List appointments by specialty",
-                    description: "Lists all active appointments grouped by specialty, including related schedule, patient, and procedure information.",
+                    description: "Lists active appointments grouped by specialty for a given date and professional unit. Optionally filter by a specific status ID (UUID); when omitted, all statuses are returned.",
                     tags: ["Attendiments"],
                 },
                 response: {
@@ -104,7 +106,8 @@ export const attendimentsRoutes = ({
                     });
                     if (!result.success) return status(404, { message: "Appointment not found" });
                     return status(200, { message: "Atendimento finalizado com sucesso" });
-                } catch {
+                } catch (error) {
+                    console.log("Error finalizing appointment and saving requests:", error);
                     return status(500, { message: "Internal server error" });
                 }
             },

@@ -1,5 +1,5 @@
 import { hash } from "bcryptjs";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ilike, or } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { accounts } from "../../db/schema/accounts.js";
@@ -28,6 +28,7 @@ export class PatientsRepository {
     readonly getPatientById: (patientId: string) => Promise<Patient | null>;
     readonly getPatientFullDataByUserId: (userId: string, isActive?: boolean) => Promise<PatientFullDataByUser | null>;
     readonly getPatientFullDataByCpf: (cpf: string, isActive?: boolean) => Promise<PatientFullDataByUser | null>;
+    readonly searchPatientFullDataByName: (name: string, isActive?: boolean) => Promise<PatientFullDataByUser[]>;
     readonly listPatients: () => Promise<PatientListItem[]>;
     readonly findUserByEmail: (email: string) => Promise<{ id: string } | null>;
     readonly findUserByCpf: (cpf: string) => Promise<{ id: string } | null>;
@@ -316,6 +317,50 @@ export class PatientsRepository {
                     isActive: result.userIsActive,
                 },
             });
+        };
+
+        this.searchPatientFullDataByName = async (name: string, isActive?: boolean) => {
+            const nameCondition = or(ilike(users.name, `%${name}%`), ilike(users.socialName, `%${name}%`))!;
+            const whereConditions = typeof isActive === "boolean"
+                ? and(nameCondition, eq(patients.isActive, isActive))
+                : nameCondition;
+
+            const results = await db
+                .select({
+                    id: patients.id,
+                    isActive: patients.isActive,
+                    userId: users.id,
+                    userName: users.name,
+                    userSocialName: users.socialName,
+                    userEmail: users.email,
+                    userPhone: users.phone,
+                    userCpf: users.cpf,
+                    userBirthdate: users.birthdate,
+                    userSex: users.sex,
+                    userIsActive: users.isActive,
+                })
+                .from(patients)
+                .innerJoin(users, eq(patients.userId, users.id))
+                .where(whereConditions)
+                .limit(20);
+
+            return results.map((result) =>
+                patientFullDataByUserSchema.parse({
+                    id: result.id,
+                    isActive: result.isActive,
+                    users: {
+                        id: result.userId,
+                        name: result.userName,
+                        socialName: result.userSocialName,
+                        email: result.userEmail,
+                        phone: result.userPhone,
+                        cpf: result.userCpf,
+                        birthdate: result.userBirthdate.toISOString(),
+                        sex: result.userSex,
+                        isActive: result.userIsActive,
+                    },
+                }),
+            );
         };
 
         this.findUserByEmail = async (email: string) => {

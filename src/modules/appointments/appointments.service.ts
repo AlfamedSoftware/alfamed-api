@@ -19,10 +19,13 @@ export class AppointmentsService {
             throw new Error("SELF_BOOKING_FORBIDDEN");
         }
 
-        // Check if current time is less than 1 hour before the slot start time
+        // Check if current time is less than 30 min before the slot start time
         const slotDatetime = await this.scheduleRepository.getSlotStartDatetime(data.scheduleSlotId);
         if (slotDatetime) {
             const diffMs = slotDatetime.getTime() - Date.now();
+            if (diffMs < 0) {
+                throw new Error("SLOT_PAST");
+            }
             if (diffMs < 30 * 60 * 1000) {
                 throw new Error("SLOT_TOO_SOON");
             }
@@ -49,12 +52,16 @@ export class AppointmentsService {
         return created;
     }
 
+    async listNextAppointmentsByUserId(userId: string) {
+        return this.appointmentsRepository.listNextAppointmentsByUserId(userId);
+    }
+
     async updateAppointment(appointmentId: string, data: {
         patientId?: string;
         professionalUnitId?: string;
         scheduleSlotId?: string;
-        startAt?: Date | null;
-        endAt?: Date | null;
+        startAt?: string | null;
+        endAt?: string | null;
         diagnostics?: string | null;
         evolution?: string | null;
         statusCode?: number;
@@ -67,6 +74,8 @@ export class AppointmentsService {
 
         const updated = await this.appointmentsRepository.updateById(appointmentId, {
             ...data,
+            startAt: data.startAt != null ? new Date(data.startAt) : data.startAt,
+            endAt: data.endAt != null ? new Date(data.endAt) : data.endAt,
             statusId: statusUuid,
         });
 

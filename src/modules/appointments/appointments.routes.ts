@@ -10,6 +10,7 @@ import {
     updateAppointmentSchema,
     appointmentSchema,
 } from "./appointments.schemas.js";
+import { appointmentFullDataSchema } from "../attendiments/attendiments.schemas.js";
 
 type AppointmentsRoutesOptions = {
     appointmentsRepository: AppointmentsRepository;
@@ -55,6 +56,10 @@ export const appointmentsRoutes = ({
                         return status(404, { message: "Profissional não pode se auto agendar" });
                     }
 
+                    if (error instanceof Error && error.message === "SLOT_PAST") {
+                        return status(410, { message: "Não é possível agendar uma consulta que já passou" });
+                    }
+
                     if (error instanceof Error && error.message === "SLOT_TOO_SOON") {
                         return status(422, { message: "Não é possível agendar com menos de 30 minutos de antecedência" });
                     }
@@ -76,6 +81,7 @@ export const appointmentsRoutes = ({
                     403: t.Object({ message: t.Literal("Forbidden") }),
                     404: t.Object({ message: t.Literal("Profissional não pode se auto agendar") }),
                     409: t.Object({ message: t.Literal("Essa vaga não está mais disponivel para o agendamento") }),
+                    410: t.Object({ message: t.Literal("Não é possível agendar uma consulta que já passou") }),
                     422: t.Object({ message: t.Literal("Não é possível agendar com menos de 30 minutos de antecedência") }),
                     500: appointmentsErrorSchema,
                 },
@@ -117,6 +123,40 @@ export const appointmentsRoutes = ({
                     200: appointmentSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     403: t.Object({ message: t.Literal("Forbidden") }),
+                    500: appointmentsErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/list-next-appointments-by-user/:userId",
+            async (context) => {
+                const { params, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                try {
+                    const result = await appointmentsService.listNextAppointmentsByUserId(params.userId);
+                    return status(200, result);
+                } catch {
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                params: t.Object({
+                    userId: t.String({ format: "uuid" }),
+                }),
+                detail: {
+                    summary: "List next appointments by user",
+                    description: "Returns all active pending appointments (status code 1) for the given userId.",
+                    tags: ["Appointments"],
+                },
+                response: {
+                    200: appointmentFullDataSchema.array(),
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
                     500: appointmentsErrorSchema,
                 },
             },

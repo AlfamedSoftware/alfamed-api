@@ -8,11 +8,15 @@ export class ProceduresService {
         private readonly hasUserAccessToUnitChecker: (userId: string, unitId: string) => Promise<boolean>,
     ) {}
 
-    async listProceduresByUnit(unitId: string, specialtyId?: string, isActive?: boolean) {
+    async listProceduresByUnit(unitId: string, specialtyId?: string, isActive?: boolean, type?: number) {
         //Removido, mobile não valida se unidade está logada
         //await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
 
-        return this.proceduresRepository.listByUnitId(unitId, specialtyId, isActive);
+        return this.proceduresRepository.listByUnitId(unitId, specialtyId, isActive, type);
+    }
+
+    async listProceduresByIds(unitId: string, ids: string[], isActive?: boolean) {
+        return this.proceduresRepository.listByIds(unitId, ids, isActive);
     }
 
     async getProcedureById(userId: string, unitId: string, procedureId: string) {
@@ -47,6 +51,7 @@ export class ProceduresService {
         observation?: string | null;
         code: string;
         price: string;
+        isPerformedInUnit?: boolean;
         isActive?: boolean;
     }) {
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
@@ -65,6 +70,7 @@ export class ProceduresService {
             observation: data.observation,
             code: data.code.trim(),
             price: normalizedPrice,
+            isPerformedInUnit: data.isPerformedInUnit,
             isActive: data.isActive,
         };
 
@@ -78,6 +84,7 @@ export class ProceduresService {
         observation?: string | null;
         code?: string;
         price?: string;
+        isPerformedInUnit?: boolean;
         isActive?: boolean;
     }) {
         await assertUserHasUnitAccess(userId, unitId, this.hasUserAccessToUnitChecker);
@@ -107,6 +114,7 @@ export class ProceduresService {
             ...(typeof data.observation !== "undefined" ? { observation: data.observation } : {}),
             ...(typeof data.code !== "undefined" ? { code: data.code.trim() } : {}),
             ...(typeof normalizedPrice !== "undefined" ? { price: normalizedPrice } : {}),
+            ...(typeof data.isPerformedInUnit !== "undefined" ? { isPerformedInUnit: data.isPerformedInUnit } : {}),
             ...(typeof data.isActive !== "undefined" ? { isActive: data.isActive } : {}),
         };
 

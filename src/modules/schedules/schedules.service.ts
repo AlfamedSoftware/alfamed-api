@@ -70,8 +70,8 @@ export class SchedulesService {
             throw new ScheduleConflictError(
                 conflict.professionalName,
                 conflict.unitName,
-                conflict.startTime,
-                conflict.endTime,
+                conflict.startTime.slice(0, 5),
+                conflict.endTime.slice(0, 5),
             );
         }
 

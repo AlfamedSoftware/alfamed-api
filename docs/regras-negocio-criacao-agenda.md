@@ -177,7 +177,7 @@ O uso de intervalo semi-aberto (comparação com `<` estrito) garante que agenda
 **Resposta de erro (HTTP 409):**
 ```json
 {
-  "message": "Dr. João Silva já possui uma agenda na unidade Clínica Central das 13:00:00 às 15:00:00."
+  "message": "Dr. João Silva já possui uma agenda na unidade Clínica Central das 13:00 às 15:00."
 }
 ```
 

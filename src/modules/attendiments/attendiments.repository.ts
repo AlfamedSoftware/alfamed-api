@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { appointments } from "../../db/schema/appointments.js";
@@ -11,6 +11,7 @@ import { patients } from "../../db/schema/patients.js";
 import { users } from "../../db/schema/users.js";
 import { professionals } from "../../db/schema/professionals.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
+import { units } from "../../db/schema/units.js";
 import { appointmentsStatus } from "../../db/schema/appointments-status.js";
 import { appointmentBySpecialtySchema, appointmentFullDataSchema } from "./attendiments.schemas.js";
 
@@ -26,29 +27,22 @@ export class AttendimentsRepository {
     async listAppointmentsBySpecialty(filters: {
         date: string;
         professionalUnitId?: string;
+        statusId?: string;
     }): Promise<AppointmentBySpecialty[]> {
-        // Get status UUIDs for codes 1–4
-        const activeStatuses = await this.db
-            .select({ id: appointmentsStatus.id })
-            .from(appointmentsStatus)
-            .where(inArray(appointmentsStatus.code, [1, 2, 3, 4]));
-
-        if (activeStatuses.length === 0) {
-            return [];
-        }
-
         // Build where conditions
         const whereConditions = [
             eq(appointments.isActive, true),
-            inArray(appointments.statusId, activeStatuses.map((s) => s.id)),
             eq(schedules.date, filters.date),
         ];
+
+        if (filters.statusId) {
+            whereConditions.push(eq(appointments.statusId, filters.statusId));
+        }
 
         if (filters.professionalUnitId) {
             whereConditions.push(eq(appointments.professionalUnitId, filters.professionalUnitId));
         }
 
-        // Get all appointments with status 1 or 2
         const activeAppointments = await this.db
             .select({
                 appointmentId: appointments.id,
@@ -276,6 +270,15 @@ export class AttendimentsRepository {
                 procedureCode: procedures.code,
                 procedurePrice: procedures.price,
                 procedureIsActive: procedures.isActive,
+                unitId: units.id,
+                unitName: units.name,
+                unitCnpj: units.cnpj,
+                unitAddress: units.address,
+                unitCity: units.city,
+                unitState: units.state,
+                unitPhone: units.phone,
+                unitEmail: units.email,
+                unitIsActive: units.isActive,
             })
             .from(appointments)
             .innerJoin(scheduleSlots, eq(appointments.scheduleSlotId, scheduleSlots.id))
@@ -285,6 +288,8 @@ export class AttendimentsRepository {
             .innerJoin(patients, eq(appointments.patientId, patients.id))
             .innerJoin(users, eq(patients.userId, users.id))
             .innerJoin(appointmentsStatus, eq(appointments.statusId, appointmentsStatus.id))
+            .innerJoin(professionalUnits, eq(appointments.professionalUnitId, professionalUnits.id))
+            .innerJoin(units, eq(professionalUnits.unitId, units.id))
             .where(eq(appointments.id, appointmentId));
 
         if (rows.length === 0) return null;
@@ -349,6 +354,17 @@ export class AttendimentsRepository {
                 code: row.statusCode,
                 description: row.statusDescription,
                 isActive: row.statusIsActive,
+            },
+            units: {
+                id: row.unitId,
+                name: row.unitName,
+                cnpj: row.unitCnpj ?? null,
+                address: row.unitAddress ?? null,
+                city: row.unitCity ?? null,
+                state: row.unitState ?? null,
+                phone: row.unitPhone ?? null,
+                email: row.unitEmail ?? null,
+                isActive: row.unitIsActive,
             },
         };
     }

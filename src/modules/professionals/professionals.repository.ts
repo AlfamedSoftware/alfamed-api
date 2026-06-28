@@ -1,6 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ilike, or } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
+import { patients } from "../../db/schema/patients.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionals } from "../../db/schema/professionals.js";
 import { roles } from "../../db/schema/roles.js";
@@ -46,7 +47,15 @@ export class ProfessionalsRepository {
         updatedAt: string;
     } | null>;
     readonly hasActiveRole: (roleId: string) => Promise<boolean>;
-    
+    readonly findManyByUserName: (name: string, unitId: string) => Promise<Array<{
+        userId: string;
+        name: string;
+        socialName: string | null;
+        cpf: string;
+        professionalId: string;
+        patientId: string;
+        professionalUnitId: string;
+    }>>;
 
     constructor(db: DatabaseClient) {
         const toProfile = (result: {
@@ -433,7 +442,42 @@ export class ProfessionalsRepository {
             return !!result;
         };
 
-        
+        this.findManyByUserName = async (name, unitId) => {
+            const results = await db
+                .select({
+                    userId: users.id,
+                    name: users.name,
+                    socialName: users.socialName,
+                    cpf: users.cpf,
+                    professionalId: professionals.id,
+                    patientId: patients.id,
+                    professionalUnitId: professionalUnits.id,
+                })
+                .from(professionals)
+                .innerJoin(users, eq(users.id, professionals.userId))
+                .leftJoin(patients, eq(patients.userId, professionals.userId))
+                .leftJoin(
+                    professionalUnits,
+                    and(
+                        eq(professionalUnits.professionalId, professionals.id),
+                        eq(professionalUnits.unitId, unitId),
+                    ),
+                )
+                .where(or(ilike(users.name, `%${name}%`), ilike(users.socialName, `%${name}%`)))
+                .limit(20);
+
+            return results.map((row) => ({
+                userId: row.userId,
+                name: row.name,
+                socialName: row.socialName ?? null,
+                cpf: row.cpf,
+                professionalId: row.professionalId ?? "",
+                patientId: row.patientId ?? "",
+                professionalUnitId: row.professionalUnitId ?? "",
+            }));
+        };
+
+
 
         
     }

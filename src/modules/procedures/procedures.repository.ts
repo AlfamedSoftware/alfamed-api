@@ -1,4 +1,4 @@
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { procedures } from "../../db/schema/procedures.js";
@@ -34,6 +34,7 @@ export class ProceduresRepository {
                 observation: procedures.observation,
                 code: procedures.code,
                 price: procedures.price,
+                isPerformedInUnit: procedures.isPerformedInUnit,
                 isActive: procedures.isActive,
                 createdAt: procedures.createdAt,
                 updatedAt: procedures.updatedAt,
@@ -64,6 +65,7 @@ export class ProceduresRepository {
                 observation: procedures.observation,
                 code: procedures.code,
                 price: procedures.price,
+                isPerformedInUnit: procedures.isPerformedInUnit,
                 isActive: procedures.isActive,
                 createdAt: procedures.createdAt,
                 updatedAt: procedures.updatedAt,
@@ -87,14 +89,12 @@ export class ProceduresRepository {
         });
     }
 
-    async listByUnitId(unitId: string, specialtyId?: string, isActive?: boolean): Promise<ProcedureProfile[]> {
-        const whereClause = specialtyId && isActive !== undefined
-            ? and(eq(procedures.unitId, unitId), eq(procedures.specialtyId, specialtyId), eq(procedures.isActive, isActive))
-            : specialtyId
-            ? and(eq(procedures.unitId, unitId), eq(procedures.specialtyId, specialtyId))
-            : isActive !== undefined
-            ? and(eq(procedures.unitId, unitId), eq(procedures.isActive, isActive))
-            : eq(procedures.unitId, unitId);
+    async listByUnitId(unitId: string, specialtyId?: string, isActive?: boolean, type?: number): Promise<ProcedureProfile[]> {
+        const conditions = [eq(procedures.unitId, unitId)];
+        if (specialtyId) conditions.push(eq(procedures.specialtyId, specialtyId));
+        if (isActive !== undefined) conditions.push(eq(procedures.isActive, isActive));
+        if (type !== undefined) conditions.push(eq(procedures.type, type));
+        const whereClause = and(...conditions);
 
         const rows = await this.db
             .select({
@@ -106,6 +106,40 @@ export class ProceduresRepository {
                 observation: procedures.observation,
                 code: procedures.code,
                 price: procedures.price,
+                isPerformedInUnit: procedures.isPerformedInUnit,
+                isActive: procedures.isActive,
+                createdAt: procedures.createdAt,
+                updatedAt: procedures.updatedAt,
+            })
+            .from(procedures)
+            .where(whereClause)
+            .orderBy(asc(procedures.description));
+
+        return rows.map((row) =>
+            procedureSchema.parse({
+                ...row,
+                createdAt: row.createdAt.toISOString(),
+                updatedAt: row.updatedAt.toISOString(),
+            }),
+        );
+    }
+
+    async listByIds(unitId: string, ids: string[], isActive?: boolean): Promise<ProcedureProfile[]> {
+        const whereClause = isActive !== undefined
+            ? and(eq(procedures.unitId, unitId), inArray(procedures.id, ids), eq(procedures.isActive, isActive))
+            : and(eq(procedures.unitId, unitId), inArray(procedures.id, ids));
+
+        const rows = await this.db
+            .select({
+                id: procedures.id,
+                unitId: procedures.unitId,
+                specialtyId: procedures.specialtyId,
+                type: procedures.type,
+                description: procedures.description,
+                observation: procedures.observation,
+                code: procedures.code,
+                price: procedures.price,
+                isPerformedInUnit: procedures.isPerformedInUnit,
                 isActive: procedures.isActive,
                 createdAt: procedures.createdAt,
                 updatedAt: procedures.updatedAt,
@@ -130,6 +164,7 @@ export class ProceduresRepository {
         observation?: string | null;
         code: string;
         price: string;
+        isPerformedInUnit?: boolean;
         isActive?: boolean;
     }): Promise<ProcedureProfile> {
         const [inserted] = await this.db
@@ -142,6 +177,7 @@ export class ProceduresRepository {
                 observation: data.observation ?? null,
                 code: data.code,
                 price: data.price,
+                isPerformedInUnit: data.isPerformedInUnit ?? false,
                 isActive: data.isActive ?? true,
             })
             .returning({
@@ -153,6 +189,7 @@ export class ProceduresRepository {
                 observation: procedures.observation,
                 code: procedures.code,
                 price: procedures.price,
+                isPerformedInUnit: procedures.isPerformedInUnit,
                 isActive: procedures.isActive,
                 createdAt: procedures.createdAt,
                 updatedAt: procedures.updatedAt,
@@ -175,6 +212,7 @@ export class ProceduresRepository {
             observation?: string | null;
             code?: string;
             price?: string;
+            isPerformedInUnit?: boolean;
             isActive?: boolean;
         },
     ): Promise<ProcedureProfile | null> {
@@ -187,6 +225,7 @@ export class ProceduresRepository {
                 ...(typeof data.observation !== "undefined" ? { observation: data.observation } : {}),
                 ...(typeof data.code !== "undefined" ? { code: data.code } : {}),
                 ...(typeof data.price !== "undefined" ? { price: data.price } : {}),
+                ...(typeof data.isPerformedInUnit !== "undefined" ? { isPerformedInUnit: data.isPerformedInUnit } : {}),
                 ...(typeof data.isActive !== "undefined" ? { isActive: data.isActive } : {}),
             })
             .where(and(eq(procedures.id, procedureId), eq(procedures.unitId, unitId)))
@@ -208,6 +247,7 @@ export class ProceduresRepository {
                 observation: procedures.observation,
                 code: procedures.code,
                 price: procedures.price,
+                isPerformedInUnit: procedures.isPerformedInUnit,
                 isActive: procedures.isActive,
                 createdAt: procedures.createdAt,
                 updatedAt: procedures.updatedAt,
