@@ -26,7 +26,7 @@ export const createAppointmentSchema = z
         patientId: z.string().uuid(),
         professionalUnitId: z.string().uuid(),
         scheduleSlotId: z.string().uuid(),
-        statusCode: z.number().int(),
+        statusCode: z.number().int().min(1).max(6),
     })
     .strict();
 

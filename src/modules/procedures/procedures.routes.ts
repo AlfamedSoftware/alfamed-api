@@ -98,6 +98,7 @@ export const proceduresRoutes = ({
                         params.unitId,
                         query.specialtyId as string | undefined,
                         query.isActive as boolean | undefined,
+                        query.type as number | undefined,
                     );
 
                     return status(200, procedures);
@@ -113,6 +114,7 @@ export const proceduresRoutes = ({
                 query: t.Object({
                     specialtyId: t.Optional(t.String({ format: "uuid" })),
                     isActive: t.Optional(t.Boolean()),
+                    type: t.Optional(t.Numeric()),
                 }),
                 detail: {
                     summary: "List procedures by unit",
@@ -121,6 +123,56 @@ export const proceduresRoutes = ({
                 },
                 response: {
                     200: proceduresListSchema,
+                    401: t.Object({ message: t.Literal("Unauthorized") }),
+                    500: proceduresErrorSchema,
+                },
+            },
+        )
+        .get(
+            "/list-procedures-by-ids/:listaIds",
+            async (context) => {
+                const { params, query, status } = context;
+                const userId = getAuthenticatedUserId(context as { user?: { id?: string } });
+                const selectedUnitId = getUnitIdFromRequest(context.request);
+
+                if (!userId) {
+                    return status(401, { message: "Unauthorized" });
+                }
+
+                if (!selectedUnitId) {
+                    return status(400, { message: unitSelectionRequiredMessage });
+                }
+
+                const ids = params.listaIds.split(",").map((id) => id.trim()).filter(Boolean);
+
+                try {
+                    const procedures = await proceduresService.listProceduresByIds(
+                        selectedUnitId,
+                        ids,
+                        query.isActive as boolean | undefined,
+                    );
+
+                    return status(200, procedures);
+                } catch (error) {
+                    return status(500, { message: "Internal server error" });
+                }
+            },
+            {
+                auth: true,
+                params: t.Object({
+                    listaIds: t.String(),
+                }),
+                query: t.Object({
+                    isActive: t.Optional(t.Boolean()),
+                }),
+                detail: {
+                    summary: "List procedures by IDs",
+                    description: "Returns procedures matching the given comma-separated IDs, filtered to the selected unit.",
+                    tags: ["Procedures"],
+                },
+                response: {
+                    200: proceduresListSchema,
+                    400: t.Object({ message: t.Literal("Selecione uma unidade para continuar") }),
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     500: proceduresErrorSchema,
                 },
@@ -205,6 +257,7 @@ export const proceduresRoutes = ({
                         observation?: string | null;
                         code?: string;
                         price?: string;
+                        isPerformedInUnit?: boolean;
                         isActive?: boolean;
                     };
 

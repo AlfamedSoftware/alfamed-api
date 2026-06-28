@@ -229,18 +229,6 @@ export class AttendimentsRepository {
             observation: null,
         });
 
-        //precisa verificar o campo se o procedimento executa internamnete
-        //criar função no repository do procedures para verificar via ids que veio
-
-        //criar pasta "requests" criar o schema e o repository com as duas funções de post
-        //envia a lista de procedimentos selecionados para essa função do repository junto com o appointmentId
-        //verifica campos do procedures se ele é realizado internamento
-            //se for interno, grava eles no schema request
-        //se for externo
-            //gravar externo grava na schema external_request
-            //externas (ver oq vai ser  feito com exames externo para o paciente)
-
-        // interno (reagendar de algum jeito o exame interno, para o paciente)
         return { success: true, scheduleSlotId: current.scheduleSlotId };
     }
 

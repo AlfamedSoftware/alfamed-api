@@ -31,6 +31,7 @@ import type { UnitsRepository } from "./modules/units/units.repository.js";
 import { attendimentsRoutes } from "./modules/attendiments/attendiments.routes.js";
 import type { AttendimentsRepository } from "./modules/attendiments/attendiments.repository.js";
 import { AttendimentsRepository as AttendimentsRepositoryClass } from "./modules/attendiments/attendiments.repository.js";
+import { requestsRoutes } from "./modules/requests/requests.routes.js";
 import { anamnesisRoutes } from "./modules/anamnesis/anamnesis.routes.js";
 import { AnamnesisRepository } from "./modules/anamnesis/anamnesis.repository.js";
 import { createHasUserAccessToUnitChecker } from "./http/plugins/unit-access.js";
@@ -40,6 +41,7 @@ import { adminUpmRoutes } from "./modules/admin/admin-upm.routes.js";
 import { createSessionRoutes } from "./modules/session/session.routes.js";
 import { authPasswordResetRoutes } from "./modules/auth/auth-password-reset.routes.js";
 import { renewSessionCookies } from "./http/plugins/session-helpers.js";
+import { unitParametersRoutes } from "./modules/unit-parameters/unit-parameters.routes.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -153,6 +155,10 @@ export async function buildApp({
                             description: "Operations about patient medical records",
                         },
                         {
+                            name: "Unit Parameters",
+                            description: "Operations about unit configuration parameters",
+                        },
+                        {                            
                             name: "Anamnesis",
                             description: "Operations about patient anamnesis",
                         },
@@ -271,6 +277,8 @@ export async function buildApp({
     // Register schedules routes (depend on db directly)
     configuredAppWithProfessionals.use(schedulesRoutes({ db }));
     configuredAppWithProfessionals.use(medicalRecordsRoutes({ db }));
+    configuredAppWithProfessionals.use(unitParametersRoutes({ db }));
+    configuredAppWithProfessionals.use(requestsRoutes({ db }));
 
     return configuredAppWithProfessionals;
 }
