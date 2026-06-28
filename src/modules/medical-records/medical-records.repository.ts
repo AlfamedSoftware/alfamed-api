@@ -158,7 +158,7 @@ export class MedicalRecordsRepository {
             .innerJoin(professionals, eq(professionalUnits.professionalId, professionals.id))
             .innerJoin(professionalUser, eq(professionals.userId, professionalUser.id))
             .where(eq(appointments.patientId, patientId))
-            .orderBy(desc(appointments.startAt));
+            .orderBy(desc(schedules.date), desc(scheduleSlots.startTime));
 
         return rows;
     }
