@@ -1,4 +1,4 @@
-import { and, asc, eq, type SQL } from "drizzle-orm";
+import { and, asc, eq, inArray, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
@@ -10,6 +10,8 @@ import { users } from "../../db/schema/users.js";
 import { professionalUnits } from "../../db/schema/professional-units.js";
 import { professionals } from "../../db/schema/professionals.js";
 import { requests } from "../../db/schema/requests.js";
+import { requestLogs } from "../../db/schema/request-logs.js";
+import { requestResults } from "../../db/schema/request-results.js";
 import { requestsStatus } from "../../db/schema/requests-status.js";
 import { procedures } from "../../db/schema/procedures.js";
 import { specialties } from "../../db/schema/specialties.js";
@@ -189,6 +191,200 @@ export class ExamManagementRepository {
         }
 
         return Array.from(appointmentMap.values());
+    }
+
+    // --- helpers privados ---
+
+    private async getActiveRequests(appointmentId: string) {
+        return this.db
+            .select({ id: requests.id, statusId: requests.statusId })
+            .from(requests)
+            .where(and(eq(requests.appointmentId, appointmentId), eq(requests.isActive, true)));
+    }
+
+    private async getStatusByCode(code: number) {
+        const [status] = await this.db
+            .select({ id: requestsStatus.id })
+            .from(requestsStatus)
+            .where(eq(requestsStatus.code, code))
+            .limit(1);
+        return status ?? null;
+    }
+
+    private async insertLogs(
+        items: { id: string; statusId: string }[],
+        newStatusId: string,
+        changedByUserId: string,
+    ) {
+        await this.db.insert(requestLogs).values(
+            items.map((r) => ({
+                requestId: r.id,
+                oldStatusId: r.statusId,
+                newStatusId,
+                changedBy: changedByUserId,
+                observation: null,
+            })),
+        );
+    }
+
+    private async insertResults(items: { id: string }[], complementaryInfo?: string | null) {
+        await this.db.insert(requestResults).values(
+            items.map((r) => ({
+                requestId: r.id,
+                professionalUnitId: null,
+                complementaryInfo: complementaryInfo ?? null,
+            })),
+        );
+    }
+
+    // --- transições de status ---
+
+    async liberarRequestsByAppointment(appointmentId: string, changedByUserId: string): Promise<{ success: boolean }> {
+        const activeRequests = await this.getActiveRequests(appointmentId);
+        if (activeRequests.length === 0) return { success: false };
+
+        const newStatus = await this.getStatusByCode(2);
+        if (!newStatus) throw new Error("Request status code 2 (Aguardando realização) not found");
+
+        await this.db
+            .update(requests)
+            .set({ statusId: newStatus.id })
+            .where(inArray(requests.id, activeRequests.map((r) => r.id)));
+
+        await this.insertLogs(activeRequests, newStatus.id, changedByUserId);
+
+        return { success: true };
+    }
+
+    async iniciarRequestsByAppointment(
+        appointmentId: string,
+        professionalUnitId: string,
+        changedByUserId: string,
+    ): Promise<{ success: boolean }> {
+        const activeRequests = await this.getActiveRequests(appointmentId);
+        if (activeRequests.length === 0) return { success: false };
+
+        const newStatus = await this.getStatusByCode(3);
+        if (!newStatus) throw new Error("Request status code 3 (Paciente em exame) not found");
+
+        await this.db
+            .update(requests)
+            .set({ statusId: newStatus.id, professionalUnitId })
+            .where(inArray(requests.id, activeRequests.map((r) => r.id)));
+
+        await this.insertLogs(activeRequests, newStatus.id, changedByUserId);
+
+        return { success: true };
+    }
+
+    async iniciarLaudoByAppointment(
+        appointmentId: string,
+        professionalUnitId: string,
+        changedByUserId: string,
+    ): Promise<{ success: boolean }> {
+        const activeRequests = await this.getActiveRequests(appointmentId);
+        if (activeRequests.length === 0) return { success: false };
+
+        const newStatus = await this.getStatusByCode(5);
+        if (!newStatus) throw new Error("Request status code 5 (Laudo em análise) not found");
+
+        const ids = activeRequests.map((r) => r.id);
+
+        await this.db
+            .update(requests)
+            .set({ statusId: newStatus.id })
+            .where(inArray(requests.id, ids));
+
+        await this.db
+            .update(requestResults)
+            .set({ professionalUnitId })
+            .where(inArray(requestResults.requestId, ids));
+
+        await this.insertLogs(activeRequests, newStatus.id, changedByUserId);
+
+        return { success: true };
+    }
+
+    async encerrarRequestsByAppointment(
+        appointmentId: string,
+        statusCode: 7 | 8,
+        justification: string,
+        changedByUserId: string,
+    ): Promise<{ success: boolean }> {
+        const activeRequests = await this.getActiveRequests(appointmentId);
+        if (activeRequests.length === 0) return { success: false };
+
+        const newStatus = await this.getStatusByCode(statusCode);
+        if (!newStatus) throw new Error(`Request status code ${statusCode} not found`);
+
+        await this.db
+            .update(requests)
+            .set({ statusId: newStatus.id, justification })
+            .where(inArray(requests.id, activeRequests.map((r) => r.id)));
+
+        await this.insertLogs(activeRequests, newStatus.id, changedByUserId);
+
+        return { success: true };
+    }
+
+    async finalizarLaudoByAppointment(
+        appointmentId: string,
+        attachmentUrl: string,
+        changedByUserId: string,
+        complementaryInfo?: string | null,
+    ): Promise<{ success: boolean }> {
+        const activeRequests = await this.getActiveRequests(appointmentId);
+        if (activeRequests.length === 0) return { success: false };
+
+        const newStatus = await this.getStatusByCode(6);
+        if (!newStatus) throw new Error("Request status code 6 (Laudo liberado) not found");
+
+        const ids = activeRequests.map((r) => r.id);
+
+        await this.db
+            .update(requests)
+            .set({ statusId: newStatus.id })
+            .where(inArray(requests.id, ids));
+
+        await this.db
+            .update(requestResults)
+            .set({
+                attachmentUrl,
+                releasedAt: new Date(),
+                ...(complementaryInfo !== undefined ? { complementaryInfo } : {}),
+            })
+            .where(inArray(requestResults.requestId, ids));
+
+        await this.insertLogs(activeRequests, newStatus.id, changedByUserId);
+
+        return { success: true };
+    }
+
+    async finalizarRequestsByAppointment(
+        appointmentId: string,
+        changedByUserId: string,
+        complementaryInfo?: string | null,
+    ): Promise<{ success: boolean }> {
+        const activeRequests = await this.getActiveRequests(appointmentId);
+        if (activeRequests.length === 0) return { success: false };
+
+        const newStatus = await this.getStatusByCode(4);
+        if (!newStatus) throw new Error("Request status code 4 (Aguardando análise) not found");
+
+        await this.db
+            .update(requests)
+            .set({
+                statusId: newStatus.id,
+                performedAt: new Date(),
+                ...(complementaryInfo !== undefined ? { complementaryInfo } : {}),
+            })
+            .where(inArray(requests.id, activeRequests.map((r) => r.id)));
+
+        await this.insertResults(activeRequests);
+        
+        await this.insertLogs(activeRequests, newStatus.id, changedByUserId);
+
+        return { success: true };
     }
 
     async findByAppointmentId(appointmentId: string): Promise<ExamManagementItem | null> {
