@@ -72,6 +72,7 @@ export class AttendimentsRepository {
                 patientId: patients.id,
                 patientUserId: patients.userId,
                 userId: users.id,
+                userCpf: users.cpf,
                 userEmail: users.email,
                 statusCode: appointmentsStatus.code,
                 statusDescription: appointmentsStatus.description,
@@ -85,7 +86,7 @@ export class AttendimentsRepository {
             .innerJoin(users, eq(patients.userId, users.id))
             .innerJoin(appointmentsStatus, eq(appointments.statusId, appointmentsStatus.id))
             .where(and(...whereConditions))
-            .orderBy(asc(appointmentsStatus.code), asc(scheduleSlots.startTime)) as unknown as Array<{
+            .orderBy(asc(schedules.date), asc(scheduleSlots.startTime)) as unknown as Array<{
                 appointmentId: string;
                 appointmentPatientId: string;
                 appointmentProfessionalUnitId: string;
@@ -113,6 +114,7 @@ export class AttendimentsRepository {
                 patientId: string;
                 patientUserId: string;
                 userId: string;
+                userCpf: string;
                 userEmail: string;
                 statusCode: number;
                 statusDescription: string;
@@ -140,7 +142,11 @@ export class AttendimentsRepository {
                 id: row.appointmentId,
                 patientId: row.appointmentPatientId,
                 patientName: row.userEmail.split('@')[0],
+                patientCpf: row.userCpf,
                 patientUserEmail: row.userEmail,
+                scheduleProcedureId: row.procedureId,
+                scheduleProcedureName: row.procedureName,
+                scheduleProcedureDescription: row.procedureDescription,
                 professionalUnitId: row.appointmentProfessionalUnitId,
                 scheduleSlotId: row.appointmentScheduleSlotId,
                 scheduleSlotStartTime: row.scheduleSlotStartTime,

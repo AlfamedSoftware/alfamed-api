@@ -47,6 +47,8 @@ import { appointmentStatusRoutes } from "./modules/appointment-status/appointmen
 import { AppointmentStatusRepository } from "./modules/appointment-status/appointment-status.repository.js";
 import { requestStatusRoutes } from "./modules/request-status/request-status.routes.js";
 import { RequestStatusRepository } from "./modules/request-status/request-status.repository.js";
+import { examManagementRoutes } from "./modules/exam-management/exam-management.routes.js";
+import { ExamManagementRepository } from "./modules/exam-management/exam-management.repository.js";
 
 type ElysiaPlugin = Parameters<InstanceType<typeof Elysia>["use"]>[0];
 
@@ -179,6 +181,10 @@ export async function buildApp({
                             name: "Request Status",
                             description: "Operations about request statuses",
                         },
+                        {
+                            name: "Exam Management",
+                            description: "Operations about exam management",
+                        },
                     ],
                     components: await OpenAPI.components,
                     paths: await OpenAPI.getPaths(),
@@ -299,6 +305,7 @@ export async function buildApp({
     configuredAppWithProfessionals.use(appointmentStatusRoutes({ appointmentStatusRepository: new AppointmentStatusRepository(db) }));
     configuredAppWithProfessionals.use(requestStatusRoutes({ requestStatusRepository: new RequestStatusRepository(db) }));
     configuredAppWithProfessionals.use(requestsRoutes({ db }));
+    configuredAppWithProfessionals.use(examManagementRoutes({ examManagementRepository: new ExamManagementRepository(db) }));
 
     return configuredAppWithProfessionals;
 }

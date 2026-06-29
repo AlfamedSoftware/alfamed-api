@@ -63,13 +63,13 @@ Status do ciclo de vida de uma solicitação de exame (`requests`).
 | Código | Descrição |
 |---|---|
 | `1` | Prescrito |
-| `2` | Paciente em Exame |
-| `3` | Aguardando análise |
-| `4` | Laudo em análise |
-| `5` | Laudo liberado |
-| `6` | Exame não realizado |
-| `7` | Paciente não compareceu |
-| `8` | Aguardando exames |
+| `2` | Aguardando realização |
+| `3` | Paciente em exame |
+| `4` | Aguardando análise |
+| `5` | Laudo em análise |
+| `6` | Laudo liberado |
+| `7` | Exame não realizado |
+| `8` | Paciente não compareceu |
 
 ### Rota
 
