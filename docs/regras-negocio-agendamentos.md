@@ -115,6 +115,11 @@ Retorna todos os agendamentos pendentes (status `1` — Agendado) e ativos do pa
 | `patients.userId` | igual ao `userId` informado |
 | `appointment_status.code` | `1` (Agendado) |
 | `appointments.isActive` | `true` |
+| `schedules.date + scheduleSlots.startTime` | maior que o momento atual (fuso `America/Sao_Paulo`) |
+
+> O filtro de data/hora é feito inteiramente no banco via SQL:  
+> `(schedules.date || ' ' || schedule_slots.start_time)::timestamp AT TIME ZONE 'America/Sao_Paulo' > NOW()`  
+> O valor armazenado é interpretado como horário de Brasília e convertido para UTC antes da comparação, garantindo que agendamentos cujo horário de início já passou não sejam retornados.
 
 **Resposta de sucesso (HTTP 200):**
 

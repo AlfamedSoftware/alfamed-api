@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import type { z } from "zod";
 import type { db as dbType } from "../../db/client.js";
 import { appointments } from "../../db/schema/appointments.js";
@@ -255,6 +255,10 @@ export class AppointmentsRepository {
                     eq(patients.userId, userId),
                     eq(appointments.statusId, pendingStatus.id),
                     eq(appointments.isActive, true),
+                    gt(
+                        sql`(${schedules.date} || ' ' || ${scheduleSlots.startTime})::timestamp AT TIME ZONE 'America/Sao_Paulo'`,
+                        sql`NOW()`,
+                    ),
                 ),
             );
 
