@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import type { ExamManagementRepository } from "./exam-management.repository.js";
 import { ExamManagementService } from "./exam-management.service.js";
-import { examManagementListSchema, examManagementItemSchema, examManagementErrorSchema } from "./exam-management.schemas.js";
+import { examManagementItemSchema, examManagementSummaryListSchema, examManagementErrorSchema } from "./exam-management.schemas.js";
 import { getAuthenticatedUserId } from "../../http/plugins/unit-access.js";
 import { getProfessionalUnitIdFromRequest } from "../../http/plugins/unit-context.js";
 
@@ -14,35 +14,35 @@ export const examManagementRoutes = ({ examManagementRepository }: ExamManagemen
 
     return new Elysia({ name: "exam-management-routes", prefix: "/exam-management" })
         .get(
-            "/",
+            "/list-exams",
             async ({ query, status }) => {
                 try {
-                    const items = await examManagementService.listExamManagements({
-                        professionalUserId: query.professionalUserId,
+                    const items = await examManagementService.listPendentExams({
                         date: query.date,
                         statusCode: query.statusCode,
+                        professionalUnitId: query.professionalUnitId,
                     });
 
                     return status(200, items);
                 } catch (error) {
-                    console.error("[exam-management][list]", error);
+                    console.error("[exam-management][list-exams]", error);
                     return status(500, { message: "Internal server error" });
                 }
             },
             {
                 auth: true,
                 query: t.Object({
-                    professionalUserId: t.Optional(t.String()),
                     date: t.Optional(t.String()),
                     statusCode: t.Optional(t.Numeric()),
+                    professionalUnitId: t.Optional(t.String()),
                 }),
                 detail: {
-                    summary: "List exam managements",
-                    description: "Returns appointments that have at least one active request, with patient, professional and request data. Ordered by schedule date and slot start time.",
+                    summary: "List exams",
+                    description: "Returns appointments with active requests, optionally filtered by schedule date, status code, and professional unit ID. Returns only summary fields.",
                     tags: ["Exam Management"],
                 },
                 response: {
-                    200: examManagementListSchema,
+                    200: examManagementSummaryListSchema,
                     401: t.Object({ message: t.Literal("Unauthorized") }),
                     500: examManagementErrorSchema,
                 },

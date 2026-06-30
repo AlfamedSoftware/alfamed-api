@@ -479,6 +479,8 @@ export const professionalUnitsRoutes = ({
 
                     return status(200, updated);
                 } catch (error) {
+                    console.error("[full-update] erro ao atualizar professional unit:", error);
+
                     if (isDomainError(error, "FORBIDDEN")) {
                         return status(403, { message: "Forbidden" });
                     }
