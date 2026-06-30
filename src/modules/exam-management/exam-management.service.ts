@@ -3,8 +3,8 @@ import type { ExamManagementRepository, ListExamManagementFilters } from "./exam
 export class ExamManagementService {
     constructor(private readonly examManagementRepository: ExamManagementRepository) { }
 
-    async listExamManagements(filters: ListExamManagementFilters = {}) {
-        return this.examManagementRepository.list(filters);
+    async listPendentExams(filters: { date?: string; statusCode?: number; professionalUnitId?: string } = {}) {
+        return this.examManagementRepository.listSummary(filters);
     }
 
     async getExamManagementDetails(appointmentId: string) {

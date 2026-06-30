@@ -70,6 +70,33 @@ export const examManagementItemSchema = z.object({
 
 export const examManagementListSchema = z.array(examManagementItemSchema);
 
+export const examManagementSummaryItemSchema = z.object({
+    id: z.string().uuid(),
+    patients: z.object({
+        name: z.string(),
+        socialName: z.string().nullable(),
+        cpf: z.string(),
+    }),
+    professional_units: z.object({
+        professional: z.object({
+            user: z.object({
+                name: z.string(),
+            }),
+        }),
+    }),
+    schedules: z.object({
+        specialties: z.object({
+            name: z.string(),
+        }),
+        procedures: z.object({
+            description: z.string(),
+        }),
+    }),
+    requestCount: z.number().int(),
+});
+
+export const examManagementSummaryListSchema = z.array(examManagementSummaryItemSchema);
+
 export const examManagementErrorSchema = z.object({
     message: z.string(),
 });
